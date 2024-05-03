@@ -1,12 +1,10 @@
 <template>
   <div>
     <HeroProduct />
-    <FeatureGrid id="Features" />
-    <Design id="Design" />
-    <FeaturePanel id="Marketing" />
-    <Pricing id="Pricing" />
-    <Logos />
-    <Cta />
+    <FeatureGrid />
+    <Design />
+    <FeaturePanel />
+    <CtaFull />
   </div>
 </template>
 
@@ -22,3 +20,4 @@ useHead({
   ]
 })
 </script>
+

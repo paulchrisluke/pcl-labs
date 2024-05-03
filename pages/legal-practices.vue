@@ -1,10 +1,9 @@
 <template>
   <div>
     <HeroProduct />
-    <FeatureGrid id="Features" />
-    <Design id="Design" />
-    <FeaturePanel id="Marketing" />
-    <Logos />
+    <FeatureGrid />
+    <Design />
+    <FeaturePanel />
     <CtaFull />
   </div>
 </template>

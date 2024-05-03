@@ -33,32 +33,32 @@
   const features = [
     {
       name: 'Web Development.',
-      description: 'ReactJS, VueJS, Shopify Liquid, NodeJS, AMPHtml. We program fast, beautiful websites that delight customers and increase sales.',
+      description: 'ReactJS, VueJS, Shopify Liquid, NodeJS, AMPHtml.',
       icon: CloudArrowUpIcon,
     },
     {
       name: 'UI/UX Design.',
-      description: 'Our Figma components are hand tailored for speed and conversions, repeatable design systems keep your brand up-to-date and beautiful.',
+      description: 'Figma, Adobe.',
       icon: LockClosedIcon,
     },
     {
       name: 'eCommerce CRO.',
-      description: 'Official Shopify Plus partner, supporting stores doing greater than $10M/revenue annually. Upsells, brand loyalty programs, and affiliate marketing.',
+      description: 'Shopify Plus Partner.',
       icon: ArrowPathIcon,
     },
     {
       name: 'Paid Advertising.',
-      description: 'As Certified Google/Meta Partners, we will write copy, and ensure your are top position in your state. Video ad creation and robust remarketing campaigns.',
+      description: 'Certified Google/Meta Partners.',
       icon: FingerPrintIcon,
     },
     {
       name: 'Brand & Print Design.',
-      description: 'Need to bring your brand to the digital age? Logos, banners, billboards, printed mailers, and more! We will unify your brand assets across all channels.',
+      description: 'Figma, Adobe.',
       icon: Cog6ToothIcon,
     },
     {
       name: 'Organic Marketing.',
-      description: 'Content creation. Robust SEO structued data ensures your video, blog, and landing page content is indexed and competitive.',
+      description: 'Blog, Meta, TikTok.',
       icon: ServerIcon,
     },
   ]
