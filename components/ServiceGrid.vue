@@ -22,12 +22,12 @@
   
   <script setup>
   import {
-    ArrowPathIcon,
+    SparklesIcon,
     CloudArrowUpIcon,
-    Cog6ToothIcon,
-    FingerPrintIcon,
-    LockClosedIcon,
-    ServerIcon,
+    ClipboardDocumentIcon,
+    ArrowTrendingUpIcon,
+    ComputerDesktopIcon,
+    HeartIcon,
   } from '@heroicons/vue/20/solid'
   
   const features = [
@@ -39,27 +39,27 @@
     {
       name: 'UI/UX Design.',
       description: 'Figma, Adobe.',
-      icon: LockClosedIcon,
+      icon: ComputerDesktopIcon,
     },
     {
       name: 'eCommerce CRO.',
       description: 'Shopify Plus Partner.',
-      icon: ArrowPathIcon,
+      icon: SparklesIcon,
     },
     {
       name: 'Paid Advertising.',
       description: 'Certified Google/Meta Partners.',
-      icon: FingerPrintIcon,
+      icon: ArrowTrendingUpIcon,
     },
     {
       name: 'Brand & Print Design.',
       description: 'Figma, Adobe.',
-      icon: Cog6ToothIcon,
+      icon: ClipboardDocumentIcon,
     },
     {
       name: 'Organic Marketing.',
       description: 'Blog, Meta, TikTok.',
-      icon: ServerIcon,
+      icon: HeartIcon,
     },
   ]
   </script>

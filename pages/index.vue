@@ -13,10 +13,10 @@
 
 
 useHead({
-  title: 'My App',
+  title: 'Increase Your Conversions with Web PCL-Labs',
   meta: [
     { name: 'description', content: 'My amazing site.' },
-    { property: 'og:title', content: 'My App' },  // OG title
+    { property: 'og:title', content: 'Increase Your Conversions with Web PCL-Labs' },  // OG title
     { property: 'og:description', content: 'My amazing site.' },  // OG description
     { property: 'og:image', content: 'https://example.com/path-to-your-image.jpg' }  // OG image URL
   ]

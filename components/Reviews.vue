@@ -12,7 +12,7 @@
               <p class="ml-3 text-sm text-gray-700">{{ review.rating }}<span class="sr-only"> out of 5 stars</span></p>
             </div>
 
-            <div class="flex items-center xl:col-span-1 xl:col-start-1 xl:mt-2">
+            <div class="flex items-center mt-4 xl:col-span-1 xl:col-start-1 xl:mt-2">
               <a href="https://www.upwork.com/freelancers/paulchrisluke" target="_blank" class="text-sm flex items-center text-green-600">
                 See review on Upwork ↗
               </a>
