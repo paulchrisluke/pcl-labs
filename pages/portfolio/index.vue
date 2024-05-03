@@ -13,10 +13,10 @@
             <img :src="product.image" :alt="product.imageAlt" class="object-cover object-center h-full w-full" />
           </div>
           <h3 class="mt-4 text-sm text-gray-700">
-            <a :href="product.href">
+            <!-- <a :href="product.href"> -->
               <span class="absolute inset-0" />
               {{ product.title }}
-            </a>
+            <!-- </a> -->
           </h3>
           <p class="mt-1 text-sm text-gray-500">{{ product.tags[0] }}</p>
           </nuxt-link>
