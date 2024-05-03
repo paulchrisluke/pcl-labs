@@ -14,8 +14,7 @@
 
             <div class="flex items-center xl:col-span-1 xl:col-start-1 xl:mt-2">
               <a href="#" class="text-sm flex items-center text-green-600">
-                See review on Upwork
-                <ArrowTopRightOnSquareIcon class="ml-1 h-5 w-5" aria-hidden="true" />
+                See review on Upwork ↗
               </a>
             </div>
 
@@ -36,7 +35,7 @@
 </template>
 
 <script setup>
-import { StarIcon, ArrowTopRightOnSquareIcon } from '@heroicons/vue/20/solid'
+import { StarIcon } from '@heroicons/vue/20/solid'
 
 const reviews = [
   {
