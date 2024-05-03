@@ -4,9 +4,8 @@
     <FeatureGrid id="Features" />
     <Design id="Design" />
     <FeaturePanel id="Marketing" />
-    <Pricing id="Pricing" />
     <Logos />
-    <Cta />
+    <CtaFull />
   </div>
 </template>
 

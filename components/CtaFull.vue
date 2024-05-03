@@ -1,6 +1,5 @@
 <template>
-      <div class="space-y-10 divide-y divide-gray-200 border-b border-t border-gray-700">
-  <div class="overflow-hidden bg-gray-900 py-32">
+  <div class="overflow-hidden bg-gray-900 pt-32">
     <div class="mx-auto max-w-7xl px-6 lg:flex lg:px-8">
       <div class="mx-auto grid max-w-2xl grid-cols-1 gap-x-12 gap-y-16 lg:mx-0 lg:min-w-full lg:max-w-none lg:flex-none lg:gap-y-8">
         <div class="lg:col-end-1 lg:w-full lg:max-w-lg lg:pb-8">
@@ -33,9 +32,12 @@ Request a quote today.</h2>
         </div>
       </div>
     </div>
+    <div class="bg-gray-900 mx-auto max-w-7xl">
+    <div class="mt-16 border-t border-white/10 pt-8 sm:mt-20 lg:mt-24"></div>
   </div>
-</div>
+  </div>
 </template>
+
 
 <script setup>
 import { CloudArrowUpIcon, LockClosedIcon, ServerIcon, EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Hero />
+    <!-- <Hero /> -->
     <ServiceGrid id="Services" />
     <ProductList />
     <Stats />
