@@ -1,21 +1,20 @@
 ---
-title: "Hospital"
-tags: ['saas', 'dev stuff']
-image: "https://www.upwork.com/att/download/portfolio/agencies/uid/1289805767891931136/profile/projects/files/76735f64-c69a-4999-bc5b-f3b8e1202a84"
+title: "Volkswagen"
+tags: ['Logistics', 'Web Development', UI/UX]
+image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705144/Blawby/Volkswagen_b6pshd.png"
 imageAlt: "some text"
 ---
 
-## Project Overview
+## Enterprise Email Tracking CMS
 
-Here's a detailed description of my project...
+Volkswagen sends many emailed internal communications to its various employees. However, due to the complexities of enterprise software integrations, they had limited tracking for their open, clicks, and engagement rates by user. Our CMS allowed marketing members to email the same newsletters and communications with 1:1 user level tracking, giving the marketing team the insight they needed to ensure their success.
 
 ## Technologies Used
 
-- HTML
-- CSS
-- JavaScript
-- Nuxt.js
+- Vue.js & .net
+- Sendgrid
+- Figma
 
 ## Project Outcomes
 
-Describe what the project achieved or learned...
+Personalized User Tracking (100%)

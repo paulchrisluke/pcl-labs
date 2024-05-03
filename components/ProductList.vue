@@ -43,7 +43,7 @@
       id: 1,
       name: 'Volkswagen',
       color: 'Web & Marketing',
-      href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
+      href: '/portfolio/volkswagen',
       imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705144/Blawby/Volkswagen_b6pshd.png',
       imageAlt: 'Volkswagen Web and Marketing by PCL Labs',
     },
