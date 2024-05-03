@@ -44,7 +44,7 @@
       name: 'Volkswagen',
       color: 'Web & Marketing',
       href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-      imageSrc: 'https://scontent.ftpe7-2.fna.fbcdn.net/v/t39.30808-6/420168373_815787680592971_5304035465488745067_n.jpg?_nc_cat=1&ccb=1-7&_nc_sid=5f2048&_nc_ohc=PY1lJB0i0sMQ7kNvgGYB4E1&_nc_ht=scontent.ftpe7-2.fna&oh=00_AfCfl_W55C-eOLTwAtIk7pZYJ84jVKy-pG0V5G05vx1AkQ&oe=66376DE5',
+      imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705144/Blawby/Volkswagen_b6pshd.png',
       imageAlt: 'Volkswagen Web and Marketing by PCL Labs',
     },
     {
@@ -52,7 +52,7 @@
       name: 'US Express',
       color: 'Web & Marketing',
       href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-      imageSrc: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/1275668465135026176',
+      imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705143/Blawby/US_Xpress_nphfrk.png',
       imageAlt: 'US Express Web and Marketing by PCL Labs',
     },
     {
@@ -60,7 +60,7 @@
       name: 'Gumball Poodle',
       color: 'Shopify CRO',
       href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-      imageSrc: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/30f2fb2c-541e-4daa-a7ea-4768b6586715',
+      imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705142/Blawby/Gumball_Poodle_yc9eyo.png',
       imageAlt: 'Gumball Poodle Shopify CRO by PCL Labs',
     },
     {
@@ -68,7 +68,7 @@
       name: 'Phuntoken',
       color: 'Web & Marketing',
       href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-      imageSrc: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/d4901b2c-e9ce-447c-820a-d90366ef86f5',
+      imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705143/Blawby/Phuntoken_droift.png',
       imageAlt: 'Phuntoken Web and Marketing by PCL Labs',
     },
     // More products...
