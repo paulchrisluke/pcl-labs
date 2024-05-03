@@ -13,7 +13,7 @@
             </DisclosureButton>
           </div>
           <a href="/" class="flex flex-shrink-0 items-center">
-            <img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500" alt="Your Company" />
+            <img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500" alt="PCL Labs" />
           </a>
           <div class="hidden md:ml-6 md:flex md:items-center md:space-x-4">
             <a v-for="item in navigation" :key="item.name" :href="item.href" :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'rounded-md px-3 py-2 text-sm font-medium']" :aria-current="item.current ? 'page' : undefined">{{ item.name }}</a>
@@ -57,11 +57,9 @@
       <div class="border-t border-gray-700 pb-3 pt-4">
         <div class="flex items-center px-5 sm:px-6">
           <div class="flex-shrink-0">
-            <!-- <img class="h-10 w-10 rounded-full" :src="user.imageUrl" alt="" /> -->
           </div>
           <div class="">
             <div class="text-base font-medium text-white">Industries</div>
-            <!-- <div class="text-sm font-medium text-gray-400">{{ user.email }}</div> -->
           </div>
         </div>
         <div class="mt-3 space-y-1 px-2 sm:px-3">
@@ -74,15 +72,8 @@
 
 <script setup>
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { Bars3Icon, BellIcon, XMarkIcon,  } from '@heroicons/vue/24/outline'
+import { Bars3Icon, XMarkIcon  } from '@heroicons/vue/24/outline'
 import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
-
-// const user = {
-//   name: 'Tom Cook',
-//   email: 'tom@example.com',
-//   imageUrl:
-//     'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-// }
 
 const navigation = [
   { name: 'Services & Portfolio', href: '/Portfolio', current: false },

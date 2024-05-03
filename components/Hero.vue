@@ -1,7 +1,7 @@
 <template>
   <div class="bg-gray-900">
     <div class="relative isolate overflow-hidden pt-14">
-      <img src="https://i.giphy.com/FCQvc3IreTNNm.webp" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover bg-black opacity-60" />
+      <img src="https://i.giphy.com/FCQvc3IreTNNm.webp" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover bg-gray-900 opacity-40" />
       <div class="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
         <div class="text-center">
           <h1 class="text-white text-4xl font-bold tracking-tight sm:text-6xl">PCL-Labs</h1>
@@ -24,13 +24,6 @@ import { ref } from 'vue'
 import { Dialog, DialogPanel } from '@headlessui/vue'
 import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
 import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
-
-const navigation = [
-  { name: 'Product', href: '#' },
-  { name: 'Features', href: '#' },
-  { name: 'Marketplace', href: '#' },
-  { name: 'Company', href: '#' },
-]
 
 const mobileMenuOpen = ref(false)
 </script>

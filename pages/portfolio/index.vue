@@ -29,11 +29,11 @@
 <script setup>
 import { useAsyncData } from 'nuxt/app'
 useHead({
-  title: 'My App',
+  title: 'Our Portfolio of Work | PCL-Labs',
   meta: [
-    { name: 'description', content: 'My amazing site.' },
-    { property: 'og:title', content: 'My App' },  // OG title
-    { property: 'og:description', content: 'My amazing site.' },  // OG description
+    { name: 'description', content: 'Want to increase your conversions? No problem. We help brands by blending fresh ideas with proprietary direct response tools to forge deeper brand connections and more profitable conversions.' },
+    { property: 'og:title', content: 'Our Portfolio of Work | PCL-Labs' },  // OG title
+    { property: 'og:description', content: 'Want to increase your conversions? No problem. We help brands by blending fresh ideas with proprietary direct response tools to forge deeper brand connections and more profitable conversions.' },  // OG description
     { property: 'og:image', content: 'https://example.com/path-to-your-image.jpg' }  // OG image URL
   ]
 })

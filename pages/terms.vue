@@ -78,11 +78,11 @@
       <p class="mt-4">We reserve the right, at our sole discretion, to update, change or replace any part of these Terms of Service by posting updates and changes to our website. It is your responsibility to check our website periodically for changes. Your continued use of or access to our website or the Service following the posting of any changes to these Terms of Service constitutes acceptance of those changes.</p>
       <h2 class="mt-6 text-xl leading-8">SECTION 20 - CONTACT INFORMATION</h2>
       <p class="mt-4">Questions about the Terms of Service should be sent to us.</p>
-    </div>
-    <div class="mt-4 max-w-2xl">
+      <div class="mt-4 max-w-2xl">
         <button type="button" onclick="window.location.href='/'" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
           Go home ↖
         </button>
       </div>
+    </div>
   </div>
 </template>
