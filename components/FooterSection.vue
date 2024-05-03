@@ -77,7 +77,7 @@ const footerNavigation = ref({
   support: [
   { name: 'About', href: '/about', current: false },
   { name: 'Reviews', href: '/about', current: false },
-  { name: 'UpWork', href: 'https://www.upwork.com/fl/~01e187ee4b1c5ab0a1', current: false },
+  { name: 'UpWork ↗', href: 'https://upwork.com/freelancers/paulchrisluke', current: false },
     // { name: 'Documentation', href: '#' },
     // { name: 'Guides', href: '#' },
     // { name: 'API Status', href: '#' },
@@ -97,7 +97,7 @@ const footerNavigation = ref({
   social: [
   {
   name: 'Upwork',
-  href: '#',
+  href: 'https://upwork.com/freelancers/paulchrisluke',
   icon: UpworkIcon,
 },
     {
