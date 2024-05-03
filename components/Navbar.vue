@@ -13,7 +13,7 @@
             </DisclosureButton>
           </div>
           <a href="/" class="flex flex-shrink-0 items-center">
-            <img class="h-8 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500" alt="PCL Labs" />
+            <img class="h-8 w-auto" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714739278/Blawby/pcl-labs-logo_jlyewp.svg" alt="PCL Labs" />
           </a>
           <div class="hidden md:ml-6 md:flex md:items-center md:space-x-4">
             <a v-for="item in navigation" :key="item.name" :href="item.href" :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'rounded-md px-3 py-2 text-sm font-medium']" :aria-current="item.current ? 'page' : undefined">{{ item.name }}</a>
