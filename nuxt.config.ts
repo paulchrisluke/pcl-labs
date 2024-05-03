@@ -17,6 +17,12 @@ export default defineNuxtConfig({
   },
   devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
+  modules: [
+    '@nuxt/content'
+  ],
+  content: {
+    
+  },
   vite: {
     plugins: [
       svgLoader({
