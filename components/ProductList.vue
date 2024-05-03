@@ -43,7 +43,7 @@
       id: 1,
       name: 'Volkswagen',
       color: 'Web & Marketing',
-      href: '/portfolio/volkswagen',
+      href: 'https://paulchrisluke.com/portfolio/volkswagen',
       imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705144/Blawby/Volkswagen_b6pshd.png',
       imageAlt: 'Volkswagen Web and Marketing by PCL Labs',
     },
