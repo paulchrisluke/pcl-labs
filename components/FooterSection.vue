@@ -5,7 +5,7 @@
       <div class="xl:grid xl:grid-cols-3 xl:gap-8">
         <div class="space-y-8">
           <img class="h-7" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500" alt="Company name" />
-          <p class="text-sm leading-6 text-gray-300">Blawby: The Best Platform for Legal Practices. Beautifully designed, fully featured, and ready to go lead generation. Scheduling, SEO, Paid Ads, Press Kits, and more!</p>
+          <p class="text-sm leading-6 text-gray-300">Top Rated Plus on Upwork. With over 15 years experience, PCL-Labs provides best-in-class digital and print development, design, and marketing assets to grow your business end-to-end.</p>
           <div class="flex space-x-6">
             <a v-for="item in footerNavigation.social" :key="item.name" :href="item.href" class="text-gray-500 hover:text-gray-400">
               <span class="sr-only">{{ item.name }}</span>
