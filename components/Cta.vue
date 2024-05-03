@@ -3,8 +3,8 @@ import { ref } from 'vue';
 
 // Define dummy data for links
 const links = ref([
-  { title: 'Get Started', url: '/start', type: 'primary' },
-  { title: 'Learn More', url: '/learn', type: 'alt', arrow: true }
+  { title: 'Get Started', url: '#', type: 'primary' },
+  { title: 'Learn More', url: '#', type: 'alt', arrow: true }
 ]);
 
 // Define dummy data for the image
