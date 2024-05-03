@@ -11,7 +11,7 @@
 </template>
 
 <script setup>
-//the below overwrites the default set in nuxt.config.js (you can only change the title if  u want and keep the others default)
+
 useHead({
   title: 'My App',
   meta: [
@@ -22,5 +22,3 @@ useHead({
   ]
 })
 </script>
-
-<
