@@ -11,7 +11,7 @@
       <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4 md:gap-y-0 lg:gap-x-8">
         <nuxt-link :to="product._path" v-for="product in portfolioData" :key="product.id" class="group relative">
           <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200 group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out">
-            <img :src="product.image" :alt="product.imageAlt" class="object-cover object-center h-full w-full" />
+            <img :src="product.imageThumbnail" :alt="product.imageAlt" class="object-cover object-center h-full w-full" />
           </div>
           <h3 class="mt-4 text-sm text-gray-700">
               <span class="absolute inset-0" />

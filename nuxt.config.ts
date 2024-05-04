@@ -40,7 +40,11 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/content'
   ],
-  content: {},
+
+  content: {
+    markdown: { 'anchorLinks':false },
+  },
+
   vite: {
     plugins: [
       svgLoader({
