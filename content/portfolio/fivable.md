@@ -1,6 +1,6 @@
 ---
 title: "Fivable"
-tags: ['Shopify CRO', 'dev stuff']
+tags: ['Shopify', 'Conversion Rate Optimization']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Fiveable_Featured_migjx9.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791176/Blawby/Fiveable_seiqed.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"

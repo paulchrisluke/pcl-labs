@@ -1,6 +1,6 @@
 ---
 title: "YearlyCo"
-tags: ['Shopify CRO', 'dev stuff']
+tags: ['Shopify', 'Conversion Rate Optimization']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789950/Blawby/Yearly_Featured_um91yo.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791185/Blawby/Yearly_bxc3un.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
