@@ -38,39 +38,4 @@ const { data: portfolioData } = await useAsyncData('portfolio', () =>
   queryContent('portfolio').limit(4).find()
 );
 
-
-  // const products = [
-  //   {
-  //     id: 1,
-  //     name: 'Volkswagen',
-  //     color: 'Web & Marketing',
-  //     href: 'https://paulchrisluke.com/portfolio/volkswagen',
-  //     imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705144/Blawby/Volkswagen_b6pshd.png',
-  //     imageAlt: 'Volkswagen Web and Marketing by PCL Labs',
-  //   },
-  //   {
-  //     id: 2,
-  //     name: 'US Express',
-  //     color: 'Web & Marketing',
-  //     href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-  //     imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705143/Blawby/US_Xpress_nphfrk.png',
-  //     imageAlt: 'US Express Web and Marketing by PCL Labs',
-  //   },
-  //   {
-  //     id: 3,
-  //     name: 'Gumball Poodle',
-  //     color: 'Shopify CRO',
-  //     href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-  //     imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705142/Blawby/Gumball_Poodle_yc9eyo.png',
-  //     imageAlt: 'Gumball Poodle Shopify CRO by PCL Labs',
-  //   },
-  //   {
-  //     id: 5,
-  //     name: 'Phuntoken',
-  //     color: 'Web & Marketing',
-  //     href: 'https://www.upwork.com/att/download/portfolio/persons/uid/444945838176301056/profile/projects/files/74c564c2-4942-42dd-af23-8e90a1dd7fc4',
-  //     imageSrc: 'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714705143/Blawby/Phuntoken_droift.png',
-  //     imageAlt: 'Phuntoken Web and Marketing by PCL Labs',
-  //   }
-  // ]
   </script>

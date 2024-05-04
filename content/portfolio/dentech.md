@@ -1,6 +1,6 @@
 ---
 title: "Dentech"
-tags: ['Shopify CRO', 'dev stuff']
+tags: ['Healthcare', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Dentech_Featured_bph9ld.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Dentech_eebrci.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"

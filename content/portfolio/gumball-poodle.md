@@ -1,6 +1,6 @@
 ---
 title: "Gumball Poodle"
-tags: ['Shopify CRO', 'dev stuff']
+tags: ['Shopify', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Gumball_Poodle_Featured_izz3em.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791178/Blawby/Gumball_Poodle_vndsnm.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"

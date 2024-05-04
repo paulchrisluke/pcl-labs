@@ -1,6 +1,6 @@
 ---
 title: "US Express"
-tags: ['Web & Marketing', 'dev stuff']
+tags: ['Logistics', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789947/Blawby/UX_Xpress_Featured_bml99w.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791182/Blawby/US_Xpress_qfenwg.webp"
 imageAlt: "US Express Web and Marketing by PCL Labs"

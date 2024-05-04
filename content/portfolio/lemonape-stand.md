@@ -1,6 +1,6 @@
 ---
 title: "LemonApe Stand"
-tags: ['Shopify CRO', 'dev stuff']
+tags: ['Crypto', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Lemonape_Featured_gdlkgt.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Lemonape_Featured_gdlkgt.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
