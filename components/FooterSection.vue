@@ -7,11 +7,11 @@
           <img class="h-7" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714739278/Blawby/pcl-labs-logo_jlyewp.svg" alt="Company name" />
           <p class="text-sm leading-6 text-gray-300">Top Rated Plus on Upwork. With over 15 years experience, PCL-Labs provides best-in-class digital and print development, design, and marketing assets to grow your business end-to-end.</p>
           <div class="flex space-x-6">
-            <a v-for="item in footerNavigation.social" :key="item.name" :href="item.href" class="text-gray-500 hover:text-gray-400">
+            <nuxt-link v-for="item in footerNavigation.social" :key="item.name" :to="item.href" class="text-gray-500 hover:text-gray-400">
               <span class="sr-only">{{ item.name }}</span>
               <!-- SVGS are causing warning console issues so ignore for now -->
               <!-- <component :is="item.icon" class="h-6 w-6" aria-hidden="true" /> -->
-            </a>
+            </nuxt-link>
           </div>
         </div>
         <div class="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
@@ -20,7 +20,7 @@
               <h3 class="text-sm font-semibold leading-6 text-white">Services & Portfolio</h3>
               <ul role="list" class="mt-6 space-y-4">
                 <li v-for="item in footerNavigation.solutions" :key="item.name">
-                  <a :href="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</a>
+                  <nuxt-link :to="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</nuxt-link>
                 </li>
               </ul>
             </div>
@@ -28,7 +28,7 @@
               <h3 class="text-sm font-semibold leading-6 text-white">About & Reviews</h3>
               <ul role="list" class="mt-6 space-y-4">
                 <li v-for="item in footerNavigation.support" :key="item.name">
-                  <a :href="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</a>
+                  <nuxt-link :to="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</nuxt-link>
                 </li>
               </ul>
             </div>
@@ -38,7 +38,7 @@
               <h3 class="text-sm font-semibold leading-6 text-white">Industries</h3>
               <ul role="list" class="mt-6 space-y-4">
                 <li v-for="item in footerNavigation.company" :key="item.name">
-                  <a :href="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</a>
+                  <nuxt-link :href="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</nuxt-link>
                 </li>
               </ul>
             </div>
@@ -46,7 +46,7 @@
               <h3 class="text-sm font-semibold leading-6 text-white">Legal</h3>
               <ul role="list" class="mt-6 space-y-4">
                 <li v-for="item in footerNavigation.legal" :key="item.name">
-                  <a :href="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</a>
+                  <nuxt-link :href="item.href" class="text-sm leading-6 text-gray-300 hover:text-white">{{ item.name }}</nuxt-link>
                 </li>
               </ul>
             </div>
