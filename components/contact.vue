@@ -8,7 +8,10 @@
         <div class="mx-auto max-w-xl lg:mx-0 lg:max-w-lg">
           <h2 class="text-3xl font-bold tracking-tight text-gray-900">Let's work together</h2>
           <p class="mt-2 text-lg leading-8 text-gray-600">PCL-Labs provides full-funnel marketing and advertising from brand positioning, research, data science and full-stack development to video/photo content, and more!</p>
-          <form action="https://formsubmit.co/541fa0e60b64234d706007fc6a64d0f9" method="POST">
+          <form
+            @submit.prevent="submitForm"
+            method="POST"
+          >
             <div class="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               <div>
                 <label for="first-name" class="block text-sm font-semibold leading-6 text-gray-900">First name</label>
@@ -55,7 +58,7 @@
               <button type="submit" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Send message</button>
             <p class=" text-sm leading-6 text-gray-500">By submitting this form, I agree to the <a href="/privacy" class="font-semibold text-indigo-600">privacy&nbsp;policy</a>.</p>
             <input type="hidden" name="_captcha" value="false">
-            <input type="hidden" name="_next" value="https://paulchrisluke.com/thank-you">
+            <!-- <input type="hidden" name="_next" value="https://paulchrisluke.com/thank-you"> -->
             </div>
           </form>
         </div>
@@ -68,6 +71,31 @@
 import { ref } from 'vue'
 import { ChevronDownIcon } from '@heroicons/vue/20/solid'
 import { Switch, SwitchGroup, SwitchLabel } from '@headlessui/vue'
-
+const { gtag } = useGtag()
+const router = useRouter()
 const agreed = ref(false)
+
+const submitForm = () => {
+  // Your form submission logic here, for example:
+  fetch('https://formsubmit.co/541fa0e60b64234d706007fc6a64d0f9', {
+    method: 'POST',
+    body: new FormData(event.target)
+  })
+  .then(response => {
+    if (response.ok) {
+      // Form submitted successfully, track the event
+      gtag('event', 'form-submitted;',  {
+        type: 'contact'
+      })
+      // You can also redirect the user to a thank-you page here if needed
+      router.push('/thank-you')
+    } else {
+      // Handle form submission errors
+      console.error('Form submission failed:', response.statusText)
+    }
+  })
+  .catch(error => {
+    console.error('Error submitting form:', error)
+  })
+}
 </script>
