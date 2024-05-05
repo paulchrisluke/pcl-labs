@@ -3,10 +3,10 @@
     <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
       <div class="md:flex md:items-center md:justify-between">
         <h2 class="text-2xl font-bold tracking-tight text-gray-900">Portfolio</h2>
-        <nuxt-link to="/portfolio" class="hidden text-sm font-medium text-indigo-600 hover:text-indigo-500 md:block">
+        <!-- <nuxt-link to="/portfolio" class="hidden text-sm font-medium text-indigo-600 hover:text-indigo-500 md:block">
           See all
           <span aria-hidden="true"> &rarr;</span>
-        </nuxt-link>
+        </nuxt-link> -->
       </div>
       <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4 md:gap-y-0 lg:gap-x-8">
         <nuxt-link :to="product._path" v-for="product in portfolioData" :key="product.id" class="group relative">
@@ -21,12 +21,12 @@
         </nuxt-link>
       </div>
 
-      <div class="mt-8 text-sm md:hidden">
+      <!-- <div class="mt-8 text-sm md:hidden">
         <nuxt-link to="/portfolio" class="font-medium text-indigo-600 hover:text-indigo-500">
           See all
           <span aria-hidden="true"> &rarr;</span>
         </nuxt-link>
-      </div>
+      </div> -->
     </div>
   </div>
 </template>
@@ -35,7 +35,7 @@
 import { useAsyncData } from 'nuxt/app'
 // Fetch the markdown content based on the slug
 const { data: portfolioData } = await useAsyncData('portfolio', () =>
-  queryContent('portfolio').limit(4).find()
+  queryContent('portfolio').limit(20).find()
 );
 
   </script>
