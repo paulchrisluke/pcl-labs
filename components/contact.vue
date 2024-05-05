@@ -28,7 +28,7 @@
               <div class="sm:col-span-2">
                 <label for="email" class="block text-sm font-semibold leading-6 text-gray-900">Email</label>
                 <div class="mt-2.5">
-                  <input id="email" name="email" type="email" autocomplete="email" class="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+                  <input required id="email" name="email" type="email" autocomplete="email" class="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
                 </div>
               </div>
               <div class="sm:col-span-2">
@@ -49,10 +49,18 @@
               <div class="sm:col-span-2">
                 <div class="flex justify-between text-sm leading-6">
                   <label for="message" class="block text-sm font-semibold leading-6 text-gray-900">How can we help you?</label>
-                  <p id="message-description" class="text-gray-400">Max 500 characters</p>
+                  <p id="message-description" class="text-gray-400">{{ messageLength }}/500</p>
                 </div>
                 <div class="mt-2.5">
-                  <textarea id="message" name="message" rows="4" aria-describedby="message-description" class="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6" />
+                  <textarea
+      id="message"
+      name="message"
+      rows="4"
+      aria-describedby="message-description"
+      class="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+      @input="updateMessageLength"
+      maxlength="500"
+    />
                 </div>
               </div>
               <button type="submit" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Send message</button>
@@ -69,11 +77,10 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ChevronDownIcon } from '@heroicons/vue/20/solid'
-import { Switch, SwitchGroup, SwitchLabel } from '@headlessui/vue'
 const { gtag } = useGtag()
 const router = useRouter()
 const agreed = ref(false)
+const messageLength = ref(0)
 
 const submitForm = () => {
   // Your form submission logic here, for example:
@@ -84,7 +91,7 @@ const submitForm = () => {
   .then(response => {
     if (response.ok) {
       // Form submitted successfully, track the event
-      gtag('event', 'form-submitted;',  {
+      gtag('event', 'form-submitted',  {
         type: 'contact'
       })
       // You can also redirect the user to a thank-you page here if needed
@@ -92,10 +99,22 @@ const submitForm = () => {
     } else {
       // Handle form submission errors
       console.error('Form submission failed:', response.statusText)
+      gtag('event', 'error',  {
+        type: 'form',
+        message: response.statusText
+      })
     }
   })
   .catch(error => {
     console.error('Error submitting form:', error)
+    gtag('event', 'error',  {
+        type: 'form-catch',
+        message: error
+      })
   })
+}
+
+const updateMessageLength = (event) => {
+  messageLength.value = event.target.value.length
 }
 </script>

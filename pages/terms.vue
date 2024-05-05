@@ -79,9 +79,11 @@
       <h2 class="mt-6 text-xl leading-8">SECTION 20 - CONTACT INFORMATION</h2>
       <p class="mt-4">Questions about the Terms of Service should be sent to us.</p>
       <div class="mt-4 max-w-2xl">
-        <button type="button" onclick="window.location.href='/'" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+      <nuxt-link to="/">
+        <button type="button" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
           Go home ↖
         </button>
+      </nuxt-link>
       </div>
     </div>
   </div>
