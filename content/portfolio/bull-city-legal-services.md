@@ -1,5 +1,5 @@
 ---
-title: "Gumball Poodle"
+title: "Bull City Legal Services"
 tags: ['Shopify, Web Developemnt', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Bull_City_Legal_Featured_dpxi15.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Bull_City_cuufed.webp"
