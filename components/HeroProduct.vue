@@ -51,14 +51,15 @@
           </p>
 
           <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            <nuxt-link to="/contact">
             <button
               type="button"
-              onclick="location.href='/contact'"
               class="flex w-full items-center justify-center rounded-md border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
             >
               <EnvelopeIcon class="mr-2 -ml-0.5 h-5 w-5" aria-hidden="true" />
               Request Quote
             </button>
+          </nuxt-link>
             <slot name="demo"></slot>
           </div>
 

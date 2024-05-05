@@ -14,9 +14,11 @@
         </figcaption>
         </figure>
         <div class="mt-6 max-w-2xl">
-            <button type="button" onclick="window.location.href='/'" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+          <nuxt-link to="/">
+            <button type="button" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
               Go home ↖
             </button>
+          </nuxt-link>
         </div>
     </div>
 </div>
