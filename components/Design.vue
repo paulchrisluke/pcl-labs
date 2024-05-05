@@ -21,10 +21,13 @@
                 <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">Botique design, print & digital, on demand.</h1>
                 <p class="mt-6 text-lg leading-8 text-gray-600 sm:max-w-md lg:max-w-none">We'll unify your branding across your print and digital channels. From billboards to business cards, YouTube banners to blog images, we'll make sure your practice is unified from end-to-end.</p>
                 <div class="mt-10 flex items-center gap-x-6">
-                  <button type="button" onclick="window.location.href='/Contact'" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+                  <nuxt-link to="/contact">
+                  <button type="button" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+                
               <EnvelopeIcon class="-ml-0.5 h-5 w-5" aria-hidden="true" />
               Contact Us
             </button>
+          </nuxt-link>
                 </div>
               </div>
               <div class="mt-14 flex justify-end gap-8 sm:-mt-44 sm:justify-start sm:pl-20 lg:mt-0 lg:pl-0">
