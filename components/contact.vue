@@ -84,7 +84,7 @@ const submitForm = () => {
   .then(response => {
     if (response.ok) {
       // Form submitted successfully, track the event
-      gtag('event', 'form-submitted;',  {
+      gtag('event', 'form-submitted',  {
         type: 'contact'
       })
       // You can also redirect the user to a thank-you page here if needed
