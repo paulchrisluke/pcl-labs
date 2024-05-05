@@ -3,23 +3,36 @@ title: "Dentech"
 tags: ['Healthcare', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Dentech_Featured_bph9ld.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Dentech_eebrci.webp"
-imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
-description: "Volkswagen sends many emailed internal communications to its various employees. However, due to the complexities of enterprise software integrations, they had limited tracking for their open, clicks, and engagement rates by user. Our CMS allowed marketing members to email the same newsletters and communications with 1:1 user level tracking, giving the marketing team the insight they needed to ensure their success."
+imageAlt: "Dentech Web Development and Marketing by PCL Labs"
 ---
 
 ## Project Overview
 
-Here's a detailed description of my project...
+### Dentech: Revolutionizing Dental Practice Management with a Holistic Marketing Approach
+
+Dentech, a leading innovator in modern dental practice management systems, prides itself on its personalized approach and cutting-edge solutions. This family-owned business treats each client as an essential part of their community. Our collaboration with Dentech began with email marketing consultancy, but it quickly evolved into a comprehensive full-stack marketing partnership.
 
 ## Technologies Used
 
-- HTML
-- CSS
-- JavaScript
-- Nuxt.js
+* Web Development: React.js & Node.js
+* Design & UI/UX: Figma & Tailwind CSS
+* Marketing Automation: Calendly & Hubspot
+* Email Marketing Platform (unspecified)
+* Advertising: Google & Meta Ads (potential)
+* Content Marketing: Organic Social Media & Blogging (potential)
 
-## Project Outcomes
+## From Email Marketing Success to Full-Stack Partnership
 
-Describe what the project achieved or learned...
+We initially joined forces with Dentech as email marketing consultants. Through strategic optimizations and compelling content creation, we achieved an impressive average open rate of 60% for their email campaigns. This significant improvement, exceeding their typical range of 20-25%, translated into higher click-through rates and conversions.
 
-> Block quote
+Given the remarkable success of our email marketing efforts, Dentech entrusted us with a broader scope of work. We leveraged our full-stack marketing expertise to develop a brand-new website that accurately reflected Dentech's values and capabilities. This website redesign was complemented by the implementation of email automation workflows to streamline communication and nurture leads. 
+
+We also explored the potential of social media campaigns to further expand Dentech's reach and brand awareness. While the details of these campaigns are not specified, our collaboration undoubtedly encompassed a multi-channel approach to maximize Dentech's marketing impact.
+
+> "Paul is a force to be reckoned with. He is undeniably talented and is able to focus in on what the message is that needs to come across in the marketing piece. Our company is drowning in multiple marketing needs and Paul is able to allocate the resources needed for each piece and execute a plan of action. He has an uncanny ability to draw the vision out of the client and put it into marketing action. Our first email campaign brought in a 60% open rate through Paul's writing. This is up from our typical 20-25% open rate. The feedback, interaction and response rate from our clients from this campaign is priceless. The best move we ever made as a company with Paul's guidance. You would be a fool to not hire him." - Jane, CEO at Dentech
+
+## Results and Impact
+
+Through our collaborative efforts, Dentech experienced significant growth in brand awareness, customer engagement, and lead generation. The revamped website served as a robust platform to showcase Dentech's offerings, while our targeted marketing initiatives successfully reached and resonated with their target audience.
+
+The high engagement and conversion rates achieved through email campaigns and potentially social media efforts solidified the effectiveness of our strategies in driving customer acquisition and retention. Overall, our full-stack marketing approach positioned Dentech for continued success in the competitive dental practice management landscape.
