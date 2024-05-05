@@ -2,7 +2,7 @@
   <div>
     <!-- <Hero /> -->
     <ServiceGrid id="Services" />
-    <ProductList />
+    <ProductList :limit="4" />
     <Stats />
     <Reviews />
     <Team />
