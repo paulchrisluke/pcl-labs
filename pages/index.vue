@@ -3,6 +3,7 @@
     <!-- <Hero /> -->
     <ServiceGrid id="Services" />
     <ProductList :limit="4" />
+    <Logos />
     <Stats />
     <Reviews />
     <Team />
