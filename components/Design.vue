@@ -21,37 +21,14 @@
                 <h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">Botique design, print & digital, on demand.</h1>
                 <p class="mt-6 text-lg leading-8 text-gray-600 sm:max-w-md lg:max-w-none">We'll unify your branding across your print and digital channels. From billboards to business cards, YouTube banners to blog images, we'll make sure your practice is unified from end-to-end.</p>
                 <div class="mt-10 flex items-center gap-x-6">
-                  <a href="#" class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Get started</a>
-                  <a href="#" class="text-sm font-semibold leading-6 text-gray-900">Live demo <span aria-hidden="true">→</span></a>
+                  <button type="button" onclick="window.location.href='/Contact'" class="relative inline-flex items-center gap-x-1.5 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+              <EnvelopeIcon class="-ml-0.5 h-5 w-5" aria-hidden="true" />
+              Contact Us
+            </button>
                 </div>
               </div>
               <div class="mt-14 flex justify-end gap-8 sm:-mt-44 sm:justify-start sm:pl-20 lg:mt-0 lg:pl-0">
-                <div class="ml-auto w-44 flex-none space-y-8 pt-32 sm:ml-0 sm:pt-80 lg:order-last lg:pt-36 xl:order-none xl:pt-80">
-                  <div class="relative">
-                    <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_5_ohptmi.webp" alt="" class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg" />
-                    <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
-                  </div>
-                </div>
-                <div class="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
-                  <div class="relative">
-                    <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_3_zoxx5o.webp" alt="" class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg" />
-                    <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
-                  </div>
-                  <div class="relative">
-                    <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_2_plxrd5.webp" alt="" class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg" />
-                    <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
-                  </div>
-                </div>
-                <div class="w-44 flex-none space-y-8 pt-32 sm:pt-0">
-                  <div class="relative">
-                    <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_4_rttrb1.webp" alt="" class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg" />
-                    <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
-                  </div>
-                  <div class="relative">
-                    <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097483/Blawby/Frame_1_vfu7is.webp" alt="" class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg" />
-                    <div class="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-gray-900/10" />
-                  </div>
-                </div>
+                <slot name="designimages"></slot>
               </div>
             </div>
           </div>
@@ -61,15 +38,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Dialog, DialogPanel } from '@headlessui/vue'
-import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
+import { EnvelopeIcon } from '@heroicons/vue/20/solid'
 
-const navigation = [
-  { name: 'Product', href: '#' },
-  { name: 'Features', href: '#' },
-  { name: 'Marketplace', href: '#' },
-  { name: 'Company', href: '#' },
-]
-
-const mobileMenuOpen = ref(false)
 </script>
