@@ -105,68 +105,12 @@
             <TabPanels as="template">
               <TabPanel class="-mb-10">
                 <h3 class="sr-only">Customer Reviews</h3>
-
-                <div
-                  v-for="(review, reviewIdx) in reviews.featured"
-                  :key="review.id"
-                  class="flex space-x-4 text-sm text-gray-500"
-                >
-                  <div
-                    :class="[
-                      reviewIdx === 0 ? '' : 'border-t border-gray-200',
-                      'py-10',
-                    ]"
-                  >
-                    <h3 class="font-medium text-gray-900">
-                      {{ review.author }}
-                    </h3>
-                    <p>
-                      <time :datetime="review.datetime">{{ review.date }}</time>
-                    </p>
-
-                    <div class="mt-4 flex items-center">
-                      <StarIcon
-                        v-for="rating in [0, 1, 2, 3, 4]"
-                        :key="rating"
-                        :class="[
-                          review.rating > rating
-                            ? 'text-yellow-400'
-                            : 'text-gray-300',
-                          'h-5 w-5 flex-shrink-0',
-                        ]"
-                        aria-hidden="true"
-                      />
-                    </div>
-                    <p class="sr-only">{{ review.rating }} out of 5 stars</p>
-
-                    <div
-                      class="prose prose-sm mt-4 max-w-none text-gray-500"
-                      v-html="review.content"
-                    />
-                    <a
-                      href="https://www.upwork.com/freelancers/paulchrisluke"
-                      target="_blank"
-                      class="mt-2 text-sm flex items-center text-green-600"
-                    >
-                      See review on Upwork ↗
-                    </a>
-                  </div>
-                </div>
+                <slot name="reviewlist"></slot>
               </TabPanel>
 
               <TabPanel class="text-sm text-gray-500">
                 <h3 class="sr-only">Frequently Asked Questions</h3>
-
-                <dl>
-                  <template v-for="faq in faqs" :key="faq.question">
-                    <dt class="mt-10 font-medium text-gray-900">
-                      {{ faq.question }}
-                    </dt>
-                    <dd class="prose prose-sm mt-2 max-w-none text-gray-500">
-                      <p>{{ faq.answer }}</p>
-                    </dd>
-                  </template>
-                </dl>
+                <slot name="faqlist"></slot>
               </TabPanel>
             </TabPanels>
           </TabGroup>
@@ -183,51 +127,6 @@ import { EnvelopeIcon } from "@heroicons/vue/20/solid";
 
 const reviews = {
   average: 5,
-  featured: [
-    {
-      id: 1,
-      rating: 5,
-      content: `
-        <p>Chris was extremely helpful and professional. He exceeded my expectations with this project both in terms of quality, as well as timing. He was able to complete the project under-budget and did an incredible job. I would absolutely hire Chris again. My only hesitation in recommending Chris to someone else would be that I don't want him to be too busy to help me out again in the future.</p>
-      `,
-      date: "July 16, 2021",
-      datetime: "2021-07-16",
-      author: "Emily Selman",
-    },
-    {
-      id: 2,
-      rating: 5,
-      content: `
-        <p>I cannot say enough good things about working with Paul. He is a professional that is engaged and willing to help in any way he can. I will be hiring him again in the future and would recommend him to anyone. Thank you again, Paul!</p>
-      `,
-      date: "July 12, 2021",
-      datetime: "2021-07-12",
-      author: "Hector Gibbons",
-    },
-    {
-      id: 3,
-      rating: 5,
-      content: `
-        <p>I cannot say enough good things about working with Paul. He is a professional that is engaged and willing to help in any way he can. I will be hiring him again in the future and would recommend him to anyone. Thank you again, Paul!</p>
-      `,
-      date: "July 12, 2021",
-      datetime: "2021-07-12",
-      author: "Hector Gibbons",
-    },
-    // More reviews...
-  ],
 };
-const faqs = [
-  {
-    question: "What format are these icons?",
-    answer:
-      "The icons are in SVG (Scalable Vector Graphic) format. They can be imported into your design tool of choice and used directly in code.",
-  },
-  {
-    question: "Can I use the icons at different sizes?",
-    answer:
-      "Yes. The icons are drawn on a 24 x 24 pixel grid, but the icons can be scaled to different sizes as needed. We don't recommend going smaller than 20 x 20 or larger than 64 x 64 to retain legibility and visual balance.",
-  },
-  // More FAQs...
-];
+
 </script>
