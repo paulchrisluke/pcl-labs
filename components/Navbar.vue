@@ -78,8 +78,8 @@ import { Bars3Icon, XMarkIcon  } from '@heroicons/vue/24/outline'
 import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
 
 const navigation = [
-  { name: 'Services & Portfolio', href: '/Portfolio', current: false },
-  { name: 'About & Reviews', href: '/About', current: false },
+  { name: 'Services & Portfolio', href: '/portfolio', current: false },
+  { name: 'About & Reviews', href: '/about', current: false },
 ]
 const userNavigation = [
   { name: 'Legal Practices', href: '/legal-practices', current: false },
