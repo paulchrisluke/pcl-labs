@@ -4,13 +4,10 @@ tags: ['Legal Practice', 'Web Developemnt', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Bull_City_Legal_Featured_dpxi15.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Bull_City_cuufed.webp"
 imageAlt: "Bull City Legal Services Web Development and Marketing by PCL Labs"
+description: "Bull City, a North Carolina-based nonprofit legal firm, champions accessible legal services for underserved communities. Our collaboration aimed to holistically elevate their brand identity, digital presence, and outreach efforts, ensuring they connect with those who need them most."
 ---
 
 ## Project Overview
-
-### Empowering Justice: Bull City Nonprofit Legal Firm Rebrands and Thrives Online
-
-Bull City, a North Carolina-based nonprofit legal firm, champions accessible legal services for underserved communities. Our collaboration aimed to holistically elevate their brand identity, digital presence, and outreach efforts, ensuring they connect with those who need them most. 
 
 ## Technologies Used
 

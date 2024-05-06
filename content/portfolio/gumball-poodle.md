@@ -4,13 +4,10 @@ tags: ['Shopify', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Gumball_Poodle_Featured_izz3em.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791178/Blawby/Gumball_Poodle_vndsnm.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
+description: "Gumball Poodle, a Los Angeles-based Shopify Plus merchant known for its quirky and eye-catching socks, desired to transform their online store into a conversion powerhouse. They sought a strategic partner to implement a data-driven approach, maximizing sales of their unique and expressive sock collections"
 ---
 
 ## Project Overview
-
-### Gumball Poodle: Elevating the Sock Game with a High-Converting Shopify Plus Store
-
-**Challenge:**  Gumball Poodle, a Los Angeles-based Shopify Plus merchant known for its quirky and eye-catching socks, desired to transform their online store into a conversion powerhouse. They sought a strategic partner to implement a data-driven approach, maximizing sales of their unique and expressive sock collections.
 
 **Technologies Used:**
 

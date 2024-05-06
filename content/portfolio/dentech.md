@@ -4,13 +4,10 @@ tags: ['Healthcare', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Dentech_Featured_bph9ld.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Dentech_eebrci.webp"
 imageAlt: "Dentech Web Development and Marketing by PCL Labs"
+description: "Dentech, a leading innovator in modern dental practice management systems, prides itself on its personalized approach and cutting-edge solutions. This family-owned business treats each client as an essential part of their community. Our collaboration with Dentech began with email marketing consultancy, but it quickly evolved into a comprehensive full-stack marketing partnership."
 ---
 
 ## Project Overview
-
-### Dentech: Revolutionizing Dental Practice Management with a Holistic Marketing Approach
-
-Dentech, a leading innovator in modern dental practice management systems, prides itself on its personalized approach and cutting-edge solutions. This family-owned business treats each client as an essential part of their community. Our collaboration with Dentech began with email marketing consultancy, but it quickly evolved into a comprehensive full-stack marketing partnership.
 
 ## Technologies Used
 

@@ -13,9 +13,9 @@
         <h1 class="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
           {{ portfolio.title }}
         </h1>
-        <!-- <p class="mx-auto max-w-2xl mt-6 text-lg leading-8 text-gray-300">
+        <p class="mx-auto max-w-2xl mt-6 text-lg leading-8 text-gray-300">
           {{ portfolio.description }}
-        </p> -->
+        </p>
       </div>
 
       <!-- Image with Gradient -->
@@ -37,12 +37,22 @@
 </template>
 
 <script setup>
-import { useRoute, useAsyncData } from 'nuxt/app'
+import { useRoute, useAsyncData, useHead } from 'nuxt/app'
 
 const { path } = useRoute()
-
-// Fetch the markdown content based on the slug
 const { data: portfolio } = await useAsyncData(`portfolio-${path}`, () => 
-queryContent(path).findOne())
+  queryContent('portfolio').findOne({ slug: path }))
+
+useHead({
+  title: `${portfolio.title} | PCL-Labs`,
+  meta: [
+    { name: 'description', content: portfolio.description },
+    { property: 'og:title', content: `${portfolio.title} | PCL-Labs` },
+    { property: 'og:description', content: portfolio.description },
+    { property: 'og:image', content: portfolio.image }
+  ]
+})
 </script>
+
+
 

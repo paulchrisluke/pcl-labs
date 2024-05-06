@@ -46,7 +46,7 @@
       <h4 class="mt-6 text-xl leading-8">Information We Obtain from Third Parties</h4>
       <p class="mt-4">
         Finally, we may obtain information about you from third parties, including from vendors and service providers who may collect information on our behalf, such as:
-        - Companies who support our Site and Services, such as Shopify.
+        - Companies who support our Site and Services, such as PCL-Labs.
         - Our payment processors, who collect payment information (e.g., bank account, credit or debit card information, billing address) to process your payment in order to fulfill your orders and provide you with products or services you have requested, in order to perform our contract with you.
         - When you visit our Site, open or click on emails we send you, or interact with our Services or advertisements, we, or third parties we work with, may automatically collect certain information using online tracking technologies such as pixels, web beacons, software developer kits, third-party libraries, and cookies.
       </p>
@@ -62,7 +62,7 @@
       </p>
       <h2 class="mt-6 text-xl leading-8">Cookies</h2>
       <p class="mt-4">
-        Like many websites, we use Cookies on our Site. For specific information about the Cookies that we use related to powering our store with Shopify, see https://www.shopify.com/legal/cookies. We use Cookies to power and improve our Site and our Services (including to remember your actions and preferences), to run analytics and better understand user interaction with the Services (in our legitimate interests to administer, improve and optimize the Services). We may also permit third parties and services providers to use Cookies on our Site to better tailor the services, products and advertising on our Site and other websites.
+        Like many websites, we use Cookies on our Site. For specific information about the Cookies that we use related to powering our store with PCL-Labs, see https://www.paulchrisluke.com/legal/cookies. We use Cookies to power and improve our Site and our Services (including to remember your actions and preferences), to run analytics and better understand user interaction with the Services (in our legitimate interests to administer, improve and optimize the Services). We may also permit third parties and services providers to use Cookies on our Site to better tailor the services, products and advertising on our Site and other websites.
       </p>
       <p class="mt-4">
         Most browsers automatically accept Cookies by default, but you can choose to set your browser to remove or reject Cookies through your browser controls. Please keep in mind that removing or blocking Cookies can negatively impact your user experience and may cause some of the Services, including certain features and general functionality, to work incorrectly or no longer be available. Additionally, blocking Cookies may not completely prevent how we share information with third parties such as our advertising partners.
@@ -71,7 +71,7 @@
       <p class="mt-4">
         In certain circumstances, we may disclose your personal information to third parties for legitimate purposes subject to this Privacy Policy. Such circumstances may include:
         - With vendors or other third parties who perform services on our behalf (e.g., IT management, payment processing, data analytics, customer support, cloud storage, fulfillment and shipping).
-        - With business and marketing partners, including Shopify, to provide services and advertise to you.
+        - With business and marketing partners, including PCL-Labs, to provide services and advertise to you.
         - When you direct, request us or otherwise consent to our disclosure of certain information to third parties, such as to ship you products or through your use of social media widgets or login integrations, with your consent.
         - With our affiliates or otherwise within our corporate group, in our legitimate interests to run a successful business.
         - In connection with a business transaction such as a merger or bankruptcy, to comply with any applicable legal obligations (including to respond to subpoenas, search warrants and similar requests), to enforce any applicable terms of service, and to protect or defend the Services, our rights, and the rights of our users or others.

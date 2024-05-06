@@ -4,13 +4,10 @@ tags: ['Crypto', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789946/Blawby/PhunToken_Featured_xnrc2t.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791180/Blawby/Phuntoken_ut3wry.webp"
 imageAlt: "Phuntoken Web and Marketing by PCL Labs"
+description: "Phunware, a publicly traded software company on NASDAQ for over 20 years, embarked on a groundbreaking initiative: PhunToken. This Ethereum-based project aims to revolutionize the mobile experience by creating a secure and versatile ecosystem. Our agency was entrusted with the development and launch of PhunToken, encompassing various facets of the project."
 ---
 
 ## Project Overview
-
-### PhunToken: Empowering the Future with a Secure Ethereum-Based Ecosystem
-
-Phunware, a publicly traded software company on NASDAQ for over 20 years, embarked on a groundbreaking initiative: PhunToken. This Ethereum-based project aims to revolutionize the mobile experience by creating a secure and versatile ecosystem. Our agency was entrusted with the development and launch of PhunToken, encompassing various facets of the project.
 
 ## Technological Expertise
 

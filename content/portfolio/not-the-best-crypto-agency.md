@@ -4,6 +4,7 @@ tags: ['Crypto', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789946/Blawby/Not_The_Best_Crypto_Agency_Feature_uzkyll.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791179/Blawby/Phuntoken-1_qtwrie.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
+description: "Fiveable empowers high school students with engaging online courses to conquer their AP exams. Renowned for its innovative approach and personalized learning experience, Fiveable sought to optimize their Shopify Plus store to drive sales and student success. Our agency partnered with Fiveable to conduct a comprehensive Conversion Rate Optimization (CRO) audit, focusing on enhancing the user journey from homepage browsing to course selection and checkout."
 ---
 
 ## Project Overview
