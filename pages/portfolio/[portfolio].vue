@@ -37,22 +37,11 @@
 </template>
 
 <script setup>
-import { useRoute, useAsyncData, useHead } from 'nuxt/app'
+import { useRoute, useAsyncData } from 'nuxt/app'
 
 const { path } = useRoute()
+
+// Fetch the markdown content based on the slug
 const { data: portfolio } = await useAsyncData(`portfolio-${path}`, () => 
-  queryContent('portfolio').findOne({ slug: path }))
-
-useHead({
-  title: `${portfolio.title} | PCL-Labs`,
-  meta: [
-    { name: 'description', content: portfolio.description },
-    { property: 'og:title', content: `${portfolio.title} | PCL-Labs` },
-    { property: 'og:description', content: portfolio.description },
-    { property: 'og:image', content: portfolio.image }
-  ]
-})
+queryContent(path).findOne())
 </script>
-
-
-
