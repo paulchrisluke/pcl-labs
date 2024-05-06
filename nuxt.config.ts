@@ -45,4 +45,7 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
+  site: {
+    url: 'https://paulchrisluke.com' // Add your site's base URL here
+  },
 })
