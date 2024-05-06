@@ -15,7 +15,7 @@ const route = useRoute();
 
 </script>
 
-<style scoped>
+<style>
 .custom-loading-indicator {
   background: linear-gradient(90deg, #029DE4, #6366f1);
 }

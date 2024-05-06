@@ -3,14 +3,11 @@ title: "YearlyCo"
 tags: ['Shopify', 'Conversion Rate Optimization']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789950/Blawby/Yearly_Featured_um91yo.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791185/Blawby/Yearly_bxc3un.webp"
-imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
+imageAlt: "Yearlyco Shopify CRO by PCL Labs"
+description: "Yearly Co., a Nashville-based Shopify Plus merchant, handcrafts exquisite, custom-made bangles that celebrate everyday style. Renowned for their commitment to comfort and wearability, Yearly Co. sought to elevate their online store into a seamless and engaging shopping experience. Our agency partnered with Yearly Co. to implement a data-driven approach, optimizing their Shopify Plus store to drive sales and captivate customers seeking unique and handcrafted jewelry."
 ---
 
 ## Project Overview
-
-### Yearly Co.: Crafting a High-Converting Shopify Plus Experience for Nashville's Finest Bangles
-
-Yearly Co., a Nashville-based Shopify Plus merchant, handcrafts exquisite, custom-made bangles that celebrate everyday style. Renowned for their commitment to comfort and wearability, Yearly Co. sought to elevate their online store into a seamless and engaging shopping experience. Our agency partnered with Yearly Co. to implement a data-driven approach, optimizing their Shopify Plus store to drive sales and captivate customers seeking unique and handcrafted jewelry.
 
 ## Technologies Used
 

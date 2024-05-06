@@ -4,11 +4,8 @@ tags: ['Logistics', 'Web Development', 'Marketing']
 image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789947/Blawby/UX_Xpress_Featured_bml99w.webp"
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791182/Blawby/US_Xpress_qfenwg.webp"
 imageAlt: "US Express Web and Marketing by PCL Labs"
+description: "Across all industries, competition for mobile customer conversions is fiercer than ever. Landing page load speed is a critical factor in winning the battle for conversions. Our challenge was to create a competitive edge for our clients, dramatically increasing their mobile loading speeds and boosting conversions."
 ---
-
-## Pioneering Google AMP for Advertising: 35% Conversion Boost with Instant-Load Mobile Pages
-
-**Challenge:** Across all industries, competition for mobile customer conversions is fiercer than ever. Landing page load speed is a critical factor in winning the battle for conversions. Our challenge was to create a competitive edge for our clients, dramatically increasing their mobile loading speeds and boosting conversions.
 
 ## Technological Expertise
 
