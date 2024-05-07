@@ -128,7 +128,7 @@
         >
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_5_ohptmi.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061269/Blawby/Frame_21_i9n4d0.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -140,7 +140,7 @@
         <div class="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_3_zoxx5o.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061270/Blawby/Frame_22_cka5hb.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -150,7 +150,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_2_plxrd5.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061271/Blawby/Frame_23_oreeqn.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -172,7 +172,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097483/Blawby/Frame_1_vfu7is.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061803/Blawby/Frame_25_dh04fw.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
