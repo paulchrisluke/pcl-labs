@@ -128,7 +128,7 @@
         >
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_5_ohptmi.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_7_tzmcxg.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -140,7 +140,7 @@
         <div class="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_3_zoxx5o.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_6_avvxbi.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -150,7 +150,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_2_plxrd5.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_9_ujs92n.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -162,7 +162,7 @@
         <div class="w-44 flex-none space-y-8 pt-32 sm:pt-0">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_4_rttrb1.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_10_rvdn60.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -172,7 +172,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097483/Blawby/Frame_1_vfu7is.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047483/Blawby/Frame_8_yr67yz.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />

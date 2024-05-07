@@ -1,7 +1,7 @@
 <template>
   <div class="bg-gray-900">
     <div class="relative isolate overflow-hidden pt-14">
-      <img src="https://i.giphy.com/FCQvc3IreTNNm.webp" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover bg-gray-900 opacity-40" />
+      <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715086312/Blawby/PCL-Labs-Agency-Video-We-Do-Stuf_1_1_ybxlvr.gif" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover bg-gray-900 opacity-40" />
       <div class="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
         <div class="text-center">
           <h1 class="text-white text-4xl font-bold tracking-tight sm:text-6xl">PCL-Labs</h1>

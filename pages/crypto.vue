@@ -3,7 +3,7 @@
     <HeroProduct>
       <template #image>
         <video class="h-full w-full rounded-lg" controls autoPlay muted loop>
-        <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1714902567/Blawby/promo-crypto-190565-PREVIEW_jpq5w2.mp4" type="video/mp4" />
+        <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715087432/Blawby/Not_the_best_-_3by4_txteeh.mp4" type="video/mp4" />
       </video>
       </template>
       <template #name>Crypto Website, Marketing, and Design </template>
@@ -126,7 +126,7 @@
         >
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_5_ohptmi.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_11_jalk7s.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -138,7 +138,7 @@
         <div class="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_3_zoxx5o.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_12_ugjegd.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -148,7 +148,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_2_plxrd5.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_14_dg747m.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -160,7 +160,7 @@
         <div class="w-44 flex-none space-y-8 pt-32 sm:pt-0">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_4_rttrb1.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_13_qikequ.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -170,7 +170,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097483/Blawby/Frame_1_vfu7is.webp"
+              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_15_zamfnw.webp"
               alt=""
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
