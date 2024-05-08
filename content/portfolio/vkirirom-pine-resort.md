@@ -7,7 +7,7 @@ imageAlt: "vKirirom and Marketing by PCL Labs"
 description: "vKirirom, nestled amidst the breathtaking Kirirom National Park in Cambodia, is more than just a luxurious escape.  This eco-conscious resort embodies a deep commitment to environmental conservation and community empowerment. Partnering with vKirirom Pine Resort, we embarked on a transformative journey to craft a captivating web experience that mirrored their dedication to sustainability and hospitality excellence."
 ---
 
-**Challenge:**
+## Challenge
 
 vKirirom Pine Resort's existing website, while functional, no longer reflected the resort's evolving brand identity and sustainability initiatives. The challenge was to create a user-friendly and visually stunning web experience that would:
 
@@ -15,19 +15,20 @@ vKirirom Pine Resort's existing website, while functional, no longer reflected t
 * **Clearly communicate their commitment to environmental conservation and community support.**
 * **Drive online bookings and increase guest occupancy.**
 
-**Solution:**
+## Solution
 
 Leveraging cutting-edge technologies and a collaborative spirit, we delivered a comprehensive web solution for vKirirom Pine Resort:
 
 * **Intuitive UI/UX Design:**  We meticulously crafted a user interface and user experience (UI/UX) design that prioritized user navigation and engagement. Breathtaking visuals of the resort and surrounding national park immersed visitors in the tranquility of vKirirom.
+![image]
 * **Vue.js Development:**  Vue.js, a progressive JavaScript framework, powered the development of a dynamic and user-friendly web application (PWA). This PWA offered enhanced speed, offline functionality, and a seamless user experience across devices.
 * **.NET Integration:**  Seamless integration with the resort's existing .NET backend ensured smooth booking processes and data management.
 
-**A Sustainable Approach:**
+### A Sustainable Approach
 
 vKirirom Pine Resort's commitment to sustainability wasn't merely a tagline; it permeated every aspect of the web experience. We ensured high-quality visuals were optimized for fast loading times, minimizing the website's environmental footprint. Additionally, the website prominently highlighted the resort's conservation efforts and their partnership with the free software college, fostering a deeper connection with eco-conscious travelers.
 
-**Results:**
+## Results
 
 The new vKirirom.com website surpassed expectations, achieving remarkable results:
 

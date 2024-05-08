@@ -7,16 +7,18 @@ imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
 description: "Gumball Poodle, a Los Angeles-based Shopify Plus merchant known for its quirky and eye-catching socks, desired to transform their online store into a conversion powerhouse. They sought a strategic partner to implement a data-driven approach, maximizing sales of their unique and expressive sock collections"
 ---
 
-## Project Overview
+## Challenge
 
-**Technologies Used:**
+Gumball Poodle's Shopify Plus store faced challenges with low conversion rates and a user experience that did not effectively convert visitor interest into sales. Despite a unique product line, the website struggled with navigational difficulties and a lack of clear communication of the brand’s vibrant identity. These issues highlighted the need for a strategic overhaul to improve functionality and user engagement on their e-commerce platform.
+
+### Technologies Used
 
 * CRO Audit Framework
 * Heatmaps & User Session Recordings
 * Shopify Analytics & Conversion Tracking
 * Shopify Liquid
 
-**Solution:**
+## Solution
 
 Drawing inspiration from successful CRO (Conversion Rate Optimization) strategies, we embarked on a comprehensive optimization journey for Gumball Poodle's Shopify Plus store. This involved a multi-pronged approach:
 
@@ -30,6 +32,6 @@ Drawing inspiration from successful CRO (Conversion Rate Optimization) strategie
 
 * **Custom Integrations:**  To elevate the shopping experience, we explored potential custom integrations. These could include features like wishlist functionality, personalized product recommendations, or a loyalty program to incentivize repeat purchases. (Specific integrations to be confirmed with Gumball Poodle)
 
-**Results:**
+## Results
 
 Through meticulous CRO optimization and a deep understanding of Gumball Poodle's brand and target audience, we achieved a phenomenal 30% increase in conversion rates. This translates to a significant boost in sales and a wider audience discovering Gumball Poodle's unique sock collections. The optimized Shopify Plus store fosters a more engaging and user-friendly experience, solidifying Gumball Poodle's position as a leading purveyor of expressive footwear in Los Angeles.

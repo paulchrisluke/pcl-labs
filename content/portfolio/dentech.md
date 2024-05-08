@@ -7,9 +7,11 @@ imageAlt: "Dentech Web Development and Marketing by PCL Labs"
 description: "Dentech, a leading innovator in modern dental practice management systems, prides itself on its personalized approach and cutting-edge solutions. This family-owned business treats each client as an essential part of their community. Our collaboration with Dentech began with email marketing consultancy, but it quickly evolved into a comprehensive full-stack marketing partnership."
 ---
 
-## Project Overview
+## Challenge 
 
-## Technologies Used
+Initially, Dentech faced significant challenges in engaging their audience effectively through email marketing. Their campaigns consistently struggled with low open rates of only 20-25%, reflecting a broader issue in capturing and maintaining customer interest. This underperformance highlighted a crucial need for a strategic overhaul to enhance their marketing communications and ultimately boost engagement and conversions. This initial difficulty set the stage for our agency to step in and transform Dentech’s digital marketing approach, starting with a revitalization of their email marketing strategies.
+
+### Technologies Used
 
 * Web Development: React.js & Node.js
 * Design & UI/UX: Figma & Tailwind CSS
@@ -18,7 +20,9 @@ description: "Dentech, a leading innovator in modern dental practice management 
 * Advertising: Google & Meta Ads (potential)
 * Content Marketing: Organic Social Media & Blogging (potential)
 
-## From Email Marketing Success to Full-Stack Partnership
+## Solutions
+
+### From Email Marketing Success to Full-Stack Partnership
 
 We initially joined forces with Dentech as email marketing consultants. Through strategic optimizations and compelling content creation, we achieved an impressive average open rate of 60% for their email campaigns. This significant improvement, exceeding their typical range of 20-25%, translated into higher click-through rates and conversions.
 
@@ -28,7 +32,7 @@ We also explored the potential of social media campaigns to further expand Dente
 
 > "Paul is a force to be reckoned with. He is undeniably talented and is able to focus in on what the message is that needs to come across in the marketing piece. Our company is drowning in multiple marketing needs and Paul is able to allocate the resources needed for each piece and execute a plan of action. He has an uncanny ability to draw the vision out of the client and put it into marketing action. Our first email campaign brought in a 60% open rate through Paul's writing. This is up from our typical 20-25% open rate. The feedback, interaction and response rate from our clients from this campaign is priceless. The best move we ever made as a company with Paul's guidance. You would be a fool to not hire him." - Jane, CEO at Dentech
 
-## Results and Impact
+## Results
 
 Through our collaborative efforts, Dentech experienced significant growth in brand awareness, customer engagement, and lead generation. The revamped website served as a robust platform to showcase Dentech's offerings, while our targeted marketing initiatives successfully reached and resonated with their target audience.
 
