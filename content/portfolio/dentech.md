@@ -37,3 +37,10 @@ We also explored the potential of social media campaigns to further expand Dente
 Through our collaborative efforts, Dentech experienced significant growth in brand awareness, customer engagement, and lead generation. The revamped website served as a robust platform to showcase Dentech's offerings, while our targeted marketing initiatives successfully reached and resonated with their target audience.
 
 The high engagement and conversion rates achieved through email campaigns and potentially social media efforts solidified the effectiveness of our strategies in driving customer acquisition and retention. Overall, our full-stack marketing approach positioned Dentech for continued success in the competitive dental practice management landscape.
+
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715351481/Blawby/Dentech_home_website_kbnrpe.webp)
+<video controls autoplay loop muted playsinline class="w-full">
+  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351902/Blawby/Dentallytics_-_Visualize_Your_Data_TODAY-_1080p_vj9zbu.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
