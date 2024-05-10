@@ -1,7 +1,9 @@
 <template>
   <div class="bg-gray-900">
     <div class="relative isolate overflow-hidden pt-14">
-      <img src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715086312/Blawby/PCL-Labs-Agency-Video-We-Do-Stuf_1_1_ybxlvr.gif" alt="" class="absolute inset-0 -z-10 h-full w-full object-cover bg-gray-900 opacity-40" />
+      <video autoplay loop muted playsinline class="absolute inset-0 -z-10 h-full w-full object-cover bg-gray-900 opacity-40">
+        <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715331109/Blawby/PCL_Labs___Agency_Video___We_Do_Stuff_online-video-cutter.com_kjuu1n.mp4" type="video/mp4">
+      </video>
       <div class="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56">
         <div class="text-center">
           <h1 class="text-white text-4xl font-bold tracking-tight sm:text-6xl">PCL-Labs</h1>
@@ -23,9 +25,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import { Dialog, DialogPanel } from '@headlessui/vue'
-import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
-import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
+// import { Dialog, DialogPanel } from '@headlessui/vue'
+// import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
+// import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
 
 const mobileMenuOpen = ref(false)
 </script>
