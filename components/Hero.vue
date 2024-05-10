@@ -25,9 +25,7 @@
 
 <script setup>
 import { ref } from 'vue'
-// import { Dialog, DialogPanel } from '@headlessui/vue'
-// import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
-// import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
+import { EnvelopeIcon } from '@heroicons/vue/20/solid'
 
 const mobileMenuOpen = ref(false)
 </script>
