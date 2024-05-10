@@ -8,15 +8,21 @@
           class="object-cover object-center"
         />
       </template>
-      <template #name>Logistics Website, Marketing, and Design </template>
+      <template #name>Volkswagen, U.S. Xpress, and More - Send Your Message </template>
       <template #description>
-        With over 15 years of experience. Paul Chris Luke and his team deliver
-        best in class legal websites which generate qualified leads every day.
+        <p>With proven case studies by Google & Cloudflare, PCL-Labs helps logistics companies hire more drivers & send more messages, all fully tracked, quanitified, and actionable.</p>
+        &nbsp
+        <ul>
+        <li>✅ $15/M per month in ad spend MANAGED</li>
+        <li>✅ Craiglist, Indeed, Google/Meta, ads integrated</li>
+        <li>✅ Server-side tracking, no cookies & accurate</li>
+        </ul>
+
       </template>
       <template #demo>
         <button
           type="button"
-          onclick="window.open('https://www.bullcitylegalservices.com', '_blank')"
+          onclick="window.open('https://www.usxjobs.com', '_blank')"
           class="justify-center rounded-md border border-transparent bg-indigo-50 px-8 py-3 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
         >
           Live Demo ↗
@@ -216,11 +222,11 @@ import { StarIcon } from "@heroicons/vue/20/solid";
 
 const product = {
   highlights: [
-    "Calendly scheduling intigration",
-    "Hubspot list generation",
+    "AMP Html pages for instant mobile page load time",
+    "Server-side tracking, always accurate, always on-time",
     "Best-in-Class SEO markup",
-    "Google & Meta ad support",
-    "Blog & Content production",
+    "Google, Meta, Craiglist, Indeed ad integrations",
+    "PowerBI, Tableau, and API ready for rapid deployment and tracking" 
   ],
 };
 

@@ -37,6 +37,6 @@ The AMP landing page converted 3.412% of visits into completed job applications,
 
 The success of this innovative AMP solution garnered worldwide attention. Paul Chris Luke was invited to speak at Google's prestigious World AMP Conference 2018 in Amsterdam. This conference brought together thought leaders from Google, BuzzFeed, Doodle, Reddit, Vox Media, Airbnb, Booking.com.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/96FNOI8hb2s?si=4cYCCLfAPTKq0mym" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/96FNOI8hb2s?si=4cYCCLfAPTKq0mym" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe> -->
 
 **By harnessing the power of Google AMP and fostering a collaborative partnership with Google Developer Support, PCL-Labs revolutionized the mobile advertising landscape.  This case study highlights the potential of innovative solutions to significantly increase mobile conversions and drive substantial cost savings.**

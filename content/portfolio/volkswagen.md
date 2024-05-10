@@ -49,9 +49,9 @@ The PCL-Labs CMS transformed Volkswagen's internal communication strategy. User-
 -   **Actionable Insights:** By understanding what resonated with employees, marketing teams could create more engaging content, ultimately leading to a more informed and productive workforce.
 -   **Time Saved, Resources Optimized:** The streamlined CMS simplified the email creation and scheduling process, freeing up valuable time and resources for marketing teams to focus on strategic initiatives.
 
-> "The tracking 😭. It's so beautiful and clean!
+> The tracking 😭. It's so beautiful and clean!
 
-" - Xavier, Marketing at Volkswagen
+ - Xavier, Marketing at Volkswagen
 
 **A Measured Approach to Communication Success**
 
