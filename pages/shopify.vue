@@ -10,13 +10,14 @@
       </template>
       <template #name>Shopify Website, Marketing, and Design </template>
       <template #description>
-        With over 15 years of experience. Paul Chris Luke and his team deliver
-        best in class legal websites which generate qualified leads every day.
+        <p>Google Certified CRO expert. Shopify Plus Partner & eCommerce... revenue focused. We audit your store and provide best in class suggestions to improve your conversions year over year based on 15 years of experience in eCommerce.</p>
+        &nbsp  
+        <p>Specialized in Shopify Plus Partner accounts, PCL-Labs helps grow shops above $10M annual revenue. We work with enterprise development and design teams in Agile/Scrum style, ensuring you can focus on your business, we'll handle the nerdy stuff 🚀</p>
       </template>
       <template #demo>
         <button
           type="button"
-          onclick="window.open('https://www.bullcitylegalservices.com', '_blank')"
+          onclick="window.open('https://www.gumballpoodle.com', '_blank')"
           class="justify-center rounded-md border border-transparent bg-indigo-50 px-8 py-3 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
         >
           Live Demo ↗
@@ -89,13 +90,13 @@
       </template>
     </HeroProduct>
     <FeatureGrid>
-      <template #subhead> Get More Leads </template>
+      <template #subhead> Get More Sales </template>
       <template #heading>
-        Everything you need to get more scheduled consultations
+        Everything you need to get more conversions using Shopify
       </template>
       <template #description>
-        Includes everything you need to build your legal practice online,
-        including scheduling, media kits, ad support and more.
+        We will give you specific, customized suggestions to bring your store to $10/M per year, just like we've done before.
+        Includes CRO audits, upsells, bundle builders and more.
       </template>
       <template #features>
         <div
@@ -208,19 +209,20 @@ useHead({
 import { ref } from "vue";
 import {
   ArrowTrendingUpIcon,
-  CalendarIcon,
+  CurrencyDollarIcon,
   PhoneIcon,
-  BriefcaseIcon,
+  CommandLineIcon,
 } from "@heroicons/vue/24/outline";
 import { StarIcon } from "@heroicons/vue/20/solid";
 
 const product = {
   highlights: [
-    "Calendly scheduling intigration",
-    "Hubspot list generation",
-    "Best-in-Class SEO markup",
-    "Google & Meta ad support",
-    "Blog & Content production",
+  "Shopify Plus Partner (greater than $10/M annually)",  
+  "1 Week CRO audits",
+    "Shopify 2.0 native development (no page builders)",
+    "Google Merchant, Analytics, GTM integration",
+    "Meta & TikTok pixel/tracking & integration",
+    "Best-in-class app stack for conversions",
   ],
 };
 
@@ -276,21 +278,21 @@ const faqs = [
 
 const features = ref([
   {
-    name: "Scheduling",
+    name: "CRO Audits",
     description:
-      "Fully integrated with Calendly. Schedule consultations, automatically handle rescheduling, integrate with Google calendar.",
-    icon: CalendarIcon,
+      "In 5 days, we will audit your eCommerce from top to bottom. User flow, design, app integrations, and shop experience improvements.",
+    icon: CurrencyDollarIcon,
   },
   {
-    name: "Media Kits",
+    name: "Shopify 2.0 Development",
     description:
-      "Beautifully designed brand support. Logo, business cards, letterhead, and social media assets designed for you in editable Google docs/drive.",
-    icon: BriefcaseIcon,
+      "Page builders suck. They decrease your page speed, and create an overly complex page for something that should be Shopify native. ",
+    icon: CommandLineIcon,
   },
   {
     name: "Ad Management",
     description:
-      "Google & Meta ad management. Get brand exposure across media channels in your state. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
+      "Google Merchant, Meta store, TikTok store. Get brand exposure across media channels Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
     icon: ArrowTrendingUpIcon,
   },
   {

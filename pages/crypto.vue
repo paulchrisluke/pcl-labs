@@ -2,9 +2,11 @@
   <div>
     <HeroProduct>
       <template #image>
-        <video class="h-full w-full rounded-lg" controls autoPlay muted loop>
-        <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715087432/Blawby/Not_the_best_-_3by4_txteeh.mp4" type="video/mp4" />
-      </video>
+        <img
+          src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715337050/Blawby/pcl-labs-crypto-featured_yr9dq8.webp"
+          alt="Crypto Featured Image"
+          class="object-cover object-center"
+        />
       </template>
       <template #name>Crypto Development, Marketing, and Design </template>
       <template #description>
