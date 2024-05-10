@@ -11,12 +11,12 @@
       <template #name>Healthcare Website, Marketing, and Design </template>
       <template #description>
         With over 15 years of experience. Paul Chris Luke and his team deliver
-        best in class legal websites which generate qualified leads every day.
+        best in class healthcare websites which generate qualified leads every day.
       </template>
       <template #demo>
         <button
           type="button"
-          onclick="window.open('https://www.bullcitylegalservices.com', '_blank')"
+          onclick="window.open('https://www.dentech.com', '_blank')"
           class="justify-center rounded-md border border-transparent bg-indigo-50 px-8 py-3 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
         >
           Live Demo ↗
@@ -94,7 +94,7 @@
         Everything you need to get more scheduled consultations
       </template>
       <template #description>
-        Includes everything you need to build your legal practice online,
+        Includes everything you need to build your healthcare practice online,
         including scheduling, media kits, ad support and more.
       </template>
       <template #features>
