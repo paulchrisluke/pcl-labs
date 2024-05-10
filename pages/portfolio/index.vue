@@ -1,6 +1,6 @@
 <template>
     <ServiceGrid />
-    <ProductList />
+    <ProductList :portfolioData="portfolioData" />
 </template>
 
 <script setup>

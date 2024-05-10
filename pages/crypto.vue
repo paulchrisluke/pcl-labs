@@ -6,15 +6,21 @@
         <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715087432/Blawby/Not_the_best_-_3by4_txteeh.mp4" type="video/mp4" />
       </video>
       </template>
-      <template #name>Crypto Website, Marketing, and Design </template>
+      <template #name>Crypto Development, Marketing, and Design </template>
       <template #description>
-        With over 15 years of experience. Paul Chris Luke and his team deliver
-        best in class legal websites which generate qualified leads every day.
+        <p>Marketers, influencers, developers, artists, and social media management all under one roof. With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success.</p>
+        &nbsp
+        <ul>
+        <li>✅ Launched over 13 projects</li>
+        <li>✅ Total volume of more than $500 Million</li>
+        <li>✅ Dankest meme creators around</li>
+        </ul>
+
       </template>
       <template #demo>
         <button
           type="button"
-          onclick="window.open('https://www.bullcitylegalservices.com', '_blank')"
+          onclick="window.open('https://www.phuntoken.com', '_blank')"
           class="justify-center rounded-md border border-transparent bg-indigo-50 px-8 py-3 text-base font-medium text-indigo-700 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-50"
         >
           Live Demo ↗
@@ -87,13 +93,12 @@
       </template>
     </HeroProduct>
     <FeatureGrid>
-      <template #subhead> Get More Leads </template>
+      <template #subhead> Moon Launches </template>
       <template #heading>
-        Everything you need to get more scheduled consultations
+        Everything you need to launch your crypto project
       </template>
       <template #description>
-        Includes everything you need to build your legal practice online,
-        including scheduling, media kits, ad support and more.
+        From project planning and development, to pre-launch marketing and raids, community management across discord, twitter, telegram, all the way to post launch twitter spaces and more. We handle your token launch end-to-end.
       </template>
       <template #features>
         <div
@@ -214,11 +219,10 @@ import { StarIcon } from "@heroicons/vue/20/solid";
 
 const product = {
   highlights: [
-    "Calendly scheduling intigration",
-    "Hubspot list generation",
-    "Best-in-Class SEO markup",
-    "Google & Meta ad support",
-    "Blog & Content production",
+    "Community managament and marketing",
+    "Smart contract development",
+    "Quantstamp™ audited and certified",
+    "Meme content production",
   ],
 };
 
