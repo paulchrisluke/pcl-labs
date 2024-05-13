@@ -40,7 +40,12 @@ The high engagement and conversion rates achieved through email campaigns and po
 
 ![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715351481/Blawby/Dentech_home_website_kbnrpe.webp)
 <video controls autoplay loop muted playsinline class="w-full">
+  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715352150/Blawby/DENTECH_WALKTHROUGH__Merge_And_Split_Accounts_in_NextGen-_1080p60_tgajf6.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+<video controls autoplay loop muted playsinline class="w-full">
   <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351902/Blawby/Dentallytics_-_Visualize_Your_Data_TODAY-_1080p_vj9zbu.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
+
 

@@ -35,3 +35,10 @@ Drawing inspiration from successful CRO (Conversion Rate Optimization) strategie
 ## Results
 
 Through meticulous CRO optimization and a deep understanding of Gumball Poodle's brand and target audience, we achieved a phenomenal 30% increase in conversion rates. This translates to a significant boost in sales and a wider audience discovering Gumball Poodle's unique sock collections. The optimized Shopify Plus store fosters a more engaging and user-friendly experience, solidifying Gumball Poodle's position as a leading purveyor of expressive footwear in Los Angeles.
+
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715352430/Blawby/gumbal_site_cart_buhtkj.webp)
+
+<video controls autoplay loop muted playsinline class="w-full">
+  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351986/Blawby/Gumball_Poodle__The_Original_Statement_Socks_-_1080p_hsnqux.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
