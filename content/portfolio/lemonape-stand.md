@@ -43,4 +43,4 @@ The launch of Lemon Ape Stand was a resounding success. The combination of innov
 Lemon Ape Stand stands as a testament to the power of blending DeFi functionalities with engaging gameplay and a well-defined brand identity. This project paves the way for a more interactive and enjoyable future within the DeFi landscape.
 
 ![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape2_rpuekk.webp)
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape1_rpuekk.webp)
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape1_edxbyt.webp)
