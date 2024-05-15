@@ -33,3 +33,7 @@ Our audit revealed opportunities to streamline the user journey by optimizing th
 By implementing the key recommendations from our CRO audit, Fiveable achieved a significant 17% lift in conversion rates. This translates to more students enrolling in Fiveable's AP exam prep courses and achieving academic success. The optimized user journey fostered a more engaging and frictionless shopping experience, ultimately driving sales growth for Fiveable.
 
 Our successful collaboration with Fiveable demonstrates the power of CRO in maximizing the potential of e-commerce stores. Through a data-driven approach and a deep understanding of user behavior, we were able to transform Fiveable's Shopify store into a high-converting platform that empowers students to reach their academic goals.
+
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715793485/Blawby/fiveable_shopify_lr514z.webp)
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715793695/Blawby/fiveable_cart_yd2104.webp)
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715793695/Blawby/fiveable_product_tfcy0e.webp)

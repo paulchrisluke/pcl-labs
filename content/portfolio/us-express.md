@@ -27,6 +27,8 @@ We ran a 20-day test on one of U.S. Xpress’ key recruiting websites. Over the 
 
 The difference in load speed was immediately apparent. While the non-AMP page frequently struggled to load—in same cases taking more than a minute—the AMP page loaded almost instantaneously, a direct result of the AMP runtime and loading from an AMP cache.
 
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715793132/Blawby/use_express_phones_niodyh.webp)
+
 ## Results
 
 On average, the AMP page loaded 5X faster than the non-AMP version. That dramatic increase in speed led to a rise in completed applications, and an even more dramatic projected cost savings of more than $1M per year.
