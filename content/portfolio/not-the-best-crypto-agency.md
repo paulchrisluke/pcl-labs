@@ -41,6 +41,11 @@ NTBCA provided a comprehensive suite of services designed to empower crypto proj
 -   **Compelling Copywriting:** We wielded words like weapons, crafting clear, concise, and persuasive copy that drove project understanding and investor interest.
 -   **Web Development & Design with Award-Winning UI/UX:** We created user-friendly and visually stunning websites that not only informed but also guided users through the project with intuitive navigation and exceptional user experience.
 
+<video controls autoplay loop muted playsinline class="w-full">
+  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715778741/Blawby/PhunToken%20Memes.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 ## Results: A Launchpad for Success
 
 In just one year, NTBCA served as the launchpad for over 25 successful crypto projects. Each project achieved a profitable launch, a testament to the effectiveness of our multi-faceted approach. Here's what set us apart:

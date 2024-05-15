@@ -26,11 +26,19 @@ We embarked on a comprehensive Conversion Rate Optimization (CRO) audit of Yearl
 ### Key Recommendations:
 
 * **Homepage Optimization:** We recommended refining the homepage to showcase the unique craftsmanship and stories behind Yearly Co.'s bangles. Highlighting the Nashville connection and the handmade aspect could resonate with customers seeking locally-made, high-quality jewelry.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715794061/Blawby/yearlyco_home_jlynr2.webp)
+
 * **Enhanced Product Discovery:** To improve product browsing, we suggested implementing user-friendly filters and categorization based on style, material, and color. Additionally, high-quality product photography and engaging product descriptions could further entice customers.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715794061/Blawby/yearlyco_product_lwdkqy.webp)
+
 * **Personalized Shopping Experience:** We explored the potential of integrating personalized product recommendations, allowing customers to discover bangles that complement their individual style preferences.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715794174/Blawby/yearlyco_related_o8uw6y.webp)
 
 ## Results
 
 By implementing these data-driven CRO recommendations, Yearly Co. witnessed a significant improvement in their Shopify Plus store's performance. This translated to a notable increase in sales and a more engaging shopping experience for their clientele. 
 
 Our collaboration with Yearly Co. exemplifies the impact of strategic CRO. By focusing on user behavior and optimizing the customer journey, we empowered Yearly Co. to leverage their Shopify Plus store's full potential and solidify their position as a leading destination for handcrafted bangles in Nashville. 
+
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715794061/Blawby/yearlyco_check_out_kh9xbl.webp)
+
