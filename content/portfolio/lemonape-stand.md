@@ -27,6 +27,7 @@ Lemon Ape Stand faced the challenge of differentiating itself in the crowded dec
 Lemon Ape Stand revolutionizes DeFi by introducing a gamified staking experience. Users can acquire Lemon Apes, adorable monkey NFTs (Non-Fungible Tokens), which act as the core staking mechanism. By strategically staking their Lemon Apes, users can generate yield on their holdings, adding a layer of engagement and strategic decision-making to the DeFi space. 
 
 This gamified approach extends beyond staking. We developed a custom web application built on Ethereum that allows users to participate in various in-app games. These games leverage the power of blockchain technology to ensure fair play and transparent outcomes, further enriching the user experience.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape1_edxbyt.webp)
 
 ### A Visually Appealing and Engaging Brand Identity
 
@@ -34,6 +35,7 @@ To complement the innovative DeFi and gamified aspects of Lemon Ape Stand, we cr
 
 * **Compelling Video Production:** We produced captivating videos that introduced the Lemon Ape Stand concept, explained the gameplay mechanics, and showcased the project's potential.
 * **Creative Design & Branding:** A vibrant and playful brand identity was established, aligning perfectly with the lighthearted nature of the project. This identity encompassed the Lemon Ape Stand logo, color palette, and overall visual language.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape2_rpuekk.webp)
 * **Graphic Design & Illustration:** Eye-catching illustrations brought the Lemon Ape Stand universe to life, featuring the adorable Lemon Apes and the playful world they inhabit.
 
 ## Results
@@ -42,5 +44,3 @@ The launch of Lemon Ape Stand was a resounding success. The combination of innov
 
 Lemon Ape Stand stands as a testament to the power of blending DeFi functionalities with engaging gameplay and a well-defined brand identity. This project paves the way for a more interactive and enjoyable future within the DeFi landscape.
 
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape2_rpuekk.webp)
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape1_edxbyt.webp)
