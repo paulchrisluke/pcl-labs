@@ -27,6 +27,7 @@ PhunToken needed to demystify the complex world of cryptocurrencies and engage a
 * **Compelling Copywriting:**  Deciphering the complexities of cryptocurrency can be daunting. We tackled this challenge by crafting clear, concise, and engaging written content for the PhunToken website and marketing materials. This content effectively explained the technical aspects of PhunToken while remaining accessible to a broad audience.
 ![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715634345/Blawby/phunware_stake_value_rd05ff.webp)
 * **Graphic Design:** A visually appealing brand identity was established for PhunToken. This included logo design, color palette selection, and overall graphic elements that resonated with the project's vision and target audience.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715792952/Blawby/phunware_stake_tokens_ngpueb.webp)
 * **Video Tutorials:**  We created informative and engaging video tutorials to guide users through various PhunToken functionalities. These tutorials empowered users to confidently navigate the platform and participate in the ecosystem.
 <video controls autoplay loop muted playsinline class="w-full">
   <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715635200/Blawby/How_To_Buy_Ethereum___PhunToken_1_if6nbd.mp4" type="video/mp4">
@@ -46,10 +47,9 @@ Social media played a pivotal role in generating buzz and fostering a vibrant co
 </video>
 
 * **Community Building:** We fostered a sense of community by actively engaging with users on social media platforms, addressing their questions, and fostering a positive and supportive environment.
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715792884/Blawby/phuntoken_betting_bmkqpn.webp)
 
 ## Results
 
 The launch of PhunToken witnessed tremendous growth, fueled by a combination of robust technological development, clear communication, and a captivating social media presence. Our multi-faceted approach resonated with a wide audience, propelling PhunToken towards a successful launch and future growth within the ever-evolving cryptocurrency landscape.
 
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715792884/Blawby/phuntoken_betting_bmkqpn.webp)
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715792952/Blawby/phunware_stake_tokens_ngpueb.webp)

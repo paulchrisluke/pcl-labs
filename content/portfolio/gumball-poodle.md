@@ -20,11 +20,18 @@ Gumball Poodle's Shopify Plus store faced challenges with low conversion rates a
 
 ## Solution
 
+<video controls autoplay loop muted playsinline class="w-full">
+  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351986/Blawby/Gumball_Poodle__The_Original_Statement_Socks_-_1080p_hsnqux.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 Drawing inspiration from successful CRO (Conversion Rate Optimization) strategies, we embarked on a comprehensive optimization journey for Gumball Poodle's Shopify Plus store. This involved a multi-pronged approach:
 
 * **In-Depth CRO Audit:**  We conducted a meticulous CRO audit to pinpoint areas for improvement. Heatmaps, user session recordings, and Shopify analytics provided valuable insights into user behavior and potential friction points hindering conversions.
 
 * **Brand-Centric Design Optimization:**  The homepage and product pages were redesigned to better reflect Gumball Poodle's vibrant brand identity. Compelling visuals, clear value propositions, and engaging product descriptions resonated more effectively with their target audience.
+
+![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715352430/Blawby/gumbal_site_cart_buhtkj.webp)
 
 * **Enhanced User Experience (UX):**  Navigation was streamlined, making it easier for customers to browse a vast array of sock collections. Search functionality was optimized, and intuitive product categorization ensured a seamless user journey from discovery to checkout.
 
@@ -35,10 +42,3 @@ Drawing inspiration from successful CRO (Conversion Rate Optimization) strategie
 ## Results
 
 Through meticulous CRO optimization and a deep understanding of Gumball Poodle's brand and target audience, we achieved a phenomenal 30% increase in conversion rates. This translates to a significant boost in sales and a wider audience discovering Gumball Poodle's unique sock collections. The optimized Shopify Plus store fosters a more engaging and user-friendly experience, solidifying Gumball Poodle's position as a leading purveyor of expressive footwear in Los Angeles.
-
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715352430/Blawby/gumbal_site_cart_buhtkj.webp)
-
-<video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351986/Blawby/Gumball_Poodle__The_Original_Statement_Socks_-_1080p_hsnqux.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
