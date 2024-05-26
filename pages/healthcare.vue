@@ -262,14 +262,14 @@ const reviews = {
 
 const faqs = [
   {
-    question: "What format are these icons?",
+    question: "What healthcare types do you support?",
     answer:
-      "The icons are in SVG (Scalable Vector Graphic) format. They can be imported into your design tool of choice and used directly in code.",
+      "Our experience includes dentist, chiropractics, and general practice websites to help patients find you schedule an appointment. We also have clients at the enterprise level, including dental practice management software and hospital systems.",
   },
   {
-    question: "Can I use the icons at different sizes?",
+    question: "Are you HIPPA compliant?",
     answer:
-      "Yes. The icons are drawn on a 24 x 24 pixel grid, but the icons can be scaled to different sizes as needed. We don't recommend going smaller than 20 x 20 or larger than 64 x 64 to retain legibility and visual balance.",
+      "We work with best in class USA made software providers and systems to ensure all the data is HIPPA compliant.",
   },
   // More FAQs...
 ];
@@ -290,7 +290,7 @@ const features = ref([
   {
     name: "Ad Management",
     description:
-      "Google & Meta ad management. Get brand exposure across media channels in your state. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
+      "Google & Meta ad management. Get brand exposure across media channels in your region. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
     icon: ArrowTrendingUpIcon,
   },
   {

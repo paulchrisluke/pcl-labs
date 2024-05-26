@@ -189,6 +189,7 @@
       </template>
     </Design>
     <FeaturePanel />
+    <ProductList :limit="8" />
     <CtaFull />
   </div>
 </template>
@@ -266,35 +267,35 @@ const reviews = {
 
 const faqs = [
   {
-    question: "What format are these icons?",
+    question: "Will you work on equity/token allocation instead of your normal fee?",
     answer:
-      "The icons are in SVG (Scalable Vector Graphic) format. They can be imported into your design tool of choice and used directly in code.",
+      "We commonly work on a hybrid of fiat and crypto based payment. It is rare that we work for only token allocation alone.",
   },
   {
-    question: "Can I use the icons at different sizes?",
+    question: "You are doxxed, can you work anonomously?",
     answer:
-      "Yes. The icons are drawn on a 24 x 24 pixel grid, but the icons can be scaled to different sizes as needed. We don't recommend going smaller than 20 x 20 or larger than 64 x 64 to retain legibility and visual balance.",
+      "Yes... we prefer it, actually!",
   },
   // More FAQs...
 ];
 
 const features = ref([
   {
-    name: "Scheduling",
+    name: "Community Managament and Marketing",
     description:
-      "Fully integrated with Calendly. Schedule consultations, automatically handle rescheduling, integrate with Google calendar.",
+      "Pre-launch, stealth launch, and social media planning. PCL-Labs uses Twitter, Telegram, and discord to build hype around your project.",
     icon: CalendarIcon,
   },
   {
-    name: "Media Kits",
+    name: "Smart Contract Development",
     description:
-      "Beautifully designed brand support. Logo, business cards, letterhead, and social media assets designed for you in editable Google docs/drive.",
+      "Etherium, Solidity, Base. Quantstamp™ certified and smart contracts hand built by our best in class devs. SXSW Official Sponsor.",
     icon: BriefcaseIcon,
   },
   {
     name: "Ad Management",
     description:
-      "Google & Meta ad management. Get brand exposure across media channels in your state. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
+      "Google & Meta ad management. Get brand exposure across media channels in your region. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
     icon: ArrowTrendingUpIcon,
   },
   {

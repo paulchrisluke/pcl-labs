@@ -2,7 +2,7 @@
   <div class="bg-white">
     <div class="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
       <div class="md:flex md:items-center md:justify-between">
-        <h2 class="text-2xl font-bold tracking-tight text-gray-900">Portfolio</h2>
+        <h2 class="text-2xl font-bold tracking-tight text-gray-900">Recently viewed projects</h2>
         <nuxt-link
           v-show="showSeeAllLink"
           to="/portfolio"

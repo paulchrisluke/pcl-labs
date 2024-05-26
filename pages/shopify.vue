@@ -6,7 +6,7 @@
           src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Gumball_Poodle_Featured_izz3em.webp"
           alt="Shopify Featured Image"
           class="object-cover object-center"
-        />
+        /> 
       </template>
       <template #name>Shopify Website, Marketing, and Design </template>
       <template #description>
@@ -264,7 +264,7 @@ const reviews = {
 
 const faqs = [
   {
-    question: "What format are these icons?",
+    question: "What format are these icons?", //just write what i sent in that upwork interview back
     answer:
       "The icons are in SVG (Scalable Vector Graphic) format. They can be imported into your design tool of choice and used directly in code.",
   },
