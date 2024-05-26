@@ -9,7 +9,7 @@
           <div class="flex space-x-6">
             <nuxt-link v-for="item in footerNavigation.social" :key="item.name" :to="item.href" class="text-gray-500 hover:text-gray-400">
               <span class="sr-only">{{ item.name }}</span>
-              <!-- SVGS are causing warning console issues so ignore for now -->
+              <!-- TODO: SVGS are causing warning console issues so ignore for now -->
               <!-- <component :is="item.icon" class="h-6 w-6" aria-hidden="true" /> -->
             </nuxt-link>
           </div>
@@ -67,12 +67,9 @@ import GithubIcon from '@/assets/svgs/github.svg';
 
 const footerNavigation = ref({
   solutions: [
-  { name: 'Web Development', href: '/portfolio', current: false },
-  { name: 'UI/UX Design', href: '/portfolio', current: false },
-  { name: 'Brand & Print Design', href: '/portfolio', current: false },
-  { name: 'eCommerce CRO', href: '/portfolio', current: false },
-  { name: 'Paid Advertising', href: '/portfolio', current: false },
-  { name: 'Organic Marketing', href: '/portfolio', current: false },
+  { name: 'Services', href: '/portfolio', current: false }, 
+  { name: 'Portfolio', href: '/portfolio', current: false },
+// TODO: deep link these items since they are on same page
   ],
   support: [
   { name: 'About', href: '/about', current: false },

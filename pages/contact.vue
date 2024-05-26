@@ -1,6 +1,7 @@
 <template>
   <div>
     <Contact />
+    <!-- ADD A $10,000 OFFER COMPONENT HERE AND BANNER TO NAV FOR ANNOUNCEMENT -->
   </div>
 </template>
 <script setup>

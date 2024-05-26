@@ -1,10 +1,12 @@
 <template>
     <ServiceGrid />
+    <!-- TODO: INSERT BY INDUSTRY COMPONENT HERE -->
     <ProductList :portfolioData="portfolioData" />
 </template>
 
 <script setup>
 import { useAsyncData } from 'nuxt/app'
+
 useHead({
   title: 'Our Portfolio of Work | PCL-Labs',
   meta: [

@@ -15,7 +15,7 @@
         <ul>
         <li>✅ $15/M per month in ad spend MANAGED</li>
         <li>✅ Craiglist, Indeed, Google/Meta, ads integrated</li>
-        <li>✅ Server-side tracking, no cookies & accurate</li>
+        <li>✅ Server-side tracking, no pixels/cookies & accurate</li>
         </ul>
 
       </template>
@@ -95,13 +95,12 @@
       </template>
     </HeroProduct>
     <FeatureGrid>
-      <template #subhead> Get More Leads </template>
+      <template #subhead> Insights Bringing Conversions </template>
       <template #heading>
-        Everything you need to get more scheduled consultations
+        Everything you need to support drivers worldwide 
       </template>
       <template #description>
-        Includes everything you need to build your legal practice online,
-        including scheduling, media kits, ad support and more.
+        Helping Volkswagen track email engagement, US Xpress hire more drivers, and more.
       </template>
       <template #features>
         <div
@@ -268,35 +267,35 @@ const reviews = {
 
 const faqs = [
   {
-    question: "What format are these icons?",
+    question: "How can you help me hire more drivers?",
     answer:
-      "The icons are in SVG (Scalable Vector Graphic) format. They can be imported into your design tool of choice and used directly in code.",
+      "We perform a comprehensive audit to identify where your conversions (phone calls, job applications, etc.) could be improved. This audit report contains items to improve your conversion rates which can be actioned internally, or by PCL-Labs. These items can include page speed improvement, ad optimization, or integrated solutions.",
   },
   {
-    question: "Can I use the icons at different sizes?",
+    question: "I'm locked into an existing vendor, can you integrate?",
     answer:
-      "Yes. The icons are drawn on a 24 x 24 pixel grid, but the icons can be scaled to different sizes as needed. We don't recommend going smaller than 20 x 20 or larger than 64 x 64 to retain legibility and visual balance.",
+      "Yes. We worked with Volkswagens IT systems to seemlessly offer our analytics solutions without needing to disrupt their existing work. Our goal is to lift conversions without 'bumps in the road'",
   },
   // More FAQs...
 ];
 
 const features = ref([
   {
-    name: "Scheduling",
+    name: "CDL Driver Recruitment",
     description:
-      "Fully integrated with Calendly. Schedule consultations, automatically handle rescheduling, integrate with Google calendar.",
+      "With dynamic, hyper performant landing pages, PCL-Labs increases the conversion rate of your driver recruitment pages by up to 62%.",
     icon: CalendarIcon,
   },
   {
-    name: "Media Kits",
+    name: "World Class Analytics",
     description:
-      "Beautifully designed brand support. Logo, business cards, letterhead, and social media assets designed for you in editable Google docs/drive.",
+      "Featured in Case Studies by Google and Cloudflare. Our tracking does NOT rely on cookies or pixels. Server-side, accurate, insightful and full integrated with Google, Meta, Indeed, and other ad buying platforms.",
     icon: BriefcaseIcon,
   },
   {
     name: "Ad Management",
     description:
-      "Google & Meta ad management. Get brand exposure across media channels in your state. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
+      "Google & Meta ad management. Get brand exposure across media channels in your region. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
     icon: ArrowTrendingUpIcon,
   },
   {

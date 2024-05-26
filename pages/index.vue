@@ -1,6 +1,7 @@
 <template>
   <div>
     <!-- <Hero /> -->
+    <!-- TODO: INSERT BY INDUSTRY COMPONENT HERE -->
     <ServiceGrid id="Services" />
     <ProductList :limit="4" />
     <Logos />

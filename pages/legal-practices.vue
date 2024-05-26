@@ -262,14 +262,14 @@ const reviews = {
 
 const faqs = [
   {
-    question: "What format are these icons?",
+    question: "Can I change the design of the legal website?",
     answer:
-      "The icons are in SVG (Scalable Vector Graphic) format. They can be imported into your design tool of choice and used directly in code.",
+      "Within reason, yes. We have found a conversion flow that generates leads, ranks on Google, and makes your practice more money. This conversion flow is tightly coupled with the design flow of our legal websites. To that end, you can some colors, images, content and your logo.",
   },
   {
-    question: "Can I use the icons at different sizes?",
+    question: "I have multiple practices in different cities/states, do you support that?",
     answer:
-      "Yes. The icons are drawn on a 24 x 24 pixel grid, but the icons can be scaled to different sizes as needed. We don't recommend going smaller than 20 x 20 or larger than 64 x 64 to retain legibility and visual balance.",
+      "Yes. We consolodate your practices into subdomains on a singular domain to maximize data quality and Google indexing.",
   },
   // More FAQs...
 ];
@@ -290,7 +290,7 @@ const features = ref([
   {
     name: "Ad Management",
     description:
-      "Google & Meta ad management. Get brand exposure across media channels in your state. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
+      "Google & Meta ad management. Get brand exposure across media channels in your region. Special $10,000/mo FREE Google Search ad credit available for nonprofits.",
     icon: ArrowTrendingUpIcon,
   },
   {
