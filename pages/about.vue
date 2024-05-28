@@ -10,7 +10,7 @@
 <script setup>
 
 useHead({
-  title: 'About Us | PCL-Labs',
+  title: 'About Us',
   meta: [
     { name: 'description', content: 'Focused on CRO, PCL-Labs creates performant, converting websites and marketing materials. We are top rated plus on Upwork!' },
     { property: 'og:title', content: 'About Us | PCL-Labs' },  // OG title

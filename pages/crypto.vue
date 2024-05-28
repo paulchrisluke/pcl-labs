@@ -195,12 +195,12 @@
 
 <script setup>
 useHead({
-  title: "Crypto Marketing & Development for Enterprise | PCL-Labs",
+  title: "Crypto Marketing & Development for Enterprise",
   meta: [
     { name: "description", content: "With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success." },
     {
       property: "og:title",
-      content: "Crypto Marketing & Development for Enterprise | PCL-Labs",
+      content: "Crypto Marketing & Development for Enterprise",
     }, // OG title
     { property: "og:description", content: "With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success." }, // OG description
     {
