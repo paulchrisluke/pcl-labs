@@ -195,12 +195,12 @@
 
 <script setup>
 useHead({
-  title: "Recruit More Drivers with Logistics Landing Pages | PCL-Labs",
+  title: "Recruit More Drivers with Logistics Landing Pages",
   meta: [
     { name: "description", content: "My amazing site." },
     {
       property: "og:title",
-      content: "Recruit More Drivers with Logistics Landing Pages | PCL-Labs",
+      content: "Recruit More Drivers with Logistics Landing Pages",
     }, // OG title
     { property: "og:description", content: "My amazing site." }, // OG description
     {

@@ -191,12 +191,12 @@
 
 <script setup>
 useHead({
-  title: "Shopify CRO & Development | PCL-Labs",
+  title: "Shopify CRO & Development",
   meta: [
     { name: "description", content: "My amazing site." },
     {
       property: "og:title",
-      content: "Shopify CRO & Development | PCL-Labs",
+      content: "Shopify CRO & Development",
     }, // OG title
     { property: "og:description", content: "My amazing site." }, // OG description
     {

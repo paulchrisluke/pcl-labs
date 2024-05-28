@@ -7,10 +7,10 @@
 <script setup>
 
 useHead({
-  title: 'Contact & Get a Quote | PCL-Labs',
+  title: 'Contact & Get a Quote',
   meta: [
     { name: 'description', content: 'My amazing site.' },
-    { property: 'og:title', content: 'Contact & Get a Quote | PCL-Labs' },  // OG title
+    { property: 'og:title', content: 'Contact & Get a Quote' },  // OG title
     { property: 'og:description', content: 'My amazing site.' },  // OG description
     { property: 'og:image', content: 'https://example.com/path-to-your-image.jpg' },  // OG image URL
     { name: 'keywords', content: 'Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO

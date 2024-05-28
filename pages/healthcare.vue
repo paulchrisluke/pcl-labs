@@ -190,12 +190,12 @@
 
 <script setup>
 useHead({
-  title: "Expert Marketing for Your Healthcare Services | PCL-Labs",
+  title: "Expert Marketing for Your Healthcare Services",
   meta: [
     { name: "description", content: "My amazing site." },
     {
       property: "og:title",
-      content: "Expert Marketing for Your Healthcare Services | PCL-Labs",
+      content: "Expert Marketing for Your Healthcare Services",
     }, // OG title
     { property: "og:description", content: "My amazing site." }, // OG description
     {

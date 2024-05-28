@@ -190,12 +190,12 @@
 
 <script setup>
 useHead({
-  title: "Get More Scheduled Leads for Your Legal Practice | PCL-Labs",
+  title: "Get More Scheduled Leads for Your Legal Practice",
   meta: [
     { name: "description", content: "My amazing site." },
     {
       property: "og:title",
-      content: "Get More Scheduled Leads for Your Legal Practice | PCL-Labs",
+      content: "Get More Scheduled Leads for Your Legal Practice",
     }, // OG title
     { property: "og:description", content: "My amazing site." }, // OG description
     {
