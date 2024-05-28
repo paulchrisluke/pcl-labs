@@ -197,17 +197,17 @@
 useHead({
   title: "Crypto Marketing & Development for Enterprise | PCL-Labs",
   meta: [
-    { name: "description", content: "My amazing site." },
+    { name: "description", content: "With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success." },
     {
       property: "og:title",
       content: "Crypto Marketing & Development for Enterprise | PCL-Labs",
     }, // OG title
-    { property: "og:description", content: "My amazing site." }, // OG description
+    { property: "og:description", content: "With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success." }, // OG description
     {
       property: "og:image",
-      content: "https://example.com/path-to-your-image.jpg",
+      content: "/public/PCL-crypto-header.webp",
     }, // OG image URL
-    { name: 'keywords', content: 'Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
+    { name: 'keywords', content: 'Crypto Community Building, Professional Crypto Marketing Team, Crypto Development Services, Crypto Marketing Experts, Top Rated Crypto Agency, Crypto Meme Content Creation, Expert Crypto Developers, Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
 });
 
