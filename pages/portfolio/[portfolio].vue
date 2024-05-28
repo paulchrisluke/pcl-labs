@@ -44,4 +44,11 @@ const { path } = useRoute()
 // Fetch the markdown content based on the slug
 const { data: portfolio } = await useAsyncData(`portfolio-${path}`, () => 
 queryContent(path).findOne())
+
+useHead({
+
+  meta: [
+      { name: 'keywords', content: portfolio.value.keywords }
+  ]
+})
 </script>

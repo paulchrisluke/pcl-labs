@@ -5,6 +5,7 @@ image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Bl
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791178/Blawby/Gumball_Poodle_vndsnm.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
 description: "Gumball Poodle, a Los Angeles-based Shopify Plus merchant known for its quirky and eye-catching socks, desired to transform their online store into a conversion powerhouse. They sought a strategic partner to implement a data-driven approach, maximizing sales of their unique and expressive sock collections"
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
 ---
 
 ## Challenge

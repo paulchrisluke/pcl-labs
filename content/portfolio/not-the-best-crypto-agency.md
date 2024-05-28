@@ -5,6 +5,8 @@ image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789946/Bl
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791179/Blawby/Phuntoken-1_qtwrie.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
 description: "Fiveable empowers high school students with engaging online courses to conquer their AP exams. Renowned for its innovative approach and personalized learning experience, Fiveable sought to optimize their Shopify Plus store to drive sales and student success. Our agency partnered with Fiveable to conduct a comprehensive Conversion Rate Optimization (CRO) audit, focusing on enhancing the user journey from homepage browsing to course selection and checkout."
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
+
 ---
 
 ## Challenge

@@ -202,6 +202,7 @@ useHead({
       property: "og:image",
       content: "https://example.com/path-to-your-image.jpg",
     }, // OG image URL
+    { name: 'keywords', content: 'Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
 });
 
