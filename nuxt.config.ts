@@ -5,14 +5,15 @@ export default defineNuxtConfig({
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
-      title: 'Default Title', // Default title
-      meta: [
-        { hid: 'description', name: 'description', content: 'Default description' },
-        { hid: 'og:title', property: 'og:title', content: 'Default Title' },
-        { hid: 'og:description', property: 'og:description', content: 'Default description' },
-        { hid: 'og:image', property: 'og:image', content: 'https://example.com/default-og-image.jpg' },
+      // Todo: cleanup this fallback option https://nuxtseo.com/nuxt-seo/guides/configuring-modules
+      // title: 'Default Title', // Default title
+      // meta: [
+      //   { hid: 'description', name: 'description', content: 'Default description' },
+      //   { hid: 'og:title', property: 'og:title', content: 'Default Title' },
+      //   { hid: 'og:description', property: 'og:description', content: 'Default description' },
+      //   { hid: 'og:image', property: 'og:image', content: 'https://example.com/default-og-image.jpg' },
         // Add more default OG tags as needed
-      ],
+      // ],
     }
   },
 
@@ -22,6 +23,7 @@ export default defineNuxtConfig({
     '@nuxt/content',
     'nuxt-gtag',
     '@nuxtjs/sitemap',
+    '@nuxtjs/seo',
   ],
 
   gtag: {
@@ -46,6 +48,7 @@ export default defineNuxtConfig({
     },
   },
   site: {
-    url: 'https://paulchrisluke.com' // Add your site's base URL here
+    url: 'https://paulchrisluke.com', // Add your site's base URL here
+    defaultLocale: 'en',
   },
 })

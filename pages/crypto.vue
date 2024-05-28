@@ -11,7 +11,6 @@
       <template #name>Crypto Development, Marketing, and Design </template>
       <template #description>
         <p>Marketers, influencers, developers, artists, and social media management all under one roof. With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success.</p>
-        &nbsp
         <ul>
         <li>✅ Launched over 13 projects</li>
         <li>✅ Total volume of more than $500 Million</li>
