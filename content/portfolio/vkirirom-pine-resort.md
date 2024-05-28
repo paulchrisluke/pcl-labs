@@ -5,6 +5,8 @@ image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789947/Bl
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791184/Blawby/Yearly-1_vphmtg.webp"
 imageAlt: "vKirirom and Marketing by PCL Labs"
 description: "vKirirom, nestled amidst the breathtaking Kirirom National Park in Cambodia, is more than just a luxurious escape.  This eco-conscious resort embodies a deep commitment to environmental conservation and community empowerment. Partnering with vKirirom Pine Resort, we embarked on a transformative journey to craft a captivating web experience that mirrored their dedication to sustainability and hospitality excellence."
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
+
 ---
 
 ## Challenge

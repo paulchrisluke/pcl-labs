@@ -5,6 +5,8 @@ image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789950/Bl
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791185/Blawby/Yearly_bxc3un.webp"
 imageAlt: "Yearlyco Shopify CRO by PCL Labs"
 description: "Yearly Co., a Nashville-based Shopify Plus merchant, handcrafts exquisite, custom-made bangles that celebrate everyday style. Renowned for their commitment to comfort and wearability, Yearly Co. sought to elevate their online store into a seamless and engaging shopping experience. Our agency partnered with Yearly Co. to implement a data-driven approach, optimizing their Shopify Plus store to drive sales and captivate customers seeking unique and handcrafted jewelry."
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
+
 ---
 
 ## Challenge

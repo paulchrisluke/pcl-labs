@@ -5,6 +5,7 @@ image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Bl
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Dentech_eebrci.webp"
 imageAlt: "Dentech Web Development and Marketing by PCL Labs"
 description: "Dentech, a leading innovator in modern dental practice management systems, prides itself on its personalized approach and cutting-edge solutions. This family-owned business treats each client as an essential part of their community. Our collaboration with Dentech began with email marketing consultancy, but it quickly evolved into a comprehensive full-stack marketing partnership."
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
 ---
 
 ## Challenge 

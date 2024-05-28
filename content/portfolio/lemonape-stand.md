@@ -5,6 +5,7 @@ image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Bl
 imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791178/Blawby/Lemon_Ape_jmcsca.webp"
 imageAlt: "Lemon Ape Stand Web and Marketing by PCL Labs"
 description: "Lemon Ape Stand, a gamified DeFi (Decentralized Finance) project built on the Ethereum blockchain, injects a dose of fun and strategy into the world of cryptocurrency. Our agency partnered with Lemon Ape Stand to develop a comprehensive solution that encompassed not only the core DeFi functionalities but also a captivating user experience."
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
 ---
 
 ## Challenge
