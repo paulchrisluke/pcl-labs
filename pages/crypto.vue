@@ -205,7 +205,7 @@ useHead({
     { property: "og:description", content: "With over a decade of large enterprise marketing experience, we utilize successful methods to push crypto projects to success." }, // OG description
     {
       property: "og:image",
-      content: "/public/PCL-crypto-header.webp",
+      content: "/PCL-crypto-header.webp",
     }, // OG image URL
     { name: 'keywords', content: 'Crypto Community Building, Professional Crypto Marketing Team, Crypto Development Services, Crypto Marketing Experts, Top Rated Crypto Agency, Crypto Meme Content Creation, Expert Crypto Developers, Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
