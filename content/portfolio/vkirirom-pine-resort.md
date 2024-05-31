@@ -22,7 +22,7 @@ vKirirom Pine Resort's existing website, while functional, no longer reflected t
 Leveraging cutting-edge technologies and a collaborative spirit, we delivered a comprehensive web solution for vKirirom Pine Resort:
 
 * **Intuitive UI/UX Design:**  We meticulously crafted a user interface and user experience (UI/UX) design that prioritized user navigation and engagement. Breathtaking visuals of the resort and surrounding national park immersed visitors in the tranquility of vKirirom.
-![image]
+![GIF](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717156099/Blawby/b4109423f760a36bcb064c4a3335ce39_mhim1g.gif)
 * **Vue.js Development:**  Vue.js, a progressive JavaScript framework, powered the development of a dynamic and user-friendly web application (PWA). This PWA offered enhanced speed, offline functionality, and a seamless user experience across devices.
 * **.NET Integration:**  Seamless integration with the resort's existing .NET backend ensured smooth booking processes and data management.
 
