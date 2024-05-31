@@ -192,17 +192,17 @@
 useHead({
   title: "Get More Scheduled Leads for Your Legal Practice",
   meta: [
-    { name: "description", content: "My amazing site." },
+    { name: "description", content: "With over 15 years of experience. We deliver best in class legal websites which generate qualified leads every day." },
     {
       property: "og:title",
       content: "Get More Scheduled Leads for Your Legal Practice",
     }, // OG title
-    { property: "og:description", content: "My amazing site." }, // OG description
+    { property: "og:description", content: "With over 15 years of experience. We deliver best in class legal websites which generate qualified leads every day." }, // OG description
     {
       property: "og:image",
-      content: "https://example.com/path-to-your-image.jpg",
+      content: "PCL-legal-header.webp",
     }, // OG image URL
-    { name: 'keywords', content: 'Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
+    { name: 'keywords', content: 'Legal Marketing Experts, Lead Generation for Legal Practices, Legal Practice Website Development, Top Legal Marketing Agency, Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
 });
 

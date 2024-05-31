@@ -197,16 +197,17 @@
 useHead({
   title: "Recruit More Drivers with Logistics Landing Pages",
   meta: [
-    { name: "description", content: "My amazing site." },
+    { name: "description", content: "With proven case studies by Google & Cloudflare, PCL-Labs helps logistics companies hire more drivers & send more messages, all fully tracked, quanitified, and actionable." },
     {
       property: "og:title",
       content: "Recruit More Drivers with Logistics Landing Pages",
     }, // OG title
-    { property: "og:description", content: "My amazing site." }, // OG description
+    { property: "og:description", content: "With proven case studies by Google & Cloudflare, PCL-Labs helps logistics companies hire more drivers & send more messages, all fully tracked, quanitified, and actionable." }, // OG description
     {
       property: "og:image",
-      content: "https://example.com/path-to-your-image.jpg",
+      content: "PCL-logistics-header.webp",
     }, // OG image URL
+    { name: 'keywords', content: 'Logistics Company Marketing, Accurate Tracking for Logistics, Logistics Marketing Experts, Effective Logistics Ads, Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
 });
 
