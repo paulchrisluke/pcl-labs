@@ -193,16 +193,17 @@
 useHead({
   title: "Shopify CRO & Development",
   meta: [
-    { name: "description", content: "My amazing site." },
+    { name: "description", content: "Google Certified CRO expert. Shopify Plus Partner & eCommerce. We audit your store and provide best in class suggestions to improve your conversions year over year based on 15 years of experience in eCommerce." },
     {
       property: "og:title",
       content: "Shopify CRO & Development",
     }, // OG title
-    { property: "og:description", content: "My amazing site." }, // OG description
+    { property: "og:description", content: "Google Certified CRO expert. Shopify Plus Partner & eCommerce. We audit your store and provide best in class suggestions to improve your conversions year over year based on 15 years of experience in eCommerce." }, // OG description
     {
       property: "og:image",
-      content: "https://example.com/path-to-your-image.jpg",
+      content: "PCL-shopify-header.webp",
     }, // OG image URL
+    { name: 'keywords', content: 'Shopify Website Development, Shopify Marketing Experts, Top Rated Shopify Partner, Shopify Plus Partner Services, Shopify Store Audits, Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
 });
 
