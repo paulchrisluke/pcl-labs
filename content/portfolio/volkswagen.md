@@ -33,6 +33,11 @@ These knowledge gaps resulted in:
 - Sendgrid
 - Figma
 
+<video controls autoplay loop muted playsinline class="w-full">
+  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1717156259/Blawby/c7159f0468f4d274bca18e56416dd987_ye6ajo.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 ## Solutions:
 
 PCL-Labs partnered with Volkswagen to develop a custom Content Management System (CMS) designed to address these challenges head-on. This user-friendly platform empowered marketing teams to:
@@ -41,6 +46,7 @@ PCL-Labs partnered with Volkswagen to develop a custom Content Management System
 -   **Unlock Granular User Insights:** Gain in-depth visibility into individual employee interactions with emails, including opens, clicks, and engagement metrics.
 -   **Streamlined Workflow:** Upload contact lists, schedule emails, and track user data efficiently within a centralized platform.
 -   **Data-Driven Content Strategy:** Leverage user engagement data to tailor content for maximum effectiveness and employee buy-in.
+![GIF](hhttps://res.cloudinary.com/image-gallery-pcl/image/upload/v1717156464/Blawby/Upload_Email_List_oa7ukg.gif)
 
 ## Results:
 
