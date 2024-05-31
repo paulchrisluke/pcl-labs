@@ -192,17 +192,17 @@
 useHead({
   title: "Expert Marketing for Your Healthcare Services",
   meta: [
-    { name: "description", content: "My amazing site." },
+    { name: "description", content: "With over 15 years of experience. We deliver best in class healthcare websites which generate qualified leads every day." },
     {
       property: "og:title",
       content: "Expert Marketing for Your Healthcare Services",
     }, // OG title
-    { property: "og:description", content: "My amazing site." }, // OG description
+    { property: "og:description", content: "With over 15 years of experience. We deliver best in class healthcare websites which generate qualified leads every day." }, // OG description
     {
       property: "og:image",
-      content: "https://example.com/path-to-your-image.jpg",
+      content: "PCL-healthcare-header.webp",
     }, // OG image URL
-    { name: 'keywords', content: 'Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
+    { name: 'keywords', content: 'Healthcare Website Development, Healthcare Marketing Experts, Lead Generation for Healthcare, Experienced Healthcare Marketing Team, Healthcare SEO Services, Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ],
 });
 
