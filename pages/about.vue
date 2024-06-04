@@ -2,6 +2,7 @@
   <div>
     <Stats />
     <Reviews />
+    <Logos />
     <Team />
     <CtaFull />
   </div>

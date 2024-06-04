@@ -19,8 +19,8 @@ useHead({
   meta: [
     { name: 'description', content: 'My amazing site.' },
     { property: 'og:title', content: 'Increase Your Conversions with Web PCL-Labs' },  // OG title
-    { property: 'og:description', content: 'My amazing site.' },  // OG description
-    { property: 'og:image', content: 'https://example.com/path-to-your-image.jpg' },  // OG image URL
+    { property: 'og:description', content: 'Top Rated Plus on Upwork. With over 15 years experience, PCL-Labs provides best-in-class digital and print development, design, and marketing assets to grow your business end-to-end.' },  // OG description
+    { property: 'og:image', content: '/pcl-labs-logo.svg' },  // OG image URL
     { name: 'keywords', content: 'Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke' }  // Keywords for SEO
   ]
 })
