@@ -50,7 +50,7 @@ const image = ref('https://via.placeholder.com/1824x1080.png?text=App+Screenshot
         </div>
         <div class="relative mt-16 h-80 lg:mt-8">
           <img class="absolute top-0 left-0 w-[57rem] max-w-none rounded-md bg-white/5 ring-1 ring-white/10"
-            :src="image" alt="Contact PCL-Labs" width="1824" height="1080">
+            :src="image" alt="Contact PCL Labs" width="1824" height="1080">
         </div>
       </div>
     </div>

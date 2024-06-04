@@ -7,7 +7,7 @@
         <div class="mt-6 max-w-2xl">
           <p>In the meantime, please enjoy our current favorite gif:</p>
         <figure class="mt-6">
-          <img class="aspect-video w-full rounded-xl bg-gray-50 object-cover" src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3QwMTVnN28wdHRyOGo0dWlvYzhncHg1a2ljZHRkZ2F0b2N1d3NoNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3rgXByB0tbT7oXK7Xq/giphy.gif" alt="PCL-Labs Thank You" />
+          <img class="aspect-video w-full rounded-xl bg-gray-50 object-cover" src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3QwMTVnN28wdHRyOGo0dWlvYzhncHg1a2ljZHRkZ2F0b2N1d3NoNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3rgXByB0tbT7oXK7Xq/giphy.gif" alt="PCL Labs Thank You" />
           <figcaption class="mt-4 flex gap-x-2 text-sm leading-6 text-gray-500">
           <InformationCircleIcon class="mt-0.5 h-5 w-5 flex-none text-gray-300" aria-hidden="true" />
           Recomended by - Julia Chow

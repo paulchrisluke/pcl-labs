@@ -15,12 +15,12 @@
           </div>
         </div>
         <div class="mx-auto grid w-full max-w-xl grid-cols-2 items-center gap-y-12 sm:gap-y-14 lg:mx-0 lg:max-w-none lg:pl-8">
-          <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/tuple-logo-white.svg" alt="Tuple" width="105" height="48" />
-          <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/reform-logo-white.svg" alt="Reform" width="104" height="48" />
-          <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/savvycal-logo-white.svg" alt="SavvyCal" width="140" height="48" />
+          <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717529187/Blawby/pcl-labs-partner-google_xt8agl.svg" alt="Google" width="105" height="48" />
+          <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717529188/Blawby/pcl-labs-partner-meta_vwcgh3.svg" alt="Meta" width="104" height="48" />
+          <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717528981/Blawby/pcl-labs-partner-shopify_bbdkkq.svg" alt="Shopify" width="140" height="48" />
           <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/laravel-logo-white.svg" alt="Laravel" width="136" height="48" />
-          <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/transistor-logo-white.svg" alt="Transistor" width="158" height="48" />
-          <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/statamic-logo-white.svg" alt="Statamic" width="147" height="48" />
+          <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717529189/Blawby/pcl-labs-partner-react_nt4ic5.svg" alt="React js" width="158" height="48" />
+          <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717529187/Blawby/pcl-labs-partner-hubspot_ijru82.svg" alt="Hubspot" width="147" height="48" />
         </div>
       </div>
     </div>
