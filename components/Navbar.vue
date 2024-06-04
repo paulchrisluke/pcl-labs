@@ -13,7 +13,7 @@
             </DisclosureButton>
           </div>
           <nuxt-link to="/" class="flex flex-shrink-0 items-center">
-            <img class="h-8 w-auto" src="/pcl-labs-logo.svg" alt="PCL-Labs Logo />
+            <img class="h-8 w-auto" src="/pcl-labs-logo.svg" alt="PCL Labs Logo" />
           </nuxt-link>
           <div class="hidden md:ml-6 md:flex md:items-center md:space-x-4">
             <nuxt-link v-for="item in navigation" :key="item.name" :to="item.href" :class="[item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white', 'rounded-md px-3 py-2 text-sm font-medium']" :aria-current="item.current ? 'page' : undefined">{{ item.name }}</nuxt-link>
