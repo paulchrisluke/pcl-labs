@@ -134,7 +134,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061269/Blawby/Frame_21_i9n4d0.webp"
-              alt=""
+              alt="PCL-Labs Logistics Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -146,7 +146,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061270/Blawby/Frame_22_cka5hb.webp"
-              alt=""
+              alt="PCL-Labs Logistics Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -156,7 +156,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061271/Blawby/Frame_23_oreeqn.webp"
-              alt=""
+              alt="PCL-Labs Logistics Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -168,7 +168,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_4_rttrb1.webp"
-              alt=""
+              alt="PCL-Labs Logistics Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -178,7 +178,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715061803/Blawby/Frame_25_dh04fw.webp"
-              alt=""
+              alt="PCL-Labs Logistics Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div

@@ -129,7 +129,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_7_tzmcxg.webp"
-              alt=""
+              alt="PCL-Labs Healthcare Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -141,7 +141,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_6_avvxbi.webp"
-              alt=""
+              alt="PCL-Labs Healthcare Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -151,7 +151,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_9_ujs92n.webp"
-              alt=""
+              alt="PCL-Labs Healthcare Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -163,7 +163,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_10_rvdn60.webp"
-              alt=""
+              alt="PCL-Labs Healthcare Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -173,7 +173,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047483/Blawby/Frame_8_yr67yz.webp"
-              alt=""
+              alt="PCL-Labs Healthcare Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div

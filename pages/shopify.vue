@@ -130,7 +130,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060226/Blawby/Frame_17_ibmbal.webp"
-              alt=""
+              alt="PCL-Labs Shopify Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -142,7 +142,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060226/Blawby/Frame_18_ockdph.webp"
-              alt=""
+              alt="PCL-Labs Shopify Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -152,7 +152,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060228/Blawby/Frame_19_idldwf.webp"
-              alt=""
+              alt="PCL-Labs Shopify Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -164,7 +164,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060229/Blawby/Frame_20_pby7lu.webp"
-              alt=""
+              alt="PCL-Labs Shopify Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -174,7 +174,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060225/Blawby/Frame_16_n7bbqs.webp"
-              alt=""
+              alt="PCL-Labs Shopify Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div

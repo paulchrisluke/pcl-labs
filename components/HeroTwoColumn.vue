@@ -54,7 +54,7 @@
             >
               <img
                 :src="feature.img"
-                alt="Product screenshot"
+                alt=""
                 class="w-full h-full object-cover rounded-lg"
               />
             </div>
