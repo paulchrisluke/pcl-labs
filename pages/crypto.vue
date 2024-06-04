@@ -133,7 +133,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_11_jalk7s.webp"
-              alt=""
+              alt="PCL-Labs Crypto Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -145,7 +145,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_12_ugjegd.webp"
-              alt=""
+              alt="PCL-Labs Crypto Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -155,7 +155,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_14_dg747m.webp"
-              alt=""
+              alt="PCL-Labs Crypto Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -167,7 +167,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_13_qikequ.webp"
-              alt=""
+              alt="PCL-Labs Crypto Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -177,7 +177,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715060060/Blawby/Frame_15_zamfnw.webp"
-              alt=""
+              alt="PCL-Labs Crypto Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div

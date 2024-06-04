@@ -21,7 +21,7 @@
       <!-- Image with Gradient -->
       <div class="relative overflow-hidden pt-16">
           <div class="mx-auto max-w-7xl px-6 lg:px-8">
-            <img :src="portfolio.image" alt="App screenshot" class="mb-[-12%] rounded-xl shadow-2xl ring-1 ring-white/10" width="2432" height="1442" />
+            <img :src="portfolio.image" alt="PCL-Labs Portfolio Item" class="mb-[-12%] rounded-xl shadow-2xl ring-1 ring-white/10" width="2432" height="1442" />
             <div class="relative" aria-hidden="true">
               <div class="absolute -inset-x-20 bottom-0 bg-gradient-to-t from-gray-900 pt-[7%]" />
             </div>

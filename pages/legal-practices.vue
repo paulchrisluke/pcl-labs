@@ -129,7 +129,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_5_ohptmi.webp"
-              alt=""
+              alt="Legal Practices Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -141,7 +141,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_3_zoxx5o.webp"
-              alt=""
+              alt="Legal Practices Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -151,7 +151,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_2_plxrd5.webp"
-              alt=""
+              alt="Legal Practices Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -163,7 +163,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_4_rttrb1.webp"
-              alt=""
+              alt="Legal Practices Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div
@@ -173,7 +173,7 @@
           <div class="relative">
             <img
               src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097483/Blawby/Frame_1_vfu7is.webp"
-              alt=""
+              alt="Legal Practices Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
             <div

@@ -4,7 +4,7 @@
     <div class="mx-auto max-w-7xl px-6 pb-8 pt-16 sm:pt-24 lg:px-8 lg:pt-24">
       <div class="xl:grid xl:grid-cols-3 xl:gap-8">
         <div class="space-y-8">
-          <img class="h-7" src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714739278/Blawby/pcl-labs-logo_jlyewp.svg" alt="Company name" />
+          <img class="h-7" src="/pcl-labs-logo.svg" alt="PCL-Labs Logo" />
           <p class="text-sm leading-6 text-gray-300">Top Rated Plus on Upwork. With over 15 years experience, PCL-Labs provides best-in-class digital and print development, design, and marketing assets to grow your business end-to-end.</p>
           <div class="flex space-x-6">
             <nuxt-link v-for="item in footerNavigation.social" :key="item.name" :to="item.href" class="text-gray-500 hover:text-gray-400">
@@ -75,6 +75,7 @@ const footerNavigation = ref({
   { name: 'About', href: '/about', current: false },
   { name: 'Reviews', href: '/about', current: false },
   { name: 'UpWork ↗', href: 'https://upwork.com/freelancers/paulchrisluke', current: false },
+  { name: 'Germany Office ↗', href: 'https://www.adlabor.de/?utm_source=organic&utm_medium=backlink&utm_campaign=pcl-labs&utm_content=footer', current: false },
     // { name: 'Documentation', href: '#' },
     // { name: 'Guides', href: '#' },
     // { name: 'API Status', href: '#' },
