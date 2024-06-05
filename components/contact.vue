@@ -8,10 +8,7 @@
         <div class="mx-auto max-w-xl lg:mx-0 lg:max-w-lg">
           <h2 class="text-3xl font-bold tracking-tight text-gray-900">Let's work together</h2>
           <p class="mt-2 text-lg leading-8 text-gray-600">PCL-Labs provides full-funnel marketing and advertising from brand positioning, research, data science and full-stack development to video/photo content, and more!</p>
-          <form
-            @submit.prevent="submitForm"
-            method="POST"
-          >
+          <form @submit.prevent="submitForm" method="POST">
             <div class="mt-8 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
               <div>
                 <label for="first-name" class="block text-sm font-semibold leading-6 text-gray-900">First name</label>
@@ -53,14 +50,14 @@
                 </div>
                 <div class="mt-2.5">
                   <textarea
-      id="message"
-      name="message"
-      rows="4"
-      aria-describedby="message-description"
-      class="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-      @input="updateMessageLength"
-      maxlength="500"
-    />
+                    id="message"
+                    name="message"
+                    rows="4"
+                    aria-describedby="message-description"
+                    class="block w-full rounded-md border-0 px-3.5 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                    @input="updateMessageLength"
+                    maxlength="500"
+                  />
                 </div>
               </div>
               <button
@@ -95,7 +92,6 @@
 <script setup>
 import { ref } from 'vue'
 import { useNuxtApp } from '#app'
-
 const { gtag } = useNuxtApp()
 const { analytics } = useNuxtApp()
 const router = useRouter()
@@ -105,29 +101,35 @@ const loading = ref(false)
 const submitForm = async (event) => {
   event.preventDefault()
   loading.value = true
+
+  // Redirect to thank-you page immediately
+  setTimeout(() => {
+    loading.value = false
+    router.push('/thank-you')
+  }, 1000) // 1 second delay
+
   try {
     const response = await fetch('https://formsubmit.co/541fa0e60b64234d706007fc6a64d0f9', {
       method: 'POST',
       body: new FormData(event.target),
     })
+
     if (response.ok) {
-      // Form submitted successfully, track the event
+      // Track the event with gtag
       gtag && gtag('event', 'form_submitted', {
         event_category: 'contact_form',
         event_label: 'Contact Form Submission'
       })
+      // Track the event with Vercel Analytics
       analytics && analytics.track('form_submitted', {
         category: 'contact_form',
         label: 'Contact Form Submission'
       })
-      router.push('/thank-you')
     } else {
       console.error('Form submission failed:', response.statusText)
     }
   } catch (error) {
     console.error('Error submitting form:', error)
-  } finally {
-    loading.value = false
   }
 }
 
