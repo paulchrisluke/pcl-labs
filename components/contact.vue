@@ -99,75 +99,36 @@ import { useNuxtApp } from '#app'
 const { gtag } = useNuxtApp()
 const { analytics } = useNuxtApp()
 const router = useRouter()
-const agreed = ref(false)
 const messageLength = ref(0)
 const loading = ref(false)
 
-const submitForm = (event) => {
+const submitForm = async (event) => {
   event.preventDefault()
   loading.value = true
-  // Your form submission logic here, for example:
-  fetch('https://formsubmit.co/541fa0e60b64234d706007fc6a64d0f9', {
-    method: 'POST',
-    body: new FormData(event.target)
-  })
-  .then(response => {
+  try {
+    const response = await fetch('https://formsubmit.co/541fa0e60b64234d706007fc6a64d0f9', {
+      method: 'POST',
+      body: new FormData(event.target),
+    })
     if (response.ok) {
-      // Form submitted successfully, track the event with gtag
-      if (gtag) {
-        gtag('event', 'form_submitted', {
-          event_category: 'contact_form',
-          event_label: 'Contact Form Submission'
-        })
-      }
-      // Track the event with Vercel Analytics
-      if (analytics) {
-        analytics.track('form_submitted', {
-          category: 'contact_form',
-          label: 'Contact Form Submission'
-        })
-      }
-      // You can also redirect the user to a thank-you page here if needed
+      // Form submitted successfully, track the event
+      gtag && gtag('event', 'form_submitted', {
+        event_category: 'contact_form',
+        event_label: 'Contact Form Submission'
+      })
+      analytics && analytics.track('form_submitted', {
+        category: 'contact_form',
+        label: 'Contact Form Submission'
+      })
       router.push('/thank-you')
     } else {
-      // Handle form submission errors
       console.error('Form submission failed:', response.statusText)
-      if (gtag) {
-        gtag('event', 'form_submission_failed', {
-          event_category: 'contact_form',
-          event_label: 'Contact Form Submission Error',
-          value: response.statusText
-        })
-      }
-      if (analytics) {
-        analytics.track('form_submission_failed', {
-          category: 'contact_form',
-          label: 'Contact Form Submission Error',
-          value: response.statusText
-        })
-      }
     }
-  })
-  .catch(error => {
+  } catch (error) {
     console.error('Error submitting form:', error)
-    if (gtag) {
-      gtag('event', 'form_submission_failed', {
-        event_category: 'contact_form',
-        event_label: 'Contact Form Submission Catch Error',
-        value: error.message
-      })
-    }
-    if (analytics) {
-      analytics.track('form_submission_failed', {
-        category: 'contact_form',
-        label: 'Contact Form Submission Catch Error',
-        value: error.message
-      })
-    }
-  })
-  .finally(() => {
-    loading.value = false; // Set loading state back to false after submission
-  })
+  } finally {
+    loading.value = false
+  }
 }
 
 const updateMessageLength = (event) => {
