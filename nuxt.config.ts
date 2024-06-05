@@ -49,6 +49,11 @@ export default defineNuxtConfig({
   },
   site: {
     url: 'https://paulchrisluke.com', // Add your site's base URL here
+    name: 'PCL-Labs',
+    description: 'Top Rated Plus on Upwork. With over 15 years experience, PCL-Labs provides best-in-class digital and print development, design, and marketing assets to grow your business end-to-end.',
     defaultLocale: 'en',
+  },
+  seo: {
+    redirectToCanonicalSiteUrl: true
   },
 })
