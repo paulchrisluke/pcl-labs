@@ -18,7 +18,7 @@
           <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/pcl-labs/image/upload/v1717529187/PCL-Labs/pcl-labs-partner-google_xt8agl.svg" alt="Google" width="105" height="48" />
           <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/pcl-labs/image/upload/v1717529188/PCL-Labs/pcl-labs-partner-meta_vwcgh3.svg" alt="Meta" width="104" height="48" />
           <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/pcl-labs/image/upload/v1717528981/PCL-Labs/pcl-labs-partner-shopify_bbdkkq.svg" alt="Shopify" width="140" height="48" />
-          <img class="max-h-12 w-full object-contain object-left" src="https://tailwindui.com/img/logos/laravel-logo-white.svg" alt="Laravel" width="136" height="48" />
+          <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/pcl-labs/image/upload/v1717529188/PCL-Labs/pcl-labs-partner-laravel_z4crpu.svg" alt="Laravel" width="136" height="48" />
           <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/pcl-labs/image/upload/v1717529189/PCL-Labs/pcl-labs-partner-react_nt4ic5.svg" alt="React js" width="158" height="48" />
           <img class="max-h-12 w-full object-contain object-left" src="https://res.cloudinary.com/pcl-labs/image/upload/v1717529187/PCL-Labs/pcl-labs-partner-hubspot_ijru82.svg" alt="Hubspot" width="147" height="48" />
         </div>
