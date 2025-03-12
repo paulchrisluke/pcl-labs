@@ -1,8 +1,8 @@
 ---
 title: "Volkswagen"
 tags: ['Logistics', 'Web Development', UI/UX]
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789949/Blawby/Volkswagen_Featured_tj5mnw.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791183/Blawby/Volkswagen_x0bmui.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789949/PCL-Labs/Volkswagen_Featured_tj5mnw.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791183/PCL-Labs/Volkswagen_x0bmui.webp"
 imageAlt: "Volkswagen Web and Marketing by PCL Labs"
 description: "Volkswagen sends many emailed internal communications to its various employees. However, due to the complexities of enterprise software integrations, they had limited tracking for their open, clicks, and engagement rates by user. Our CMS allowed marketing members to email the same newsletters and communications with 1:1 user level tracking, giving the marketing team the insight they needed to ensure their success."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -44,7 +44,7 @@ PCL-Labs partnered with Volkswagen to develop a custom Content Management System
 -   **Streamlined Workflow:** Upload contact lists, schedule emails, and track user data efficiently within a centralized platform.
 -   **Data-Driven Content Strategy:** Leverage user engagement data to tailor content for maximum effectiveness and employee buy-in.
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1717156259/Blawby/c7159f0468f4d274bca18e56416dd987_ye6ajo.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1717156259/PCL-Labs/c7159f0468f4d274bca18e56416dd987_ye6ajo.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 

@@ -26,7 +26,7 @@
       name: 'Paul "Chris" Luke',
       role: 'CEO/Ads',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714697364/Blawby/1_qjKv1vv3WC6ckf3eTM0hZQ_1_nf3uuk.png',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714697364/PCL-Labs/1_qjKv1vv3WC6ckf3eTM0hZQ_1_nf3uuk.png',
       xUrl: '#',
       linkedinUrl: '#',
     },
@@ -34,43 +34,43 @@
       name: 'Joe Elia',
       role: 'CTO',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714696998/Blawby/1516626952082_zfnyjg.jpg',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714696998/PCL-Labs/1516626952082_zfnyjg.jpg',
     },
     {
       name: 'Koko',
       role: 'Lead Designer',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714697575/Blawby/pexels-moose-photos-170195-1586996_1_fl9flx.png',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714697575/PCL-Labs/pexels-moose-photos-170195-1586996_1_fl9flx.png',
     },
     {
       name: 'PizzaWizard',
       role: 'Lead Developer',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714697827/Blawby/pexels-olly-3785104_1_hyzlxu.png',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714697827/PCL-Labs/pexels-olly-3785104_1_hyzlxu.png',
     },
     {
       name: 'Jeremie Venditti',
       role: 'Digital Marketer',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714696982/Blawby/1616768161241_zh0v0k.jpg',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714696982/PCL-Labs/1616768161241_zh0v0k.jpg',
     },
     {
       name: 'Brittni S.',
       role: 'Content Writer',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714697264/Blawby/e9697fff-b8eb-4312-93ca-e375fdfe7e2b_yucg6j.webp',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714697264/PCL-Labs/e9697fff-b8eb-4312-93ca-e375fdfe7e2b_yucg6j.webp',
     },
     {
       name: 'Julia Chow',
       role: 'UI/UX Designer',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714706641/Blawby/1682091954266_vrcx3n.webp',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714706641/PCL-Labs/1682091954266_vrcx3n.webp',
     },
     {
       name: 'Rich Gittings',
       role: 'Legal/Office Cheerleader',
       imageUrl:
-        'https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714706577/Blawby/rich-gittings_qazszp.webp',
+        'https://res.cloudinary.com/pcl-labs/image/upload/v1714706577/PCL-Labs/rich-gittings_qazszp.webp',
     },
     // More people...
   ]

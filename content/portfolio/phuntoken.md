@@ -1,8 +1,8 @@
 ---
 title: "Phuntoken"
 tags: ['Crypto', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789946/Blawby/PhunToken_Featured_xnrc2t.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791180/Blawby/Phuntoken_ut3wry.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789946/PCL-Labs/PhunToken_Featured_xnrc2t.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791180/PCL-Labs/Phuntoken_ut3wry.webp"
 imageAlt: "Phuntoken Web and Marketing by PCL Labs"
 description: "Phunware, a publicly traded software company on NASDAQ for over 20 years, embarked on a groundbreaking initiative: PhunToken. This Ethereum-based project aims to revolutionize the mobile experience by creating a secure and versatile ecosystem. Our agency was entrusted with the development and launch of PhunToken, encompassing various facets of the project."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -27,12 +27,12 @@ PhunToken needed to demystify the complex world of cryptocurrencies and engage a
 ### Content Creation and Brand Identity
 
 * **Compelling Copywriting:**  Deciphering the complexities of cryptocurrency can be daunting. We tackled this challenge by crafting clear, concise, and engaging written content for the PhunToken website and marketing materials. This content effectively explained the technical aspects of PhunToken while remaining accessible to a broad audience.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715634345/Blawby/phunware_stake_value_rd05ff.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715634345/PCL-Labs/phunware_stake_value_rd05ff.webp)
 * **Graphic Design:** A visually appealing brand identity was established for PhunToken. This included logo design, color palette selection, and overall graphic elements that resonated with the project's vision and target audience.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715792952/Blawby/phunware_stake_tokens_ngpueb.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715792952/PCL-Labs/phunware_stake_tokens_ngpueb.webp)
 * **Video Tutorials:**  We created informative and engaging video tutorials to guide users through various PhunToken functionalities. These tutorials empowered users to confidently navigate the platform and participate in the ecosystem.
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715635200/Blawby/How_To_Buy_Ethereum___PhunToken_1_if6nbd.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715635200/PCL-Labs/How_To_Buy_Ethereum___PhunToken_1_if6nbd.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
@@ -44,12 +44,12 @@ Social media played a pivotal role in generating buzz and fostering a vibrant co
 
 * **Informative Content:** Alongside the humor, we ensured a balanced approach by providing informative social media posts that delved deeper into the functionalities and benefits of PhunToken.
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715634659/Blawby/phunware_competitive_advantage_vycij9.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715634659/PCL-Labs/phunware_competitive_advantage_vycij9.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
 * **Community Building:** We fostered a sense of community by actively engaging with users on social media platforms, addressing their questions, and fostering a positive and supportive environment.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715792884/Blawby/phuntoken_betting_bmkqpn.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715792884/PCL-Labs/phuntoken_betting_bmkqpn.webp)
 
 ## Results
 

@@ -1,8 +1,8 @@
 ---
 title: "Dentech"
 tags: ['Healthcare', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Dentech_Featured_bph9ld.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791175/Blawby/Dentech_eebrci.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Dentech_Featured_bph9ld.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/Dentech_eebrci.webp"
 imageAlt: "Dentech Web Development and Marketing by PCL Labs"
 description: "Dentech, a leading innovator in modern dental practice management systems, prides itself on its personalized approach and cutting-edge solutions. This family-owned business treats each client as an essential part of their community. Our collaboration with Dentech began with email marketing consultancy, but it quickly evolved into a comprehensive full-stack marketing partnership."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -24,7 +24,7 @@ Initially, Dentech faced significant challenges in engaging their audience effec
 ## Solutions
 
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1716147168/Blawby/Dentech__A_Quick_Review_of_2021_k0prwj.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1716147168/PCL-Labs/Dentech__A_Quick_Review_of_2021_k0prwj.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
@@ -36,7 +36,7 @@ Given the remarkable success of our email marketing efforts, Dentech entrusted u
 
 We also explored the potential of social media campaigns to further expand Dentech's reach and brand awareness. While the details of these campaigns are not specified, our collaboration undoubtedly encompassed a multi-channel approach to maximize Dentech's marketing impact.
 
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715351481/Blawby/Dentech_home_website_kbnrpe.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715351481/PCL-Labs/Dentech_home_website_kbnrpe.webp)
 
 > "Paul is a force to be reckoned with. He is undeniably talented and is able to focus in on what the message is that needs to come across in the marketing piece. Our company is drowning in multiple marketing needs and Paul is able to allocate the resources needed for each piece and execute a plan of action. He has an uncanny ability to draw the vision out of the client and put it into marketing action. Our first email campaign brought in a 60% open rate through Paul's writing. This is up from our typical 20-25% open rate. The feedback, interaction and response rate from our clients from this campaign is priceless. The best move we ever made as a company with Paul's guidance. You would be a fool to not hire him." - Jane, CEO at Dentech
 
@@ -45,14 +45,14 @@ We also explored the potential of social media campaigns to further expand Dente
 Through our collaborative efforts, Dentech experienced significant growth in brand awareness, customer engagement, and lead generation. The revamped website served as a robust platform to showcase Dentech's offerings, while our targeted marketing initiatives successfully reached and resonated with their target audience.
 
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715352150/Blawby/DENTECH_WALKTHROUGH__Merge_And_Split_Accounts_in_NextGen-_1080p60_tgajf6.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715352150/PCL-Labs/DENTECH_WALKTHROUGH__Merge_And_Split_Accounts_in_NextGen-_1080p60_tgajf6.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
 The high engagement and conversion rates achieved through email campaigns and potentially social media efforts solidified the effectiveness of our strategies in driving customer acquisition and retention. Overall, our full-stack marketing approach positioned Dentech for continued success in the competitive dental practice management landscape.
 
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351902/Blawby/Dentallytics_-_Visualize_Your_Data_TODAY-_1080p_vj9zbu.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715351902/PCL-Labs/Dentallytics_-_Visualize_Your_Data_TODAY-_1080p_vj9zbu.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 

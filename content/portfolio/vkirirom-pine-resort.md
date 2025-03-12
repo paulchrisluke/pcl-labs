@@ -1,8 +1,8 @@
 ---
 title: "vKirirom"
 tags: ['Shopify', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789947/Blawby/vKirirom_Featured_xls84w.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791184/Blawby/Yearly-1_vphmtg.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789947/PCL-Labs/vKirirom_Featured_xls84w.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791184/PCL-Labs/Yearly-1_vphmtg.webp"
 imageAlt: "vKirirom and Marketing by PCL Labs"
 description: "vKirirom, nestled amidst the breathtaking Kirirom National Park in Cambodia, is more than just a luxurious escape.  This eco-conscious resort embodies a deep commitment to environmental conservation and community empowerment. Partnering with vKirirom Pine Resort, we embarked on a transformative journey to craft a captivating web experience that mirrored their dedication to sustainability and hospitality excellence."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -22,7 +22,7 @@ vKirirom Pine Resort's existing website, while functional, no longer reflected t
 Leveraging cutting-edge technologies and a collaborative spirit, we delivered a comprehensive web solution for vKirirom Pine Resort:
 
 * **Intuitive UI/UX Design:**  We meticulously crafted a user interface and user experience (UI/UX) design that prioritized user navigation and engagement. Breathtaking visuals of the resort and surrounding national park immersed visitors in the tranquility of vKirirom.
-![GIF](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1717156634/Blawby/Vmirirom_ujq8a3.gif)
+![GIF](https://res.cloudinary.com/pcl-labs/image/upload/v1717156634/PCL-Labs/Vmirirom_ujq8a3.gif)
 * **Vue.js Development:**  Vue.js, a progressive JavaScript framework, powered the development of a dynamic and user-friendly web application (PWA). This PWA offered enhanced speed, offline functionality, and a seamless user experience across devices.
 * **.NET Integration:**  Seamless integration with the resort's existing .NET backend ensured smooth booking processes and data management.
 

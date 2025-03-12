@@ -1,8 +1,8 @@
 ---
 title: "US Express"
 tags: ['Logistics', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789947/Blawby/UX_Xpress_Featured_bml99w.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791182/Blawby/US_Xpress_qfenwg.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789947/PCL-Labs/UX_Xpress_Featured_bml99w.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791182/PCL-Labs/US_Xpress_qfenwg.webp"
 imageAlt: "US Express Web and Marketing by PCL Labs"
 description: "Across all industries, competition for mobile customer conversions is fiercer than ever. Landing page load speed is a critical factor in winning the battle for conversions. Our challenge was to create a competitive edge for our clients, dramatically increasing their mobile loading speeds and boosting conversions."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -29,7 +29,7 @@ We ran a 20-day test on one of U.S. Xpress’ key recruiting websites. Over the 
 
 The difference in load speed was immediately apparent. While the non-AMP page frequently struggled to load—in same cases taking more than a minute—the AMP page loaded almost instantaneously, a direct result of the AMP runtime and loading from an AMP cache.
 
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715793132/Blawby/use_express_phones_niodyh.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715793132/PCL-Labs/use_express_phones_niodyh.webp)
 
 ## Results
 

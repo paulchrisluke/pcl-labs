@@ -1,8 +1,8 @@
 ---
 title: "Gumball Poodle"
 tags: ['Shopify', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Gumball_Poodle_Featured_izz3em.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791178/Blawby/Gumball_Poodle_vndsnm.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Gumball_Poodle_Featured_izz3em.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791178/PCL-Labs/Gumball_Poodle_vndsnm.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
 description: "Gumball Poodle, a Los Angeles-based Shopify Plus merchant known for its quirky and eye-catching socks, desired to transform their online store into a conversion powerhouse. They sought a strategic partner to implement a data-driven approach, maximizing sales of their unique and expressive sock collections"
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -22,7 +22,7 @@ Gumball Poodle's Shopify Plus store faced challenges with low conversion rates a
 ## Solution
 
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715351986/Blawby/Gumball_Poodle__The_Original_Statement_Socks_-_1080p_hsnqux.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715351986/PCL-Labs/Gumball_Poodle__The_Original_Statement_Socks_-_1080p_hsnqux.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
@@ -32,7 +32,7 @@ Drawing inspiration from successful CRO (Conversion Rate Optimization) strategie
 
 * **Brand-Centric Design Optimization:**  The homepage and product pages were redesigned to better reflect Gumball Poodle's vibrant brand identity. Compelling visuals, clear value propositions, and engaging product descriptions resonated more effectively with their target audience.
 
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715352430/Blawby/gumbal_site_cart_buhtkj.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715352430/PCL-Labs/gumbal_site_cart_buhtkj.webp)
 
 * **Enhanced User Experience (UX):**  Navigation was streamlined, making it easier for customers to browse a vast array of sock collections. Search functionality was optimized, and intuitive product categorization ensured a seamless user journey from discovery to checkout.
 
