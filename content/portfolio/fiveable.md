@@ -1,8 +1,8 @@
 ---
 title: "Fiveable"
 tags: ['Shopify', 'Conversion Rate Optimization']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Fiveable_Featured_migjx9.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791176/Blawby/Fiveable_seiqed.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Fiveable_Featured_migjx9.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791176/PCL-Labs/Fiveable_seiqed.webp"
 imageAlt: "Fiveable Shopify CRO by PCL Labs"
 description: "Fiveable empowers high school students with engaging online courses to conquer their AP exams. Renowned for its innovative approach and personalized learning experience, Fiveable sought to optimize their Shopify Plus store to drive sales and student success. Our agency partnered with Fiveable to conduct a comprehensive Conversion Rate Optimization (CRO) audit, focusing on enhancing the user journey from homepage browsing to course selection and checkout."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -26,11 +26,11 @@ We implemented a meticulous CRO audit to identify areas for improvement across F
 Our audit revealed opportunities to streamline the user journey by optimizing the design, user experience (UX), and website speed. Here's a breakdown of our key recommendations:
 
 * **Homepage Optimization:** We recommended tailoring the homepage messaging to resonate more effectively with Fiveable's target audience of high school students and their specific AP exam anxieties. This included crafting clear value propositions and showcasing student success stories.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1716148420/Blawby/fiveable_home_ahkmyp.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_home_ahkmyp.webp)
 * **Enhanced Course Discovery:** We identified improvements to the course browsing experience, making it easier for students to find the specific AP exam prep courses they need. This involved optimizing search functionality and implementing intuitive course categorization.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1716148420/Blawby/fiveable_course_discovery_feu7gp.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_course_discovery_feu7gp.webp)
 * **Streamlined Checkout Process:** We streamlined the checkout process to minimize steps and reduce cart abandonment rates. This included offering guest checkout options and ensuring a clear and secure payment gateway.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1716148420/Blawby/fiveable_Checkout_zex6na.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_Checkout_zex6na.webp)
 
 ## Results
 

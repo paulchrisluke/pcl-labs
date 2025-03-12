@@ -3,7 +3,7 @@
     <HeroProduct>
       <template #image>
         <img
-          src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714012904/Blawby/dark-project-app-screenshot.webp"
+          src="https://res.cloudinary.com/pcl-labs/image/upload/v1714012904/PCL-Labs/dark-project-app-screenshot.webp"
           alt="Legal Practices Featured Image"
           class="object-cover object-center"
         />
@@ -128,7 +128,7 @@
         >
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_5_ohptmi.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1714097484/PCL-Labs/Frame_5_ohptmi.webp"
               alt="Legal Practices Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -140,7 +140,7 @@
         <div class="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_3_zoxx5o.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1714097484/PCL-Labs/Frame_3_zoxx5o.webp"
               alt="Legal Practices Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -150,7 +150,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_2_plxrd5.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1714097484/PCL-Labs/Frame_2_plxrd5.webp"
               alt="Legal Practices Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -162,7 +162,7 @@
         <div class="w-44 flex-none space-y-8 pt-32 sm:pt-0">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097484/Blawby/Frame_4_rttrb1.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1714097484/PCL-Labs/Frame_4_rttrb1.webp"
               alt="Legal Practices Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -172,7 +172,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714097483/Blawby/Frame_1_vfu7is.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1714097483/PCL-Labs/Frame_1_vfu7is.webp"
               alt="Legal Practices Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />

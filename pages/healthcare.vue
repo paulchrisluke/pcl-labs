@@ -3,7 +3,7 @@
     <HeroProduct>
       <template #image>
         <img
-          src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Dentech_Featured_bph9ld.webp"
+          src="https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Dentech_Featured_bph9ld.webp"
           alt="Healthcare Featured Image"
           class="object-cover object-center"
         />
@@ -128,7 +128,7 @@
         >
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_7_tzmcxg.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1715047482/PCL-Labs/Frame_7_tzmcxg.webp"
               alt="PCL Labs Healthcare Example 1"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -140,7 +140,7 @@
         <div class="mr-auto w-44 flex-none space-y-8 sm:mr-0 sm:pt-52 lg:pt-36">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_6_avvxbi.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1715047482/PCL-Labs/Frame_6_avvxbi.webp"
               alt="PCL Labs Healthcare Example 2"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -150,7 +150,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_9_ujs92n.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1715047482/PCL-Labs/Frame_9_ujs92n.webp"
               alt="PCL Labs Healthcare Example 3"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -162,7 +162,7 @@
         <div class="w-44 flex-none space-y-8 pt-32 sm:pt-0">
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047482/Blawby/Frame_10_rvdn60.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1715047482/PCL-Labs/Frame_10_rvdn60.webp"
               alt="PCL Labs Healthcare Example 4"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />
@@ -172,7 +172,7 @@
           </div>
           <div class="relative">
             <img
-              src="https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715047483/Blawby/Frame_8_yr67yz.webp"
+              src="https://res.cloudinary.com/pcl-labs/image/upload/v1715047483/PCL-Labs/Frame_8_yr67yz.webp"
               alt="PCL Labs Healthcare Example 5"
               class="aspect-[2/3] w-full rounded-xl bg-gray-900/5 object-cover shadow-lg"
             />

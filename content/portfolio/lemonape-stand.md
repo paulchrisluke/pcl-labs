@@ -1,8 +1,8 @@
 ---
 title: "LemonApe Stand"
 tags: ['Crypto', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789945/Blawby/Lemonape_Featured_gdlkgt.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791178/Blawby/Lemon_Ape_jmcsca.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Lemonape_Featured_gdlkgt.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791178/PCL-Labs/Lemon_Ape_jmcsca.webp"
 imageAlt: "Lemon Ape Stand Web and Marketing by PCL Labs"
 description: "Lemon Ape Stand, a gamified DeFi (Decentralized Finance) project built on the Ethereum blockchain, injects a dose of fun and strategy into the world of cryptocurrency. Our agency partnered with Lemon Ape Stand to develop a comprehensive solution that encompassed not only the core DeFi functionalities but also a captivating user experience."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -28,7 +28,7 @@ Lemon Ape Stand faced the challenge of differentiating itself in the crowded dec
 Lemon Ape Stand revolutionizes DeFi by introducing a gamified staking experience. Users can acquire Lemon Apes, adorable monkey NFTs (Non-Fungible Tokens), which act as the core staking mechanism. By strategically staking their Lemon Apes, users can generate yield on their holdings, adding a layer of engagement and strategic decision-making to the DeFi space. 
 
 This gamified approach extends beyond staking. We developed a custom web application built on Ethereum that allows users to participate in various in-app games. These games leverage the power of blockchain technology to ensure fair play and transparent outcomes, further enriching the user experience.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape1_edxbyt.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715633327/PCL-Labs/lemonape1_edxbyt.webp)
 
 ### A Visually Appealing and Engaging Brand Identity
 
@@ -36,7 +36,7 @@ To complement the innovative DeFi and gamified aspects of Lemon Ape Stand, we cr
 
 * **Compelling Video Production:** We produced captivating videos that introduced the Lemon Ape Stand concept, explained the gameplay mechanics, and showcased the project's potential.
 * **Creative Design & Branding:** A vibrant and playful brand identity was established, aligning perfectly with the lighthearted nature of the project. This identity encompassed the Lemon Ape Stand logo, color palette, and overall visual language.
-![image](https://res.cloudinary.com/image-gallery-pcl/image/upload/v1715633327/Blawby/lemonape2_rpuekk.webp)
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715633327/PCL-Labs/lemonape2_rpuekk.webp)
 * **Graphic Design & Illustration:** Eye-catching illustrations brought the Lemon Ape Stand universe to life, featuring the adorable Lemon Apes and the playful world they inhabit.
 
 ## Results

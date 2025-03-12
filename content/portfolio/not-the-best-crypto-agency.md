@@ -1,8 +1,8 @@
 ---
 title: "Not The Best Crypto Agency"
 tags: ['Crypto', 'Web Development', 'Marketing']
-image: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714789946/Blawby/Not_The_Best_Crypto_Agency_Feature_uzkyll.webp"
-imageThumbnail: "https://res.cloudinary.com/image-gallery-pcl/image/upload/v1714791179/Blawby/Phuntoken-1_qtwrie.webp"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789946/PCL-Labs/Not_The_Best_Crypto_Agency_Feature_uzkyll.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791179/PCL-Labs/Phuntoken-1_qtwrie.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"
 description: "Fiveable empowers high school students with engaging online courses to conquer their AP exams. Renowned for its innovative approach and personalized learning experience, Fiveable sought to optimize their Shopify Plus store to drive sales and student success. Our agency partnered with Fiveable to conduct a comprehensive Conversion Rate Optimization (CRO) audit, focusing on enhancing the user journey from homepage browsing to course selection and checkout."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
@@ -27,7 +27,7 @@ The burgeoning world of cryptocurrency was rife with ambitious projects, each vy
 **Not The Best Crypto Agency: A One-Stop Shop for Crypto Success**
 
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715087432/Blawby/Not_the_best_-_3by4_txteeh.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715087432/PCL-Labs/Not_the_best_-_3by4_txteeh.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
@@ -44,7 +44,7 @@ NTBCA provided a comprehensive suite of services designed to empower crypto proj
 -   **Web Development & Design with Award-Winning UI/UX:** We created user-friendly and visually stunning websites that not only informed but also guided users through the project with intuitive navigation and exceptional user experience.
 
 <video controls autoplay loop muted playsinline class="w-full">
-  <source src="https://res.cloudinary.com/image-gallery-pcl/video/upload/v1715778741/Blawby/PhunToken%20Memes.mp4" type="video/mp4">
+  <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1715778741/PCL-Labs/PhunToken%20Memes.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
