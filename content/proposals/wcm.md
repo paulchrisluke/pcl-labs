@@ -4,14 +4,31 @@ description: A modular, results-driven content and communication framework to bu
 keywords: on-chain trading, leveraged trading, DeFi, content strategy, community growth, HubSpot, social media, crypto marketing
 client: WCM
 date: 2025-05-20
-estimatedCost: $4,000–$7,000/month
+estimatedCost: $4,000–$8,000/month
 timeline: First content batch in 5 days, ongoing monthly
 ---
 
-# WCM Marketing & Social Media Proposal
-
 ## Executive Summary
+
 WCM is positioned to become the leading platform for on-chain leveraged trading, but currently lacks the consistent public content, strategic messaging, and community engagement required to build institutional trust and market visibility. This proposal delivers a modular, results-driven content and communication framework that scales with WCM's growth — with immediate impact.
+
+---
+
+## Package Summary: At-A-Glance Pricing & Deliverables
+
+| Service/Feature                     | 🟢 Baseline Package             | 🔵 Content + Visuals Package      | 🟣 Full-Service Add-On           |
+|------------------------------------|---------------------------------|-----------------------------------|---------------------------------|
+| **Monthly Investment**             | **$4,000/month**                | **$4,000–$8,000/month**          | **Custom Quote**                |
+| Twitter & Discord Management       | ✅ Daily                        | ✅ Daily                          | ✅ Enhanced                     |
+| Educational Threads                | ✅ Weekly                       | ✅ Weekly                         | ✅ Multiple weekly              |
+| Blog Posts                         | ✅ 1/month                      | ✅ 1/month                        | ✅ 2+/month                     |
+| HubSpot CRM/Email                  | ✅ Basic setup                  | ✅ Advanced setup                 | ✅ Full integration             |
+| Meme Content                       | ❌                              | ✅ 4-6/month                      | ✅ 8+/month                     |
+| Visual Explainers                  | ❌                              | ✅ 4-6/month                      | ✅ 8+/month                     |
+| Video Production                   | ❌                              | ✅ 1 video/month (1 min)          | ✅ Multiple/custom length       |
+| Bot Army (Social Amplification)    | ❌                              | ❌ (Add-on available)             | ✅ Included                     |
+| **Timeline**                       | First content batch in 5 days   | First content batch in 5 days    | Custom onboarding timeline      |
+| **Setup Fee**                      | None                           | None                             | None                           |
 
 ---
 
@@ -73,6 +90,23 @@ This proposal enables WCM to:
 
 ---
 
+## Detailed Service Comparison
+
+| Service Component                        | Baseline Package | Content + Visuals Package | Full-Service | A La Carte Price     |
+|-----------------------------------------|------------------|---------------------------|--------------|----------------------|
+| **Daily Twitter & Discord Posts**       | ✅               | ✅                        | ✅           | —                    |
+| **Weekly Educational Threads**          | ✅               | ✅                        | ✅           | —                    |
+| **Blog Post**                           | 1/month          | 1/month                   | 2+/month     | $500/post            |
+| **HubSpot CRM/Email Setup**             | ✅ Basic         | ✅ Advanced               | ✅ Full      | —                    |
+| **Meme Content**                        | ❌               | 4-6/month                 | 8+/month     | $150 each            |
+| **Visual Explainers**                   | ❌               | 4-6/month                 | 8+/month     | $200 each            |
+| **Video Production**                    | ❌               | 1/month (1 min)           | Custom       | $500/minute          |
+| **Bot Army Setup**                      | ❌               | ❌ (Add-on)               | ✅           | $2,000 flat          |
+| **Bot Army Maintenance**                | ❌               | ❌ (Add-on)               | ✅           | $800/month           |
+| **Monthly Investment**                  | **$4,000**       | **$4,000–$8,000**         | **Custom**    | **Varies by service** |
+
+---
+
 ## Package Options
 
 ### 🟢 **Baseline Package ($4,000/mo)**
@@ -82,11 +116,12 @@ This proposal enables WCM to:
 - HubSpot CRM, email flows, and dashboard setup
 - Product/community announcements
 
-### 🔵 **Content + Visuals Package ($6,000–$7,000/mo)**
+### 🔵 **Content + Visuals Package ($4,000–$8,000/mo)**
 - Everything in Baseline, plus:
   - 4–6 meme assets/month ($150 each)
   - 4–6 visual explainers/month ($200 each)
   - 1 video per month (up to 1 min, $500/minute)
+  - *See "Video Content Examples" in appendix for sample video types included.*
 
 ### 🟣 **Full-Service Add-On**
 - Additional custom media production as needed (long-form video, advanced motion, etc.)
@@ -101,7 +136,7 @@ This proposal enables WCM to:
 | Baseline Marketing Package         | Strategy, daily posts, threads, engagement, CRM/email   | $4,000/month    |
 | Visual Explainers (Each)           | Infographics, carousels via design partner              | $200/visual     |
 | Meme Content (Each)                | Custom memes via meme contributor                       | $150/meme       |
-| Short-Form Video (Per Minute)      | Fully produced, branded video content                   | $500/minute     |
+| Short-Form Video (Per Minute)      | Fully produced, branded video content (see examples in appendix)                   | $500/minute     |
 | Blog Post (Per Post)               | Long-form technical or educational piece                | $500/post       |
 | Bot Army Setup (One-Time)          | 20 verified aged accounts + VMs + activation support    | $2,000 flat     |
 | Bot Army Maintenance (Monthly)     | Engagement by meme team (2–4 hrs/wk) + infra upkeep     | $800/month      |
@@ -156,3 +191,39 @@ We're ready to begin onboarding and deliver a first batch of content within 5 da
 
 **Team Lead:** Paul Chris Luke  
 **Contact:** https://paulchrisluke.com  
+
+---
+
+## Appendix: Video Content Examples
+
+We offer a range of video content styles to support your marketing and educational goals. Here are some examples:
+
+- **1 minute video meme**  
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/XETqtK6qLQ8" title="1 minute video meme" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+  *A fast-paced, meme-driven video designed to capture attention and drive engagement in under 60 seconds.*
+
+- **2 minute video meme**  
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/nrGsB6zePrs" title="2 minute video meme" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+  *A longer meme-style video that blends humor and information for deeper engagement.*
+
+- **Hype video meme style**  
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/M6SkVyqIOhU" title="Hype video meme style" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+  *A high-energy, meme-inspired hype video to build excitement around launches or announcements.*
+
+- **Hype video traditional**  
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/WecXg-g3bLM" title="Hype video traditional" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+  *A cinematic, traditional hype video for major product or milestone announcements.*
+
+- **How to buy educational**  
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/BMKiV9IQjL8" title="How to buy educational" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+  *A step-by-step educational video guiding users through the buying process.*
+
+- **Traditional talking head**  
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/hvz-y0iCgs0" title="Traditional talking head" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+  
+  *A classic talking-head format for direct communication, updates, or thought leadership.*
