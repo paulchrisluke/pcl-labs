@@ -56,4 +56,5 @@ export default defineNuxtConfig({
   seo: {
     redirectToCanonicalSiteUrl: true
   },
+  ssr: true,
 })
