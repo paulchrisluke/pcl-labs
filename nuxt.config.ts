@@ -57,4 +57,12 @@ export default defineNuxtConfig({
     redirectToCanonicalSiteUrl: true
   },
   ssr: true,
+  nitro: {
+    prerender: {
+      routes: [
+        '/proposals/wcm',
+        // Add more proposal slugs here as needed
+      ]
+    }
+  }
 })
