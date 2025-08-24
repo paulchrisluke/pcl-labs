@@ -44,12 +44,13 @@
 import { useRoute, useAsyncData } from 'nuxt/app'
 
 const route = useRoute()
-const { path } = route
+// Remove leading slash and use the path for content querying
+const contentPath = route.path.replace(/^\//, '')
 
 // Fetch the markdown content based on the slug using queryContent
-const { data: blog } = await useAsyncData(`blog-${path}`, async () => {
+const { data: blog } = await useAsyncData(`blog-${contentPath}`, async () => {
   try {
-    const result = await queryContent(path).findOne()
+    const result = await queryContent(contentPath).findOne()
     
     // Check if blog post exists, if not throw 404 error
     if (!result) {
