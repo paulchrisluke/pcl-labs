@@ -1,7 +1,7 @@
-import { Environment, TwitchTokenResponse } from './types';
-import { handleScheduled } from './services/scheduler';
-import { handleWebhook } from './services/webhooks';
-import { handleGitHubRequest } from './routes/github';
+import { Environment, TwitchTokenResponse } from './types/index.js';
+import { handleScheduled } from './services/scheduler.js';
+import { handleWebhook } from './services/webhooks.js';
+import { handleGitHubRequest } from './routes/github.js';
 
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
@@ -308,7 +308,7 @@ export default {
             });
 
             const batchResults = await Promise.all(batchPromises);
-            clips.push(...batchResults.filter(clip => clip !== null));
+            clips.push(...batchResults.filter((clip: any) => clip !== null));
           }
 
           // Add pagination info to response

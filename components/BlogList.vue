@@ -35,7 +35,7 @@
           </h3>
           <p class="mt-1 text-sm text-gray-500">{{ post.tags?.[0] || '' }}</p>
           <p v-if="post.date" class="mt-1 text-xs text-gray-400">
-            {{ new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) }}
+            {{ formatDate(post.date) }}
           </p>
         </nuxt-link>
       </div>
@@ -70,6 +70,18 @@ const displayedPosts = computed(() => {
 })
 
 const showSeeAllLink = computed(() => {
-  return props.blogData.length > (props.limit || Infinity);
+  return props.blogData.length > (props.limit ?? Infinity);
 });
+
+const dateFmt = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+const formatDate = (value) => {
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : dateFmt.format(d);
+};
 </script>

@@ -1,10 +1,10 @@
 ---
-title: "US Express"
+title: "U.S. Xpress"
 tags: ['Logistics', 'Web Development', 'Marketing']
 category: "logistics"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789947/PCL-Labs/UX_Xpress_Featured_bml99w.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791182/PCL-Labs/US_Xpress_qfenwg.webp"
-imageAlt: "US Express Web and Marketing by PCL Labs"
+imageAlt: "U.S. Xpress mobile recruiting case study by PCL Labs"
 description: "Across all industries, competition for mobile customer conversions is fiercer than ever. Landing page load speed is a critical factor in winning the battle for conversions. Our challenge was to create a competitive edge for our clients, dramatically increasing their mobile loading speeds and boosting conversions."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
 
@@ -17,18 +17,17 @@ Due to the nature of their jobs, truckers are in constant motion and the vast ma
 
 ### Technologies Used
 
-* **Web Development:** AMP HTML & Wordpress
+* **Web Development:** AMP HTML & WordPress
 * **Design & UI/UX:** Figma & Adobe
-* **Advertising:** Google, Meta, Craiglist, Indeed, Twitter, Linkedin(potential)
+* **Advertising:** Google, Meta, Craigslist, Indeed, X (Twitter), LinkedIn (potential)
 * **Content Marketing:** Organic Social Media & Blogging (potential)
-
 ## Solutions
 
 As revisions to recruiting creative and media became less effective and failed to generate substantial hiring gains, the U.S. Xpress recruiting team decided to see whether smarter—and faster—technology was the answer. They theorized that the speed and user experience benefits of AMP could open this bottleneck and make a significant difference in conversion rates and cost-per-application.
 
 We ran a 20-day test on one of U.S. Xpress’ key recruiting websites. Over the course of the test, a $10,641 spend generated a total of 35,470 clicks and 33,032 landing page visits—equally split between a cached, AMP-based landing page and an identical, but non-AMP landing page.
 
-The difference in load speed was immediately apparent. While the non-AMP page frequently struggled to load—in same cases taking more than a minute—the AMP page loaded almost instantaneously, a direct result of the AMP runtime and loading from an AMP cache.
+The difference in load speed was immediately apparent. While the non-AMP page frequently struggled to load—in some cases taking more than a minute—the AMP page loaded almost instantaneously, a direct result of the AMP runtime and loading from an AMP cache.
 
 ![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715793132/PCL-Labs/use_express_phones_niodyh.webp)
 

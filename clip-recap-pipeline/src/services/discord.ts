@@ -1,4 +1,4 @@
-import { Environment, JudgeResult } from '../types';
+import { Environment, JudgeResult } from '../types/index.js';
 
 interface DiscordEmbed {
   title: string;
@@ -91,23 +91,46 @@ export class DiscordService {
       embeds: [embed]
     };
 
-    const response = await fetch(
-      `https://discord.com/api/v10/channels/${this.env.DISCORD_REVIEW_CHANNEL_ID}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bot ${this.env.DISCORD_BOT_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(message),
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const doPost = async () =>
+        fetch(
+          `https://discord.com/api/v10/channels/${this.env.DISCORD_REVIEW_CHANNEL_ID}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bot ${this.env.DISCORD_BOT_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(message),
+            signal: controller.signal,
+          }
+        );
+
+      let response = await doPost();
+      if (response.status === 429) {
+        const { retry_after } = await response.json().catch(() => ({ retry_after: 1 })) as { retry_after: number };
+        const ms = Math.ceil((retry_after ?? 1) * 1000);
+        console.warn(`Discord rate limited. Retrying after ${ms}ms...`);
+        await new Promise((r) => setTimeout(r, ms));
+        response = await doPost();
       }
-    );
 
-    if (!response.ok) {
-      console.error(`Failed to send Discord message: ${response.statusText}`);
-      throw new Error(`Discord API error: ${response.statusText}`);
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => '');
+        console.error(`Failed to send Discord message: ${response.status} ${response.statusText} ${errBody}`);
+        throw new Error(`Discord API error: ${response.status} ${response.statusText}`);
+      }
+
+      const resJson = await response.json().catch(() => null) as { id?: string } | null;
+      console.log(
+        `Discord notification sent successfully${
+          resJson?.id ? ` (message id: ${resJson.id})` : ''
+        }`
+      );
+    } finally {
+      clearTimeout(timeout);
     }
-
-    console.log('Discord notification sent successfully');
   }
 }

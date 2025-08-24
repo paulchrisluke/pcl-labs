@@ -1,6 +1,20 @@
 import { Octokit } from '@octokit/rest';
 import reposConfig from '../config/repos.json';
 
+// Type for GitHub pull request with optional stats
+interface GitHubPullRequest {
+  number: number;
+  title: string;
+  state: string;
+  user?: { login: string } | null;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  additions?: number;
+  deletions?: number;
+  changed_files?: number;
+}
+
 interface Repository {
   name: string;
   owner: string;
@@ -169,7 +183,7 @@ export class GitHubService {
       per_page: this.config.settings.maxPRsPerRepo,
     });
 
-    return prs
+    return (prs as GitHubPullRequest[])
       .filter(pr => new Date(pr.updated_at) >= since)
       .map(pr => ({
         number: pr.number,
@@ -179,9 +193,9 @@ export class GitHubService {
         createdAt: pr.created_at,
         updatedAt: pr.updated_at,
         url: pr.html_url,
-        additions: (pr as any).additions || 0,
-        deletions: (pr as any).deletions || 0,
-        changedFiles: (pr as any).changed_files || 0,
+        additions: pr.additions ?? 0,
+        deletions: pr.deletions ?? 0,
+        changedFiles: pr.changed_files ?? 0,
       }));
   }
 
@@ -223,7 +237,7 @@ export class GitHubService {
     });
 
     return releases
-      .filter(release => new Date(release.published_at || '') >= since)
+      .filter(release => release.published_at && new Date(release.published_at) >= since)
       .map(release => ({
         id: release.id,
         name: release.name || release.tag_name,
@@ -236,7 +250,14 @@ export class GitHubService {
 
   private shouldIncludeCommit(message: string): boolean {
     const excludePatterns = this.config.settings.filterPatterns.excludePatterns;
-    return !excludePatterns.some((pattern: string) => new RegExp(pattern).test(message));
+    return !excludePatterns.some((pattern: string) => {
+      try {
+        return new RegExp(pattern).test(message);
+      } catch (error) {
+        console.error(`Invalid regex pattern: ${pattern}`, error);
+        return false;
+      }
+    });
   }
 
   private getTopContributors(commits: CommitInfo[]): string[] {

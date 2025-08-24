@@ -1,6 +1,6 @@
-import { Environment, TwitchClip, Transcript, BlogPost, JudgeResult, ClipSection } from '../types';
-import { generateJWT } from '../utils/jwt';
-import { AIService } from '../utils/ai';
+import { Environment, TwitchClip, Transcript, BlogPost, JudgeResult, ClipSection } from '../types/index.js';
+import { generateJWT } from '../utils/jwt.js';
+import { AIService } from '../utils/ai.js';
 
 export class ContentService {
   private aiService: AIService;
@@ -33,7 +33,7 @@ export class ContentService {
 
   private scoreClip(clip: TwitchClip, transcript?: Transcript): number {
     let score = 0;
-    const text = transcript?.segments?.map(s => s.text).join(' ').toLowerCase() || '';
+    const text = transcript?.segments?.map((s: any) => s.text).join(' ').toLowerCase() || '';
 
     // Dev-focused scoring
     if (text.includes('test') && (text.includes('pass') || text.includes('green'))) score += 5;
@@ -79,7 +79,7 @@ export class ContentService {
   }
 
   private async generateClipSection(clip: TwitchClip, transcript?: Transcript): Promise<ClipSection> {
-    const text = transcript?.segments?.map(s => s.text).join(' ') || '';
+    const text = transcript?.segments?.map((s: any) => s.text).join(' ') || '';
     
     // Generate section using Workers AI
     const prompt = `Create a blog section for this Twitch clip:
@@ -102,11 +102,24 @@ Format as JSON:
   "repo": "org/repo if mentioned"
 }`;
 
-    const result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
-      prompt,
-      max_tokens: 500,
-    });
-
+    // Replace the direct call with a protected version that returns a fallback on error
+    let result;
+    try {
+      result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
+        prompt,
+        max_tokens: 500,
+      });
+    } catch (error) {
+      console.error('AI service call failed:', error);
+      // Return fallback section immediately
+      return {
+        clip_id: clip.id,
+        h2: clip.title,
+        bullets: ['Development progress', 'Live coding session'],
+        paragraph: 'Interesting development moment captured during the stream.',
+        clip_url: clip.embed_url,
+      };
+    }
     try {
       const parsed = JSON.parse(result.response);
       return {
@@ -141,15 +154,14 @@ Format as JSON:
   }
 
   private async generateTitle(clips: TwitchClip[], sections: ClipSection[]): Promise<string> {
-    const topClip = clips[0];
-    const prompt = `Generate a blog post title for a daily development recap. Include the date and reference this clip: "${topClip.title}". Keep it under 80 characters.`;
+    const prompt = `Generate a compelling title for a daily development recap blog post with ${clips.length} clips. Keep it under 60 characters and make it engaging for developers.`;
 
     const result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
       prompt,
       max_tokens: 100,
     });
 
-    return result.response || `Daily Dev Recap: ${new Date().toISOString().split('T')[0]}`;
+    return result.response || `Daily Dev Recap - ${clips.length} Key Moments`;
   }
 
   async createPR(blogPost: BlogPost): Promise<any> {
@@ -159,20 +171,25 @@ Format as JSON:
     const branchName = `auto/daily-recap-${date}`;
     const filePath = `content/blog/development/${date}-daily-dev-recap.mdx`;
     
-    // Get GitHub installation token
-    const token = await this.getGitHubToken();
-    
-    // Create branch
-    await this.createBranch(token, branchName);
-    
-    // Create MDX file
-    const mdxContent = this.generateMDX(blogPost);
-    await this.createFile(token, branchName, filePath, mdxContent);
-    
-    // Create PR
-    const pr = await this.createPullRequest(token, branchName, blogPost);
-    
-    return pr;
+    try {
+      // Get GitHub installation token
+      const token = await this.getGitHubToken();
+      
+      // Create branch
+      await this.createBranch(token, branchName);
+      
+      // Create MDX file
+      const mdxContent = this.generateMDX(blogPost);
+      await this.createFile(token, branchName, filePath, mdxContent);
+      
+      // Create PR
+      const pr = await this.createPullRequest(token, branchName, blogPost);
+      
+      return pr;
+    } catch (error) {
+      console.error('Failed to create PR:', error);
+      throw new Error(`PR creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async getGitHubToken(): Promise<string> {
@@ -334,9 +351,16 @@ Format as JSON:
   }
 
   private generatePRBody(blogPost: BlogPost): string {
-    return `## Daily Dev Recap
+    const escapeYaml = (str: string) => {
+      // Handle backslashes, quotes, newlines, and carriage returns
+      return str
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+    };
 
-**Date**: ${blogPost.date}
+    return `**Date**: ${blogPost.date}
 **Clips**: ${blogPost.clip_count}
 **Status**: Ready for review
 
@@ -344,7 +368,7 @@ Format as JSON:
 ${blogPost.intro}
 
 ### Clips Included
-${blogPost.sections.map(s => `- ${s.h2}`).join('\n')}
+${blogPost.sections.map((s: any) => `- ${s.h2}`).join('\n')}
 
 ---
 *Auto-generated by Twitch Clip Recap Pipeline*`;
@@ -367,10 +391,10 @@ draft: false
 
     const content = `${blogPost.intro}
 
-${blogPost.sections.map(section => `
+${blogPost.sections.map((section: any) => `
 ## ${section.h2}
 
-${section.bullets.map(bullet => `- ${bullet}`).join('\n')}
+${section.bullets.map((bullet: any) => `- ${bullet}`).join('\n')}
 
 ${section.paragraph}
 
@@ -399,7 +423,7 @@ ${section.paragraph}
 Title: ${blogPost.title}
 Intro: ${blogPost.intro}
 Sections: ${blogPost.sections.length}
-Content: ${blogPost.sections.map(s => s.paragraph).join(' ')}
+Content: ${blogPost.sections.map((s: any) => s.paragraph).join(' ')}
 
 Rate on a scale of 0-100 for each category:
 - Coherence (0-20): Each section stands alone
@@ -503,7 +527,7 @@ Format as JSON:
               ...Object.entries(judgeResult.per_axis).map(([k, v]) => `- ${k}: ${v}`),
               '',
               '**Reasons:**',
-              ...judgeResult.reasons.map(r => `- ${r}`),
+              ...judgeResult.reasons.map((r: any) => `- ${r}`),
               '',
               `**Action**: ${judgeResult.action}`,
             ].join('\n'),
