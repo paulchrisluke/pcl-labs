@@ -23,8 +23,12 @@ useSeoMeta({
   twitterDescription: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development. Expert advice from PCL Labs to help grow your business.',
   twitterImage: 'https://paulchrisluke.com/PCL-about-header.webp',
   twitterImageAlt: 'PCL Labs Blog - Digital Marketing and Web Development Insights',
-  // Canonical
-  canonical: 'https://paulchrisluke.com/blog'
+})
+
+useHead({
+  link: [
+    { rel: 'canonical', href: 'https://paulchrisluke.com/blog' }
+  ]
 })
 
 // Fetch blog content using queryContent composable

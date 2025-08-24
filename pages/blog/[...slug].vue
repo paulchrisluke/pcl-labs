@@ -17,9 +17,9 @@
           {{ blog?.description || 'Blog post description' }}
         </p>
         <!-- Date -->
-        <p v-if="blog?.date" class="mx-auto max-w-2xl mt-4 text-sm leading-8 text-gray-400">
-          {{ new Date(blog.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) }}
-        </p>
+        <time v-if="blog?.date" :datetime="blog.date" class="mx-auto max-w-2xl mt-4 text-sm leading-8 text-gray-400 block">
+          {{ publishedDate }}
+        </time>
       </div>
 
       <!-- Image with Gradient -->
@@ -41,14 +41,15 @@
 </template>
 
 <script setup>
-import { useRoute, useAsyncData } from 'nuxt/app'
+import { useRoute, useAsyncData, createError, watch } from 'nuxt/app'
+import { computed } from 'vue'
 
 const route = useRoute()
-// Remove leading slash and use the path for content querying
-const contentPath = route.path.replace(/^\//, '')
+// Use route.path directly for content querying (don't strip leading slash)
+const contentPath = route.path
 
 // Fetch the markdown content based on the slug using queryContent
-const { data: blog } = await useAsyncData(`blog-${contentPath}`, async () => {
+const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async () => {
   try {
     const result = await queryContent(contentPath).findOne()
     
@@ -74,6 +75,30 @@ const { data: blog } = await useAsyncData(`blog-${contentPath}`, async () => {
       statusMessage: 'Error loading blog post' 
     })
   }
+}, {
+  // Make the key reactive to route changes
+  key: `blog-${route.path}`
+})
+
+// Watch for route changes and refresh the data
+watch(() => route.path, () => {
+  refresh()
+})
+
+// Computed property for deterministic date formatting
+const publishedDate = computed(() => {
+  if (!blog.value?.date) return ''
+  
+  // Ensure the date string is treated as UTC by appending "Z" when missing
+  const dateString = blog.value.date.endsWith('Z') ? blog.value.date : `${blog.value.date}Z`
+  
+  // Format with Intl.DateTimeFormat for deterministic output
+  return new Intl.DateTimeFormat('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric', 
+    timeZone: 'UTC' 
+  }).format(new Date(dateString))
 })
 
 useHead({
