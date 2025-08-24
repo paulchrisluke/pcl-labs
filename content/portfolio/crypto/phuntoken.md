@@ -1,6 +1,7 @@
 ---
 title: "Phuntoken"
 tags: ['Crypto', 'Web Development', 'Marketing']
+category: "crypto"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789946/PCL-Labs/PhunToken_Featured_xnrc2t.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791180/PCL-Labs/Phuntoken_ut3wry.webp"
 imageAlt: "Phuntoken Web and Marketing by PCL Labs"

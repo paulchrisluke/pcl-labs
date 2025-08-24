@@ -1,6 +1,7 @@
 ---
 title: "YearlyCo"
 tags: ['Shopify', 'Conversion Rate Optimization']
+category: "education"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789950/PCL-Labs/Yearly_Featured_um91yo.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791185/PCL-Labs/Yearly_bxc3un.webp"
 imageAlt: "Yearlyco Shopify CRO by PCL Labs"

@@ -1,5 +1,6 @@
 ---
 title: "Digital Marketing Guide for Legal Practices in 2024"
+category: "marketing"
 tags: ['Legal Marketing', 'Digital Marketing', 'SEO']
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/legal-digital-marketing.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/legal-marketing-thumbnail.webp"

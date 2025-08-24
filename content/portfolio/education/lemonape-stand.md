@@ -1,6 +1,7 @@
 ---
 title: "LemonApe Stand"
 tags: ['Crypto', 'Web Development', 'Marketing']
+category: "education"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Lemonape_Featured_gdlkgt.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791178/PCL-Labs/Lemon_Ape_jmcsca.webp"
 imageAlt: "Lemon Ape Stand Web and Marketing by PCL Labs"

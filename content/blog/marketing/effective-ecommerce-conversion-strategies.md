@@ -1,5 +1,6 @@
 ---
 title: "Effective E-commerce Conversion Strategies for 2024"
+category: "marketing"
 tags: ['E-commerce', 'Conversion Optimization', 'Digital Marketing']
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/ecommerce-conversion-strategies.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/ecommerce-thumbnail.webp"
