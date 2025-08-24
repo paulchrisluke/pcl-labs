@@ -114,8 +114,8 @@
     Routing, slugs, and pages.
     - Pages: `pages/index.vue`, `pages/blog/[slug].vue`, `pages/portfolio/[slug].vue`, `pages/contact.vue`, `pages/404.vue`.
     - Generate static routes for all blog/portfolio entries in `nuxt.config.ts` via `routeRules`/`prerender`.
-    - Use clean slugs (kebab-case). Never include dates in URLs (dates remain in front-matter).
-
+    - Use clean slugs (kebab-case). Avoid dates in URLs for evergreen content.
+    - Exception: time-series posts (e.g., daily or weekly recaps) may include dates in the slug for uniqueness and clarity.
   globs:
     - "pages/**"
     - "server/routes/**"
