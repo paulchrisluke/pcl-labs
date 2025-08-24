@@ -1,4 +1,4 @@
-import { Environment } from '../types';
+import { Environment } from '../types/index.js';
 
 export async function handleWebhook(
   request: Request,
@@ -6,27 +6,42 @@ export async function handleWebhook(
   ctx: ExecutionContext
 ): Promise<Response> {
   try {
-    const body = await request.text();
+    // Read raw bytes to ensure HMAC matches GitHub's calculation
+    const bodyBytes = await request.arrayBuffer();
     const signature = request.headers.get('x-hub-signature-256');
-    
+    if (!env.GITHUB_WEBHOOK_SECRET) {
+      console.error('Missing GITHUB_WEBHOOK_SECRET');
+      return new Response('Internal Server Error', { status: 500 });
+    }
+
     // Verify webhook signature
-    if (!(await verifyWebhookSignature(body, signature, env.GITHUB_WEBHOOK_SECRET))) {
+    if (!(await verifyWebhookSignature(bodyBytes, signature, env.GITHUB_WEBHOOK_SECRET))) {
       return new Response('Unauthorized', { status: 401 });
     }
-    
+
     const event = request.headers.get('x-github-event');
-    const payload = JSON.parse(body);
-    
-    console.log(`Received GitHub webhook: ${event}`);
-    
+    if (!event) {
+      return new Response('Bad Request: Missing x-github-event', { status: 400 });
+    }
+    let payload: any;
+    try {
+      payload = JSON.parse(new TextDecoder().decode(bodyBytes));
+    } catch (e) {
+      console.error('Invalid JSON payload', e);
+      return new Response('Bad Request: Invalid JSON', { status: 400 });
+    }
+
+    const delivery = request.headers.get('x-github-delivery');
+    console.log(`Received GitHub webhook: ${event} (delivery: ${delivery})`);
+
     switch (event) {
       case 'pull_request':
-        return handlePullRequestEvent(payload, env);
+        return await handlePullRequestEvent(payload, env);
       case 'check_run':
-        return handleCheckRunEvent(payload, env);
+        return await handleCheckRunEvent(payload, env);
       default:
         console.log(`Unhandled event type: ${event}`);
-        return new Response('OK', { status: 200 });
+        return new Response(null, { status: 204 });
     }
   } catch (error) {
     console.error('Webhook handler error:', error);
@@ -34,43 +49,45 @@ export async function handleWebhook(
   }
 }
 
-async function verifyWebhookSignature(body: string, signature: string | null, secret: string): Promise<boolean> {
+async function verifyWebhookSignature(
+  body: ArrayBuffer,
+  signature: string | null,
+  secret: string
+): Promise<boolean> {
   try {
     // Reject null or malformed signatures
     if (!signature || !signature.startsWith('sha256=')) {
       return false;
     }
-    
+
     // Extract the signature value (remove 'sha256=' prefix)
     const signatureValue = signature.substring(7);
-    
+
     // Validate signature format (should be 64 hex characters)
     if (!/^[a-f0-9]{64}$/i.test(signatureValue)) {
       return false;
     }
-    
-    // Convert secret to Uint8Array
+
+    // Convert secret to key
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
-    const bodyData = encoder.encode(body);
-    
-    // Import key for HMAC
+
+    // Import key for HMAC verification
     const key = await crypto.subtle.importKey(
       'raw',
       keyData,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
-      ['sign']
+      ['verify']
     );
-    
-    // Compute HMAC-SHA256 digest
-    const signatureBuffer = await crypto.subtle.sign('HMAC', key, bodyData);
-    const computedDigest = Array.from(new Uint8Array(signatureBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Simple string comparison (timing-safe comparison not available in Web Crypto API)
-    return signatureValue === computedDigest;
+
+    // Decode provided hex signature into bytes
+    const sigBytes = new Uint8Array(
+      signatureValue.match(/.{1,2}/g)!.map(h => parseInt(h, 16))
+    );
+
+    // Timing-safe HMAC-SHA256 verification on raw bytes
+    return crypto.subtle.verify('HMAC', key, sigBytes, body);
   } catch (error) {
     // Return false on any parsing/verification error
     console.error('Webhook signature verification error:', error);

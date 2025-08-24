@@ -10,11 +10,25 @@ export async function generateJWT(privateKey: string, appId: string): Promise<st
     : privateKey;
 
   const toBase64Url = (input: string | Uint8Array): string => {
-    const bytes = typeof input === 'string' 
+    const bytes = typeof input === 'string'
       ? new TextEncoder().encode(input)
       : input;
-    
-    return btoa(String.fromCharCode(...bytes))
+
+    // Prefer Node's Buffer if available; fallback to browser btoa
+    const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+    const BufferCtor = g.Buffer;
+    if (BufferCtor) {
+      // Node.js path
+      return BufferCtor.from(bytes)
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '');
+    }
+    // Browser path
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/g, '');
@@ -41,21 +55,31 @@ export async function generateJWT(privateKey: string, appId: string): Promise<st
     .replace(pemFooter, '')
     .replace(/\s/g, '');
   
-  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
-  
-  const cryptoKey = await crypto.subtle.importKey(
+  const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+  const BufferCtor = g.Buffer;
+  const binaryKey = BufferCtor
+    ? new Uint8Array(BufferCtor.from(pemContents, 'base64'))
+    : Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+
+  // Get crypto.subtle - Cloudflare Workers environment
+  const cryptoSubtle = (globalThis as any).crypto?.subtle;
+  if (!cryptoSubtle) {
+    throw new Error('Web Crypto API not available');
+  }
+
+  const cryptoKey = await cryptoSubtle.importKey(
     'pkcs8',
     binaryKey,
     {
       name: 'RSASSA-PKCS1-v1_5',
-      hash: 'SHA-256',
+      hash: { name: 'SHA-256' },
     },
     false,
     ['sign']
   );
 
   // Sign the JWT
-  const signature = await crypto.subtle.sign(
+  const signature = await cryptoSubtle.sign(
     'RSASSA-PKCS1-v1_5',
     cryptoKey,
     new TextEncoder().encode(unsigned)
