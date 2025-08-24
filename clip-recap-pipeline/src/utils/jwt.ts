@@ -1,8 +1,6 @@
-import { createSign } from 'crypto';
-
-// Simple JWT generation for GitHub App authentication
+// Simple JWT generation for GitHub App authentication using Web Crypto API
 // Note: In production, you'd use a proper JWT library
-export function generateJWT(privateKey: string, appId: string): string {
+export async function generateJWT(privateKey: string, appId: string): Promise<string> {
   if (!privateKey) throw new Error('generateJWT: privateKey is required');
   if (!appId) throw new Error('generateJWT: appId is required');
 
@@ -11,12 +9,16 @@ export function generateJWT(privateKey: string, appId: string): string {
     ? privateKey.replace(/\\n/g, '\n')
     : privateKey;
 
-  const toBase64Url = (input: string | Buffer): string =>
-    (Buffer.isBuffer(input) ? input : Buffer.from(input, 'utf8'))
-      .toString('base64')
+  const toBase64Url = (input: string | Uint8Array): string => {
+    const bytes = typeof input === 'string' 
+      ? new TextEncoder().encode(input)
+      : input;
+    
+    return btoa(String.fromCharCode(...bytes))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/g, '');
+  };
 
   // Header
   const header = { alg: 'RS256', typ: 'JWT' } as const;
@@ -31,10 +33,33 @@ export function generateJWT(privateKey: string, appId: string): string {
   const encodedPayload = toBase64Url(JSON.stringify(payload));
   const unsigned = `${encodedHeader}.${encodedPayload}`;
 
-  const signer = createSign('RSA-SHA256');
-  signer.update(unsigned);
-  signer.end();
-  const signature = signer.sign(key); // PKCS#1 v1.5 by default
+  // Convert PEM private key to CryptoKey
+  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemFooter = '-----END PRIVATE KEY-----';
+  const pemContents = key
+    .replace(pemHeader, '')
+    .replace(pemFooter, '')
+    .replace(/\s/g, '');
+  
+  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign']
+  );
 
-  return `${unsigned}.${toBase64Url(signature)}`;
+  // Sign the JWT
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(unsigned)
+  );
+
+  return `${unsigned}.${toBase64Url(new Uint8Array(signature))}`;
 }
