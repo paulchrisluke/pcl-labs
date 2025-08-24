@@ -133,11 +133,11 @@
 **Steps:**
 
 1. **List Clips** (Twitch Helix `GET /helix/clips?broadcaster_id=...&started_at=...&ended_at=...`)
-
    * Keep: `id`, `title`, `url`, `duration`, `created_at`, `view_count`, `broadcaster_id`.
-   * De‑dupe by near‑time window + similar titles.
+   * Paginate using `pagination.cursor` until exhaustion; respect Helix rate limits and add retries with jitter.
+   * Use UTC for `started_at`/`ended_at` boundaries; widen by ±2m to avoid edge losses.
+   * De-dupe by near-time window + similar titles.
 2. **Transcribe** each clip with Whisper
-
    * If `duration > 90s`, chunk (Cloudflare tutorial pattern). Save transcript JSON to R2.
 3. **Score & select** (dev-stream rules)
 
