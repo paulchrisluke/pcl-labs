@@ -15,16 +15,21 @@ export default {
     if (url.pathname === '/validate') {
       try {
         console.log('🔍 Validating Twitch credentials...');
-        console.log('Client ID:', env.TWITCH_CLIENT_ID);
-        console.log('Client Secret (first 4 chars):', env.TWITCH_CLIENT_SECRET?.substring(0, 4) + '...');
+        console.log('🔍 Validating Twitch credentials...');
+        console.log('Validating credentials for Client ID length:', env.TWITCH_CLIENT_ID?.length || 0);
         
         // Step 1: Get access token
+        const formData = new URLSearchParams();
+        formData.append('client_id', env.TWITCH_CLIENT_ID);
+        formData.append('client_secret', env.TWITCH_CLIENT_SECRET);
+        formData.append('grant_type', 'client_credentials');
+
         const tokenResponse = await fetch('https://id.twitch.tv/oauth2/token', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `client_id=${env.TWITCH_CLIENT_ID}&client_secret=${env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
+          body: formData.toString(),
         });
 
         console.log('Token response status:', tokenResponse.status);
@@ -32,8 +37,9 @@ export default {
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
           console.error('Token response error:', errorText);
-          return new Response(JSON.stringify({
-            success: false,
+            error: `Token request failed: ${tokenResponse.status} - ${errorText}`,
+            client_id_length: env.TWITCH_CLIENT_ID?.length || 0,
+            client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0,
             error: `Token request failed: ${tokenResponse.status} - ${errorText}`,
             client_id_length: env.TWITCH_CLIENT_ID?.length || 0,
             client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0,
@@ -150,8 +156,31 @@ export default {
               }))
             }), {
               status: 200,
-              headers: { 'Content-Type': 'application/json' }
-            });
+const body = await request.json() as { clips?: any[] };
+const clipsToStore = body.clips || [];
+
+if (clipsToStore.length === 0) {
+  return new Response(JSON.stringify({
+    success: false,
+    error: 'No clips provided to store'
+  }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// Validate clip data structure
+for (const clip of clipsToStore) {
+  if (!clip.id || typeof clip.id !== 'string') {
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Each clip must have a valid id'
+    }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
 
           case 'POST':
             // Store clips data to R2
@@ -249,13 +278,25 @@ export default {
         const clipId = url.searchParams.get('id');
         
         if (clipId) {
-          // Get specific clip
-          console.log(`📖 Reading stored clip: ${clipId}`);
-          const key = `clips/${clipId}.json`;
-          const clipObject = await env.R2_BUCKET.get(key);
-          
-          if (!clipObject) {
-            return new Response(JSON.stringify({
+          // Limit the number of clips to prevent performance issues
+          const MAX_CLIPS = 100;
+          const objectsToFetch = list.objects.slice(0, MAX_CLIPS);
+
+          // Fetch clips in parallel with batching
+          const batchSize = 10;
+          for (let i = 0; i < objectsToFetch.length; i += batchSize) {
+            const batch = objectsToFetch.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (object) => {
+              const clipObject = await env.R2_BUCKET.get(object.key);
+              return clipObject ? clipObject.json() : null;
+            });
+
+            const batchResults = await Promise.all(batchPromises);
+            clips.push(...batchResults.filter(clip => clip !== null));
+          }
+
+          // Add pagination info to response
+          const hasMore = list.objects.length > MAX_CLIPS;
               success: false,
               error: 'Clip not found'
             }), {

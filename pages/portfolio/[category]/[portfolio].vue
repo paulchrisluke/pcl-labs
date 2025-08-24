@@ -2,10 +2,10 @@
   <div class="bg-gray-900 px-6 pt-32 lg:px-8">
     <article class="mx-auto max-w-7xl">
       <!-- Tags -->
-      <div v-if="portfolio?.tags" class="flex justify-center divide-dotted divide-x-2 space-x-2 flex-wrap">
-        <h2 v-for="tag in portfolio.tags" :key="tag" class="text-base font-semibold leading-7 text-indigo-400 pl-2">
+      <div v-if="portfolio?.tags" class="flex justify-center gap-4 flex-wrap">
+        <span v-for="tag in portfolio.tags" :key="tag" class="text-base font-semibold leading-7 text-indigo-400 px-3 py-1 rounded-full border border-indigo-400/30">
           {{ tag }}
-        </h2>
+        </span>
       </div>
 
       <!-- Title and Description -->

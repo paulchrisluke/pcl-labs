@@ -1,7 +1,12 @@
 import { Env, TwitchClip, TwitchTokenResponse, Transcript } from '../types';
+import { AIService } from '../utils/ai';
 
 export class TwitchService {
-  constructor(private env: Env) {}
+  private aiService: AIService;
+
+  constructor(private env: Env) {
+    this.aiService = new AIService(env);
+  }
 
   private async getAccessToken(): Promise<string> {
     const response = await fetch('https://id.twitch.tv/oauth2/token', {
@@ -188,7 +193,7 @@ export class TwitchService {
 
   private async transcribeAudio(audioBuffer: ArrayBuffer, clipId: string): Promise<Transcript> {
     // Use Workers AI Whisper for transcription
-    const result = await this.env.ai.run('@cf/openai/whisper-large-v3-turbo', {
+    const result = await this.aiService.callWithRetry('@cf/openai/whisper-large-v3-turbo', {
       audio: audioBuffer,
     });
 

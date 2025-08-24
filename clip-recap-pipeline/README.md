@@ -36,10 +36,7 @@ This pipeline automatically:
 - **Local**: `http://localhost:8787` (wrangler dev default)
 
 ### Twitch OAuth Redirect URLs
-Use these URLs in your Twitch Developer Application:
-```
-https://clip-recap-pipeline.paulchrisluke.workers.dev,https://clip-recap-pipeline-staging.paulchrisluke.workers.dev,http://localhost:8787
-```
+Use these exact redirect URIs in your Twitch Developer Application (one per line, must match the redirect_uri used in code):
 
 ## Setup
 
@@ -97,11 +94,11 @@ npm run deploy
 
 ### Cron Schedule
 
-The pipeline runs daily at 09:00 ICT (Asia/Bangkok). Modify in `wrangler.toml`:
+The pipeline runs daily at 09:00 ICT (UTC+7). Modify in `wrangler.toml`:
 
 ```toml
 [triggers]
-crons = ["0 9 * * *"]
+crons = ["0 2 * * *"]  # 09:00 ICT (UTC+7)
 ```
 
 ### Clip Selection
@@ -116,8 +113,10 @@ Adjust clip scoring and selection in `src/services/content.ts`:
 
 - `GET /health` - Health check
 - `POST /webhook/github` - GitHub webhook handler
+  - Verifies `X-Hub-Signature-256` with `GITHUB_WEBHOOK_SECRET`
+  - Rejects non-POST methods with 405
+  - Includes replay protection (timestamp tolerance + idempotency key)
 - `GET /` - Pipeline status
-
 ## Content Structure
 
 Generated posts follow the existing blog structure:

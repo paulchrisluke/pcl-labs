@@ -3,12 +3,19 @@ import { TwitchService } from './twitch';
 import { ContentService } from './content';
 import { DiscordService } from './discord';
 
+import { Env } from '../types';
+import { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
+import { TwitchService } from './twitch';
+import { ContentService } from './content';
+import { DiscordService } from './discord';
+
 export async function handleScheduled(
-  event: ScheduledEvent, 
-  env: Env, 
+  event: ScheduledEvent,
+  env: Env,
   ctx: ExecutionContext
 ): Promise<void> {
   console.log(`Scheduled event triggered: ${event.cron}`);
+}
   
   // Handle hourly token validation
   if (event.cron === "0 * * * *") {

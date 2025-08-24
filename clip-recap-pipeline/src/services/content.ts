@@ -1,8 +1,15 @@
 import { Env, TwitchClip, Transcript, BlogPost, JudgeResult, ClipSection } from '../types';
 import { generateJWT } from '../utils/jwt';
+import { AIService } from '../utils/ai';
 
 export class ContentService {
-  constructor(private env: Env) {}
+  private aiService: AIService;
+  private cachedGitHubToken: string | null = null;
+  private cachedGitHubTokenExpiry: number | null = null;
+
+  constructor(private env: Env) {
+    this.aiService = new AIService(env);
+  }
 
   async selectBestClips(clips: TwitchClip[], transcripts: Transcript[]): Promise<TwitchClip[]> {
     console.log('Selecting best clips...');
@@ -95,7 +102,7 @@ Format as JSON:
   "repo": "org/repo if mentioned"
 }`;
 
-    const result = await this.env.ai.run('@cf/google/gemma-2b-it', {
+    const result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
       prompt,
       max_tokens: 500,
     });
@@ -125,7 +132,7 @@ Format as JSON:
   private async generateIntro(clips: TwitchClip[], sections: ClipSection[]): Promise<string> {
     const prompt = `Write a brief intro paragraph for a daily development recap blog post with ${clips.length} clips. Keep it under 100 words and mention it's from a Twitch stream.`;
 
-    const result = await this.env.ai.run('@cf/google/gemma-2b-it', {
+    const result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
       prompt,
       max_tokens: 200,
     });
@@ -137,7 +144,7 @@ Format as JSON:
     const topClip = clips[0];
     const prompt = `Generate a blog post title for a daily development recap. Include the date and reference this clip: "${topClip.title}". Keep it under 80 characters.`;
 
-    const result = await this.env.ai.run('@cf/google/gemma-2b-it', {
+    const result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
       prompt,
       max_tokens: 100,
     });
@@ -169,26 +176,58 @@ Format as JSON:
   }
 
   private async getGitHubToken(): Promise<string> {
-    // Generate JWT for GitHub App
-    const jwt = this.generateJWT();
-    
-    // Get installation token
-    const response = await fetch(
-      `https://api.github.com/app/installations/${this.env.GITHUB_INSTALLATION_ID}/access_tokens`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'Accept': 'application/vnd.github.v3+json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Failed to get GitHub token: ${response.statusText}`);
+    // Check cache first
+    const now = Date.now();
+    if (this.cachedGitHubToken && this.cachedGitHubTokenExpiry && now < this.cachedGitHubTokenExpiry) {
+      return this.cachedGitHubToken;
     }
 
-    const data = await response.json();
+    // Generate JWT for GitHub App
+    let jwt: string;
+    try {
+      jwt = this.generateJWT();
+    } catch (error) {
+      throw new Error(`Failed to generate JWT for GitHub authentication: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    // Get installation token
+    let response: Response;
+    try {
+      response = await fetch(
+        `https://api.github.com/app/installations/${this.env.GITHUB_INSTALLATION_ID}/access_tokens`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        }
+      );
+    } catch (error) {
+      throw new Error(`Network error while fetching GitHub token: ${error instanceof Error ? error.message : 'Unknown network error'}`);
+    }
+
+    if (!response.ok) {
+      let errorBody: string;
+      try {
+        errorBody = await response.text();
+      } catch {
+        errorBody = 'Unable to read error response body';
+      }
+      throw new Error(`Failed to get GitHub token: ${response.status} ${response.statusText} - ${errorBody}`);
+    }
+
+    let data: { token: string };
+    try {
+      data = await response.json() as { token: string };
+    } catch (error) {
+      throw new Error(`Failed to parse GitHub token response: ${error instanceof Error ? error.message : 'Invalid JSON response'}`);
+    }
+
+    // Cache the token with expiry (55 minutes to be safe)
+    this.cachedGitHubToken = data.token;
+    this.cachedGitHubTokenExpiry = now + (55 * 60 * 1000); // 55 minutes in milliseconds
+
     return data.token;
   }
 
@@ -212,10 +251,10 @@ Format as JSON:
       throw new Error(`Failed to get main branch: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { object: { sha: string } };
     
     // Create new branch
-    await fetch(
+    const createResponse = await fetch(
       `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/git/refs`,
       {
         method: 'POST',
@@ -229,6 +268,21 @@ Format as JSON:
         }),
       }
     );
+
+    if (!createResponse.ok) {
+      const errorBody = await createResponse.text();
+      // If branch already exists, that might be okay depending on your use case
+      if (createResponse.status === 422 && errorBody.includes('Reference already exists')) {
+        console.log(`Branch ${branchName} already exists, continuing...`);
+      } else {
+        throw new Error(`Failed to create branch: ${createResponse.statusText} - ${errorBody}`);
+      }
+    }
+  }
+
+  private encodeBase64UnicodeSafe(content: string): string {
+    // Cloudflare Workers compatible base64 encoding
+    return btoa(unescape(encodeURIComponent(content)));
   }
 
   private async createFile(token: string, branch: string, path: string, content: string): Promise<void> {
@@ -242,7 +296,7 @@ Format as JSON:
         },
         body: JSON.stringify({
           message: `Add daily recap for ${new Date().toISOString().split('T')[0]}`,
-          content: btoa(content), // Base64 encode
+          content: this.encodeBase64UnicodeSafe(content), // Unicode-safe base64 encode
           branch,
         }),
       }
@@ -297,11 +351,12 @@ ${blogPost.sections.map(s => `- ${s.h2}`).join('\n')}
   }
 
   private generateMDX(blogPost: BlogPost): string {
+    const escapeYaml = (str: string) => str.replace(/"/g, '\\"');
     const frontMatter = `---
-title: "${blogPost.title}"
+title: "${escapeYaml(blogPost.title)}"
 category: "development"
 tags: ${JSON.stringify(blogPost.tags)}
-description: "${blogPost.intro}"
+description: "${escapeYaml(blogPost.intro)}"
 date: "${blogPost.date}"
 updated: "${blogPost.date}"
 canonical: "https://paulchrisluke.com/blog/development/${blogPost.date}-daily-dev-recap"
@@ -325,7 +380,8 @@ ${section.paragraph}
   width="620"
   frameborder="0"
   scrolling="no"
-  allowfullscreen="true">
+  allowfullscreen="true"
+  sandbox="allow-scripts allow-same-origin allow-presentation">
 </iframe>
 `).join('\n')}
 
@@ -368,7 +424,7 @@ Format as JSON:
   "action": "approve"
 }`;
 
-    const result = await this.env.ai.run('@cf/google/gemma-2b-it', {
+    const result = await this.aiService.callWithRetry('@cf/google/gemma-2b-it', {
       prompt,
       max_tokens: 500,
     });
@@ -383,20 +439,43 @@ Format as JSON:
           coherence: 18,
           correctness: 20,
           dev_signal: 16,
-          narrative_flow: 13,
+          narrative_flow: 14,
           length: 8,
-          safety: 5
+          safety: 6
         },
-        reasons: ['Content generated successfully'],
-        action: 'approve'
+        reasons: ['AI parsing failed, using fallback'],
+        action: 'approve' as const
       };
     }
   }
-
-  async updatePRWithJudgeResults(prNumber: number, judgeResult: JudgeResult): Promise<void> {
+  async updatePRWithJudgeResults(
+    prNumber: number,
+    judgeResult: JudgeResult,
+    headSha?: string
+  ): Promise<void> {
     console.log(`Updating PR ${prNumber} with judge results...`);
     
     const token = await this.getGitHubToken();
+    
+    // Get PR details to find the head SHA if not provided
+    if (!headSha) {
+      const prResponse = await fetch(
+        `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/pulls/${prNumber}`,
+        {
+          headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        }
+      );
+      
+      if (!prResponse.ok) {
+        throw new Error(`Failed to get PR details: ${prResponse.statusText}`);
+      }
+      
+      const prData = await prResponse.json() as { head: { sha: string } };
+      headSha = prData.head.sha;
+    }
     
     // Create check run
     await fetch(
@@ -409,16 +488,29 @@ Format as JSON:
         },
         body: JSON.stringify({
           name: 'Content Quality Judge',
-          head_sha: 'latest', // You'd need to get the actual SHA
+          head_sha: headSha,
           status: 'completed',
           conclusion: judgeResult.overall >= 80 ? 'success' : 'neutral',
           output: {
             title: `Content Quality Score: ${judgeResult.overall}/100`,
             summary: `Judge evaluation completed`,
-            text: `## Judge Results\n\n**Overall Score**: ${judgeResult.overall}/100\n\n**Breakdown**:\n${Object.entries(judgeResult.per_axis).map(([key, value]) => `- ${key}: ${value}`).join('\n')}\n\n**Reasons**:\n${judgeResult.reasons.map(r => `- ${r}`).join('\n')}\n\n**Action**: ${judgeResult.action}`,
+            text: [
+              '## Judge Results',
+              '',
+              `**Overall Score**: ${judgeResult.overall}/100`,
+              '',
+              '**Breakdown:**',
+              ...Object.entries(judgeResult.per_axis).map(([k, v]) => `- ${k}: ${v}`),
+              '',
+              '**Reasons:**',
+              ...judgeResult.reasons.map(r => `- ${r}`),
+              '',
+              `**Action**: ${judgeResult.action}`,
+            ].join('\n'),
           },
         }),
       }
     );
   }
+
 }
