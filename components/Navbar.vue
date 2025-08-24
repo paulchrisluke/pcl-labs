@@ -79,6 +79,7 @@ import { EnvelopeIcon, ChevronDownIcon } from '@heroicons/vue/20/solid'
 
 const navigation = [
   { name: 'Services & Portfolio', href: '/portfolio', current: false },
+  { name: 'Blog', href: '/blog', current: false },
   { name: 'About & Reviews', href: '/about', current: false },
 ]
 const userNavigation = [

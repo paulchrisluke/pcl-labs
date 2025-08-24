@@ -1,0 +1,8 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+we use nuxt, tailwind, vercel, yarn, no database, frontend only. focused on seo and structured schema of a personal site paulchrisluke.com with portfolio items, blogs, home and contact pages. 
+and in the future cloudflare worker/pipeline for automating ai driven blog posts
