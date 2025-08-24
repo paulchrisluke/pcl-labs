@@ -1,6 +1,7 @@
 ---
 title: "vKirirom"
 tags: ['Shopify', 'Web Development', 'Marketing']
+category: "resort"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789947/PCL-Labs/vKirirom_Featured_xls84w.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791184/PCL-Labs/Yearly-1_vphmtg.webp"
 imageAlt: "vKirirom and Marketing by PCL Labs"

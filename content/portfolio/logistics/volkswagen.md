@@ -1,6 +1,7 @@
 ---
 title: "Volkswagen"
-tags: ['Logistics', 'Web Development', UI/UX]
+category: "logistics"
+tags: ['Logistics', 'Web Development', 'UI/UX']
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789949/PCL-Labs/Volkswagen_Featured_tj5mnw.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791183/PCL-Labs/Volkswagen_x0bmui.webp"
 imageAlt: "Volkswagen Web and Marketing by PCL Labs"

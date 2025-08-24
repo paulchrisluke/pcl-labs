@@ -1,5 +1,6 @@
 ---
 title: "Digital Marketing Guide for Legal Practices in 2024"
+category: "marketing"
 tags: ['Legal Marketing', 'Digital Marketing', 'SEO']
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/legal-digital-marketing.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/legal-marketing-thumbnail.webp"
@@ -7,6 +8,15 @@ imageAlt: "Digital marketing strategies for legal practices and law firms"
 description: "Learn how legal practices can leverage digital marketing to attract more clients and build trust. Discover SEO strategies, content marketing, and ethical advertising approaches for law firms."
 keywords: "legal marketing, law firm SEO, digital marketing, legal practice, PCL-Labs"
 date: "2024-01-10"
+updated: "2024-01-10"
+canonical: "https://paulchrisluke.com/blog/marketing/legal-practice-digital-marketing-guide"
+draft: false
+cover: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/legal-digital-marketing.webp"
+thumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/legal-marketing-thumbnail.webp"
+og:
+  alt: "Digital marketing strategies for legal practices and law firms"
+schema:
+  type: "BlogPosting"
 ---
 
 ## Navigating Digital Marketing for Legal Practices
