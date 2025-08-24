@@ -1,4 +1,4 @@
-import { Environment, TwitchTokenResponse } from './types';
+import { Environment, TwitchTokenResponse } from './types/index.js';
 
 export async function getBroadcasterId(env: Environment): Promise<string> {
   try {

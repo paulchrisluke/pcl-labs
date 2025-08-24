@@ -5,7 +5,7 @@ category: "crypto"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789946/PCL-Labs/PhunToken_Featured_xnrc2t.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791180/PCL-Labs/Phuntoken_ut3wry.webp"
 imageAlt: "Phuntoken Web and Marketing by PCL Labs"
-description: "Phunware, a publicly traded software company on NASDAQ for over 20 years, embarked on a groundbreaking initiative: PhunToken. This Ethereum-based project aims to revolutionize the mobile experience by creating a secure and versatile ecosystem. Our agency was entrusted with the development and launch of PhunToken, encompassing various facets of the project."
+description: "Phunware, a NASDAQ-listed software company since early 2019, launched PhunToken—an Ethereum-based initiative to enhance the mobile experience with a secure and versatile ecosystem. Our agency led the development and launch of PhunToken across web, content, and brand."
 keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
 
 ---

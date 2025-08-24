@@ -1,0 +1,31 @@
+{
+  "repositories": [
+    {
+      "name": "pcl-labs",
+      "owner": "paulchrisluke",
+      "type": "personal",
+      "enabled": true,
+      "description": "Main portfolio and blog site",
+      "tokenKey": "GITHUB_TOKEN_PAULCHRISLUKE"
+    },
+    {
+      "name": "preact-cloudflare-intake-chatbot",
+      "owner": "Blawby",
+      "type": "organization",
+      "enabled": true,
+      "description": "Legal intake chatbot using Cloudflare Workers AI",
+      "tokenKey": "GITHUB_TOKEN_BLAWBY"
+    }
+  ],
+  "settings": {
+    "lookbackHours": 24,
+    "maxCommitsPerRepo": 50,
+    "maxPRsPerRepo": 20,
+    "includeIssues": true,
+    "includeReleases": true,
+    "filterPatterns": {
+      "includeBranches": ["main", "staging", "develop"],
+      "excludePatterns": ["^dependabot/", "^renovate/", "^chore/", "^docs/"]
+    }
+  }
+}

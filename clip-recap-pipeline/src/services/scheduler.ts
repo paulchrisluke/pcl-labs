@@ -1,8 +1,8 @@
-import { Environment } from '../types';
+import { Environment } from '../types/index.js';
 import { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
-import { TwitchService } from './twitch';
-import { ContentService } from './content';
-import { DiscordService } from './discord';
+import { TwitchService } from './twitch.js';
+import { ContentService } from './content.js';
+import { DiscordService } from './discord.js';
 
 export async function handleScheduled(
   event: ScheduledEvent,

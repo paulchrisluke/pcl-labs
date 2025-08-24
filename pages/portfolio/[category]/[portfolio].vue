@@ -42,21 +42,28 @@ import { useRoute, useAsyncData } from 'nuxt/app'
 const route = useRoute()
 
 // Fetch the markdown content based on the slug using queryContent
-const { data: portfolio } = await useAsyncData(`portfolio-${route.path}`, async () => {
-  try {
-    // Use route.path directly (including leading slash) for consistency with ContentDoc resolution
-    const result = await queryContent(route.path).findOne()
-    
-    // Only log in development
-    if (process.dev) {
-      console.log('Portfolio data:', result)
+const { data: portfolio } = await useAsyncData(
+  `portfolio-${route.path}`,
+  async () => {
+    try {
+      // Use route.path directly (including leading slash) for consistency with ContentDoc resolution
+      const result = await queryContent(route.path).findOne()
+      
+      // Only log in development
+      if (process.dev) {
+        console.log('Portfolio data:', result)
+      }
+      return result
+    } catch (error) {
+      console.error('Error fetching portfolio:', error)
+      return null
     }
-    return result
-  } catch (error) {
-    console.error('Error fetching portfolio:', error)
-    return null
+  },
+  {
+    // Re-fetch when navigating to a different portfolio item in the same component
+    watch: [() => route.path]
   }
-})
+)
 
 useHead({
   title: portfolio.value ? `${portfolio.value.title} - PCL Labs` : 'Portfolio - PCL Labs',

@@ -27,11 +27,11 @@ We implemented a meticulous CRO audit to identify areas for improvement across F
 Our audit revealed opportunities to streamline the user journey by optimizing the design, user experience (UX), and website speed. Here's a breakdown of our key recommendations:
 
 * **Homepage Optimization:** We recommended tailoring the homepage messaging to resonate more effectively with Fiveable's target audience of high school students and their specific AP exam anxieties. This included crafting clear value propositions and showcasing student success stories.
-![image](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_home_ahkmyp.webp)
+![Fiveable homepage optimization mockup](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_home_ahkmyp.webp)
 * **Enhanced Course Discovery:** We identified improvements to the course browsing experience, making it easier for students to find the specific AP exam prep courses they need. This involved optimizing search functionality and implementing intuitive course categorization.
-![image](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_course_discovery_feu7gp.webp)
+![Fiveable course discovery UX improvements](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_course_discovery_feu7gp.webp)
 * **Streamlined Checkout Process:** We streamlined the checkout process to minimize steps and reduce cart abandonment rates. This included offering guest checkout options and ensuring a clear and secure payment gateway.
-![image](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_Checkout_zex6na.webp)
+![Fiveable streamlined Shopify checkout](https://res.cloudinary.com/pcl-labs/image/upload/v1716148420/PCL-Labs/fiveable_Checkout_zex6na.webp)
 
 ## Results
 

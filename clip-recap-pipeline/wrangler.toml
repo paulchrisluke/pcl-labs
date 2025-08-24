@@ -9,14 +9,7 @@ name = "clip-recap-pipeline"
 [env.staging]
 name = "clip-recap-pipeline-staging"
 
-# Bindings
-[ai]
-binding = "ai"
 
-# Vectorize index for embeddings
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "clip-recap-embeddings"
 
 # Cron triggers (production only). All times are UTC.
 [env.production.triggers]
@@ -46,12 +39,7 @@ index_name = "clip-recap-embeddings"
 [[env.staging.r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
-# Cron triggers
-[triggers]
-crons = [
-  "0 2 * * *",  # Daily at 09:00 ICT (UTC+7) - main pipeline
-  "0 * * * *"   # Every hour - token validation
-]
+
 
 # Environment variables (set via wrangler secret put)
 # TWITCH_CLIENT_ID
@@ -59,7 +47,9 @@ crons = [
 # TWITCH_BROADCASTER_ID
 # GITHUB_APP_ID
 # GITHUB_INSTALLATION_ID
-# GITHUB_PRIVATE_KEY
-# GITHUB_WEBHOOK_SECRET
-# DISCORD_BOT_TOKEN
+[env.staging.triggers]
+crons = [
+  "0 2 * * *",  # Daily at 02:00 UTC (09:00 ICT) - main pipeline
+  "0 * * * *"   # Every hour - token validation
+]
 # DISCORD_REVIEW_CHANNEL_ID
