@@ -99,16 +99,16 @@ timeline: Project timeline or delivery estimate
 
 ```markdown
 ---
-title: WCM Marketing & Social Media Proposal
-description: A modular, results-driven content and communication framework to build institutional trust, market visibility, and community engagement for WCM.
-keywords: on-chain trading, leveraged trading, DeFi, content strategy, community growth, HubSpot, social media, crypto marketing
-client: WCM
-date: 2025-05-20
-estimatedCost: $4,000–$7,000/month
-timeline: First content batch in 5 days, ongoing monthly
+title: Your Proposal Title
+description: A short summary of the proposal's purpose and value.
+keywords: keyword1, keyword2, keyword3
+client: Client Name
+date: YYYY-MM-DD
+estimatedCost: $X,XXX–$Y,YYY/month
+timeline: Project timeline or delivery estimate
 ---
 
-# WCM Marketing & Social Media Proposal
+# Your Proposal Title
 
 ...rest of your proposal...
 ```
