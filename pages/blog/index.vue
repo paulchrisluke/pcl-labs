@@ -6,15 +6,25 @@
 <script setup>
 import { useAsyncData } from 'nuxt/app'
 
-useHead({
+useSeoMeta({
   title: 'Blog - PCL Labs',
-  meta: [
-    { name: 'description', content: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development. Expert advice from PCL Labs to help grow your business.' },
-    { property: 'og:title', content: 'Blog - PCL Labs' },
-    { property: 'og:description', content: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development. Expert advice from PCL Labs to help grow your business.' },
-    { property: 'og:image', content: 'PCL-about-header.webp' },
-    { name: 'keywords', content: 'digital marketing, e-commerce, web development, SEO, conversion optimization, Shopify, legal marketing, PCL-Labs, Paul Chris Luke' },
-  ]
+  description: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development. Expert advice from PCL Labs to help grow your business.',
+  keywords: 'digital marketing, e-commerce, web development, SEO, conversion optimization, Shopify, legal marketing, PCL-Labs, Paul Chris Luke',
+  // Open Graph
+  ogTitle: 'Blog - PCL Labs',
+  ogDescription: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development. Expert advice from PCL Labs to help grow your business.',
+  ogType: 'website',
+  ogUrl: 'https://paulchrisluke.com/blog',
+  ogImage: 'https://paulchrisluke.com/PCL-about-header.webp',
+  ogImageAlt: 'PCL Labs Blog - Digital Marketing and Web Development Insights',
+  // Twitter
+  twitterCard: 'summary_large_image',
+  twitterTitle: 'Blog - PCL Labs',
+  twitterDescription: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development. Expert advice from PCL Labs to help grow your business.',
+  twitterImage: 'https://paulchrisluke.com/PCL-about-header.webp',
+  twitterImageAlt: 'PCL Labs Blog - Digital Marketing and Web Development Insights',
+  // Canonical
+  canonical: 'https://paulchrisluke.com/blog'
 })
 
 // Fetch blog content using queryContent composable

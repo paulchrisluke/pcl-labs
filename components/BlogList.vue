@@ -13,9 +13,21 @@
         </nuxt-link>
       </div>
       <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4 md:gap-y-0 lg:gap-x-8">
-        <nuxt-link :to="post._path" v-for="post in blogData" :key="post._id" class="group relative">
-          <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200 group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out">
-            <img :src="post.imageThumbnail" :alt="post.imageAlt" class="object-cover object-center h-full w-full" />
+        <nuxt-link 
+          :to="post._path" 
+          v-for="post in displayedPosts" 
+          :key="post._id" 
+          class="group relative"
+          :aria-label="`Read post: ${post.title}`"
+        >
+          <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200">
+            <img 
+              :src="post.imageThumbnail" 
+              :alt="post.imageAlt" 
+              class="object-cover object-center h-full w-full group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out"
+              loading="lazy"
+              decoding="async"
+            />
           </div>
           <h3 class="mt-4 text-sm text-gray-700">
               <span class="absolute inset-0" />
@@ -50,5 +62,15 @@ const props = defineProps({
   }
 });
 
-const showSeeAllLink = props.limit <= 10; //will only show see all if you limit the prop to 10 or less
+// Reactive computed props
+const displayedPosts = computed(() => {
+  if (!props.limit || props.limit >= props.blogData.length) {
+    return props.blogData;
+  }
+  return props.blogData.slice(0, props.limit);
+});
+
+const showSeeAllLink = computed(() => {
+  return props.blogData.length > (props.limit || Infinity);
+});
 </script>
