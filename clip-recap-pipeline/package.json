@@ -20,6 +20,9 @@
   ],
   "author": "Paul Chris Luke",
   "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^21.0.0"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
     "@types/node": "^24.3.0",
