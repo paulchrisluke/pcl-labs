@@ -22,9 +22,12 @@ index_name = "clip-recap-embeddings"
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 
-# Cron trigger for daily runs
+# Cron triggers
 [triggers]
-crons = ["0 9 * * *"]  # Daily at 09:00 ICT (Asia/Bangkok)
+crons = [
+  "0 9 * * *",  # Daily at 09:00 ICT (Asia/Bangkok) - main pipeline
+  "0 * * * *"   # Every hour - token validation
+]
 
 # Environment variables (set via wrangler secret put)
 # TWITCH_CLIENT_ID
