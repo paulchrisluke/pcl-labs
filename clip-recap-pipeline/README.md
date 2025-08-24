@@ -22,6 +22,25 @@ This pipeline automatically:
 - **GitHub**: Content repository and PR management
 - **Discord**: Notifications and review workflow
 
+## Cloudflare Backend URLs
+
+### Production
+- **Worker**: `https://clip-recap-pipeline.paulchrisluke.workers.dev`
+- **Health Check**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/health`
+
+### Staging
+- **Worker**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev`
+- **Health Check**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/health`
+
+### Development
+- **Local**: `http://localhost:8787` (wrangler dev default)
+
+### Twitch OAuth Redirect URLs
+Use these URLs in your Twitch Developer Application:
+```
+https://clip-recap-pipeline.paulchrisluke.workers.dev,https://clip-recap-pipeline-staging.paulchrisluke.workers.dev,http://localhost:8787
+```
+
 ## Setup
 
 ### Prerequisites

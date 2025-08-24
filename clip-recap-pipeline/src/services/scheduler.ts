@@ -8,6 +8,43 @@ export async function handleScheduled(
   env: Env, 
   ctx: ExecutionContext
 ): Promise<void> {
+  console.log(`Scheduled event triggered: ${event.cron}`);
+  
+  // Handle hourly token validation
+  if (event.cron === "0 * * * *") {
+    await handleTokenValidation(env);
+    return;
+  }
+  
+  // Handle daily pipeline (09:00 ICT)
+  if (event.cron === "0 9 * * *") {
+    await handleDailyPipeline(env);
+    return;
+  }
+  
+  console.log(`Unknown cron pattern: ${event.cron}`);
+}
+
+async function handleTokenValidation(env: Env): Promise<void> {
+  console.log('Starting hourly Twitch token validation...');
+  
+  try {
+    const twitchService = new TwitchService(env);
+    const token = await twitchService.getAccessToken();
+    const isValid = await twitchService.validateToken(token);
+    
+    if (isValid) {
+      console.log('✅ Token validation successful');
+    } else {
+      console.error('❌ Token validation failed');
+      // Could send Discord notification here if needed
+    }
+  } catch (error) {
+    console.error('Token validation error:', error);
+  }
+}
+
+async function handleDailyPipeline(env: Env): Promise<void> {
   console.log('Starting daily clip recap pipeline...');
   
   try {
