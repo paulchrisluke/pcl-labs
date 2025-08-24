@@ -50,11 +50,28 @@ const { path } = route
 const { data: blog } = await useAsyncData(`blog-${path}`, async () => {
   try {
     const result = await queryContent(path).findOne()
+    
+    // Check if blog post exists, if not throw 404 error
+    if (!result) {
+      throw createError({ 
+        statusCode: 404, 
+        statusMessage: 'Blog post not found' 
+      })
+    }
+    
     console.log('Blog data:', result)
     return result
   } catch (error) {
+    // If it's already a Nuxt error, rethrow it
+    if (error.statusCode) {
+      throw error
+    }
+    
     console.error('Error fetching blog:', error)
-    return null
+    throw createError({ 
+      statusCode: 500, 
+      statusMessage: 'Error loading blog post' 
+    })
   }
 })
 
@@ -62,7 +79,23 @@ useHead({
   title: blog.value ? `${blog.value.title} - PCL Labs Blog` : 'Blog - PCL Labs',
   meta: [
     { name: 'description', content: blog.value?.description || 'Blog post from PCL Labs' },
-    { name: 'keywords', content: blog.value?.keywords || '' }
+    { name: 'keywords', content: blog.value?.keywords || '' },
+    // Open Graph meta tags
+    { property: 'og:title', content: blog.value?.title || 'Blog - PCL Labs' },
+    { property: 'og:description', content: blog.value?.description || 'Blog post from PCL Labs' },
+    { property: 'og:type', content: 'article' },
+    { property: 'og:url', content: `https://paulchrisluke.com${route.path}` },
+    { property: 'og:image', content: blog.value?.image || 'https://paulchrisluke.com/PCL-about-header.webp' },
+    { property: 'og:image:alt', content: blog.value?.imageAlt || 'PCL Labs Blog Post' },
+    // Twitter meta tags
+    { name: 'twitter:card', content: blog.value?.image ? 'summary_large_image' : 'summary' },
+    { name: 'twitter:title', content: blog.value?.title || 'Blog - PCL Labs' },
+    { name: 'twitter:description', content: blog.value?.description || 'Blog post from PCL Labs' },
+    { name: 'twitter:image', content: blog.value?.image || 'https://paulchrisluke.com/PCL-about-header.webp' },
+    { name: 'twitter:image:alt', content: blog.value?.imageAlt || 'PCL Labs Blog Post' }
+  ],
+  link: [
+    { rel: 'canonical', href: `https://paulchrisluke.com${route.path}` }
   ]
 })
 </script>
