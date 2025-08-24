@@ -1,0 +1,237 @@
+# =========================
+# Cursor Rules for paulchrisluke.com
+# =========================
+
+- description: |
+    Project-wide conventions (Nuxt 3, Tailwind, Vercel, Yarn). Frontend-only.
+    - Always write **TypeScript** (no .js files in app code). Prefer `<script setup lang="ts">`.
+    - Use **Yarn** for all commands; do not add npm/pnpm lockfiles.
+      - ✅ `yarn add <pkg>` / `yarn remove <pkg>` / `yarn dlx`
+      - 🚫 Do not commit `package-lock.json` or `pnpm-lock.yaml`.
+    - This is a **frontend-only** site. Do **not** add databases, ORM, or server-only APIs.
+      - No `server/api/**` endpoints unless explicitly requested.
+    - Target **SSG/ISR** on Vercel via Nuxt Nitro preset `vercel`. Prefer pre-rendering where possible.
+    - Keep bundle lean: avoid heavy UI libs; use Tailwind + headless patterns.
+    - Accessibility is not optional:
+      - Alt text for all images, proper landmarks, focus order, and keyboard nav.
+      - Use semantic HTML and ARIA only when necessary.
+    - Committing:
+      - Conventional commits (e.g., `feat: add portfolio card`, `fix: og image path`).
+
+      **Folder layout**
+      - `app.vue`, `pages/**`, `components/**`, `layouts/**`, `content/**` (for blog/portfolio)
+      - `public/**` for static assets; use `@nuxt/image` for optimized images elsewhere
+      - `utils/**` for small helpers; no heavy runtime deps
+
+  globs:
+    - "**/*"
+  alwaysApply: true
+
+- description: |
+    Nuxt 3 config + modules. Keep SSR/SSG friendly and SEO-first.
+    - Use/keep these modules unless specifically told otherwise:
+      - `@nuxtjs/tailwindcss`
+      - `@nuxt/content` (markdown for blog + portfolio content)
+      - `@nuxt/image` or `@nuxt/image-edge`
+      - `nuxt-simple-sitemap`
+      - `@nuxtjs/robots`
+      - `nuxt-og-image` (automatic OG images)
+      - `nuxt-schema-org` (JSON-LD helpers)
+    - `nuxt.config.ts` expectations:
+      - `nitro: { preset: 'vercel' }`
+      - `routeRules` for static/ISR on blog & portfolio; prerender homepage/contact.
+      - `app.config.ts` or `app/head` for global meta, default title template, canonical URL.
+      - Add `siteUrl: 'https://paulchrisluke.com'` for sitemap/SEO modules.
+      - Set `runtimeConfig.public` for any public keys only (no secrets).
+    - Never introduce server middleware that requires a DB or secrets.
+
+  globs:
+    - "nuxt.config.ts"
+    - "app.config.ts"
+    - "app.vue"
+    - "plugins/**"
+    - "components/**"
+    - "layouts/**"
+    - "pages/**"
+  alwaysApply: true
+
+- description: |
+    Tailwind usage & styling.
+    - Use utility-first classes; avoid custom CSS unless component-specific (place in `<style scoped>`).
+    - No design systems unless asked; keep components simple and accessible.
+    - Respect responsive and dark mode. Prefer CSS grid/flex; avoid absolute positioning hacks.
+    - Extract repeated patterns into small components (e.g., `BaseButton.vue`, `Section.vue`).
+
+  globs:
+    - "components/**"
+    - "pages/**"
+    - "**/*.vue"
+    - "tailwind.config.*"
+  alwaysApply: true
+
+- description: |
+    Content model with @nuxt/content.
+    - **Blog** lives under `content/blog/slug/index.md`.
+    - **Portfolio** lives under `content/portfolio/slug/index.md`.
+    - Each entry **must** have front-matter:
+
+      ```md
+      ---
+      title: "Descriptive Title"
+      description: "1–2 sentence summary for SEO."
+      date: 2025-01-15
+      updated: 2025-01-20
+      tags: [nuxt, tailwind]
+      cover: "/images/cover.jpg" # path in /public or content assets
+      canonical: "https://paulchrisluke.com/blog/slug"
+      draft: false
+      og:
+        alt: "Accessible image description"
+      schema:
+        type: "BlogPosting" # or "CreativeWork" / "SoftwareSourceCode"
+        # optional overrides go here
+      ---
+      ```
+
+      For **portfolio**, include:
+      ```md
+      ---
+      role: "Designer/Engineer"
+      client: "Client or Personal"
+      tech: [nuxt, vercel, tailwind]
+      link: "https://example.com" # if public
+      repo: "https://github.com/user/repo" # if public
+      ---
+      ```
+
+    - Draft posts/pages: add `draft: true` and ensure **noindex** is applied and excluded from sitemap.
+
+  globs:
+    - "content/**"
+  alwaysApply: true
+
+- description: |
+    Routing, slugs, and pages.
+    - Pages: `pages/index.vue`, `pages/blog/[slug].vue`, `pages/portfolio/[slug].vue`, `pages/contact.vue`, `pages/404.vue`.
+    - Generate static routes for all blog/portfolio entries in `nuxt.config.ts` via `routeRules`/`prerender`.
+    - Use clean slugs (kebab-case). Never include dates in URLs (dates remain in front-matter).
+
+  globs:
+    - "pages/**"
+    - "server/routes/**"
+  alwaysApply: true
+
+- description: |
+    SEO defaults (head tags) + Open Graph/Twitter.
+    - Every page must set:
+      - unique `title`, `meta[name=description]`, canonical link
+      - OG: `og:title`, `og:description`, `og:type`, `og:url`, `og:image`
+      - Twitter: `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`
+    - Use `nuxt-og-image` to generate social images automatically from front-matter where possible.
+    - Add `robots` meta (index/noindex) based on `draft` or environment.
+    - Ensure `sitemap.xml` and `robots.txt` are correct via modules; exclude drafts.
+
+  globs:
+    - "pages/**"
+    - "layouts/**"
+    - "app.vue"
+  alwaysApply: true
+
+- description: |
+    Structured data (JSON-LD) with `nuxt-schema-org`.
+    - Site-wide:
+      - `Person` for Paul Chris Luke with `name`, `url`, `image` (logo/headshot), and `sameAs` (social links).
+      - `WebSite` with `potentialAction` SearchAction if a site search exists.
+      - `BreadcrumbList` on all detail pages (blog/portfolio).
+    - Blog post pages:
+      - `BlogPosting`: `headline`, `description`, `image`, `datePublished`, `dateModified`, `author` (Person), `keywords`, `mainEntityOfPage`.
+    - Portfolio pages:
+      - Use `CreativeWork` by default. If appropriate, use `SoftwareSourceCode` (for code) or `Project`-like `CreativeWork` with `creator`, `programmingLanguage`, `codeRepository`, `url`, `image`, `datePublished`, `about`.
+    - Contact page:
+      - `ContactPage` + `Organization` or `Person` with `contactPoint` if listing methods.
+    - Keep JSON-LD **consistent** with visible content and front-matter. Avoid contradictory fields.
+
+  globs:
+    - "pages/**"
+    - "components/**"
+    - "content/**"
+  alwaysApply: true
+
+- description: |
+    Performance & images.
+    - Prefer `@nuxt/image` for responsive images; provide meaningful `alt`.
+    - Preload key fonts and the primary hero image on the homepage.
+    - Avoid client-only components unless necessary; leverage SSR/SSG.
+    - Use `definePageMeta({ layout, middleware })` minimally; keep pages light.
+    - Split large components; lazy load non-critical sections.
+
+  globs:
+    - "**/*.vue"
+    - "nuxt.config.ts"
+  alwaysApply: true
+
+- description: |
+    Vercel deployment.
+    - Use Nuxt Nitro `vercel` preset; no custom server code.
+    - Enable ISR for blog and portfolio detail pages (e.g., `isr: 60` or suitable minutes).
+    - Set environment vars only if strictly needed and public-safe via `NITRO_*` or `NUXT_PUBLIC_*`.
+    - Do not add CI/scripts that conflict with Vercel defaults unless requested.
+
+  globs:
+    - "nuxt.config.ts"
+    - "vercel.json"
+  alwaysApply: true
+
+- description: |
+    Contact form (frontend-only).
+    - No serverless functions by default. Use a static form endpoint provider (e.g., Formspree) or mailto as a fallback.
+    - Validate inputs on client. Never store submissions locally.
+    - If a provider is introduced, keep keys public-safe or route via provider dashboard.
+
+  globs:
+    - "pages/contact.vue"
+    - "components/forms/**"
+  alwaysApply: true
+
+- description: |
+    Linting, formatting, and DX.
+    - Use ESLint + Prettier for TypeScript & Vue SFCs.
+    - Enforce import ordering and no unused exports.
+    - No `any` unless justified with a clear comment and TODO.
+    - Keep utility functions pure; add unit tests only if requested.
+
+  globs:
+    - ".eslintrc.*"
+    - ".prettierrc*"
+    - "**/*.{ts,vue}"
+  alwaysApply: true
+
+- description: |
+    Future: Cloudflare Worker pipeline for AI-driven blog posts (do not integrate into Nuxt runtime).
+    - Keep all worker-related code isolated under `workers/ai-posts/**` with its own `package.json`.
+    - The worker may:
+      - Fetch ideas/prompts, generate Markdown with front-matter matching the **Content model** rule.
+      - Commit new files to `content/blog/**` via Git provider API (out-of-band), then rely on Vercel rebuild/ISR.
+    - Do not introduce Cloudflare-specific code or bindings into the Nuxt app.
+    - Generated posts must pass:
+      - Non-empty `title`, `description`, `date`, `cover`, accessible `og.alt`, 800–1500 words, headings H2–H3, and at least one internal link.
+
+  globs:
+    - "workers/**"
+    - "content/blog/**"
+  alwaysApply: true
+
+- description: |
+    What NOT to do.
+    - Do not add databases, auth flows, or server-side state.
+    - Do not ship unused icons/images or unoptimized assets.
+    - Do not add analytics/trackers without explicit approval.
+    - Do not create pages without unique titles/descriptions.
+  globs:
+    - "**/*"
+  alwaysApply: true
+
+---
+
+we use nuxt, tailwind, vercel, yarn, no database, frontend only. focused on seo and structured schema of a personal site paulchrisluke.com with portfolio items, blogs, home and contact pages. 
+and in the future cloudflare worker/pipeline for automating ai driven blog posts
