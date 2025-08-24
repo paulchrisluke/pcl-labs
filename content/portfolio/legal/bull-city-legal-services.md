@@ -1,6 +1,7 @@
 ---
 title: "Bull City Legal Services"
 tags: ['Legal Practice', 'Web Developemnt', 'Marketing']
+category: "legal"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Bull_City_Legal_Featured_dpxi15.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/Bull_City_cuufed.webp"
 imageAlt: "Bull City Legal Services Web Development and Marketing by PCL Labs"

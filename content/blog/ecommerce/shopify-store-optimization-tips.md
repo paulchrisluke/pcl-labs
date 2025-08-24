@@ -1,5 +1,6 @@
 ---
 title: "Shopify Store Optimization: 10 Tips to Boost Your Sales"
+category: "ecommerce"
 tags: ['Shopify', 'E-commerce', 'Store Optimization']
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/shopify-optimization.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/shopify-thumbnail.webp"
@@ -7,6 +8,15 @@ imageAlt: "Shopify store optimization tips and best practices for e-commerce suc
 description: "Discover 10 proven Shopify optimization strategies that can significantly increase your store's conversion rate and sales. From speed optimization to checkout improvements, learn how to maximize your Shopify store's performance."
 keywords: "Shopify, e-commerce, store optimization, conversion rate, PCL-Labs"
 date: "2024-01-05"
+updated: "2024-01-05"
+canonical: "https://paulchrisluke.com/blog/ecommerce/shopify-store-optimization-tips"
+draft: false
+cover: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/shopify-optimization.webp"
+thumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/shopify-thumbnail.webp"
+og:
+  alt: "Shopify store optimization tips and best practices for e-commerce success"
+schema:
+  type: "BlogPosting"
 ---
 
 ## Maximizing Your Shopify Store's Performance

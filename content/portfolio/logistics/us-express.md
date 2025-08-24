@@ -1,6 +1,7 @@
 ---
 title: "US Express"
 tags: ['Logistics', 'Web Development', 'Marketing']
+category: "logistics"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789947/PCL-Labs/UX_Xpress_Featured_bml99w.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791182/PCL-Labs/US_Xpress_qfenwg.webp"
 imageAlt: "US Express Web and Marketing by PCL Labs"

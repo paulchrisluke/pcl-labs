@@ -1,6 +1,7 @@
 ---
 title: "Fiveable"
 tags: ['Shopify', 'Conversion Rate Optimization']
+category: "education"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Fiveable_Featured_migjx9.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791176/PCL-Labs/Fiveable_seiqed.webp"
 imageAlt: "Fiveable Shopify CRO by PCL Labs"
