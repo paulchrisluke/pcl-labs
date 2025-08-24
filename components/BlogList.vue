@@ -64,11 +64,10 @@ const props = defineProps({
 
 // Reactive computed props
 const displayedPosts = computed(() => {
-  if (!props.limit || props.limit >= props.blogData.length) {
-    return props.blogData;
-  }
-  return props.blogData.slice(0, props.limit);
-});
+  const limit = props.limit ?? props.blogData.length
+  if (limit >= props.blogData.length) return props.blogData
+  return props.blogData.slice(0, Math.max(0, limit))
+})
 
 const showSeeAllLink = computed(() => {
   return props.blogData.length > (props.limit || Infinity);
