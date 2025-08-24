@@ -1,5 +1,5 @@
 // Environment interface
-export interface Env {
+export interface Environment {
   ai: any; // Workers AI binding
   VECTORIZE: any; // Vectorize binding
   R2_BUCKET: any; // R2 bucket binding
@@ -17,6 +17,9 @@ export interface Env {
   CONTENT_REPO_MAIN_BRANCH: string;
   CONTENT_REPO_STAGING_BRANCH: string;
 }
+
+// ISO DateTime string type for consistent date handling
+export type ISODateTimeString = string;
 
 // Twitch API types
 export interface TwitchClip {
@@ -102,14 +105,28 @@ export interface GitHubPR {
   draft: boolean;
 }
 
+// Flexible GitHub Check Run interface that matches the API
 export interface GitHubCheckRun {
   name: string;
   head_sha: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  conclusion?: 'success' | 'failure' | 'neutral' | 'cancelled' | 'timed_out' | 'action_required';
+  completed_at?: ISODateTimeString;
+  output?: {
+    title: string;
+    summary: string;
+    text?: string;
+  };
+}
+
+// Stricter interface for completed check runs
+export interface CompletedGitHubCheckRun extends Omit<GitHubCheckRun, 'status' | 'conclusion' | 'completed_at' | 'output'> {
   status: 'completed';
-  conclusion: 'success' | 'failure' | 'neutral';
+  conclusion: 'success' | 'failure' | 'neutral' | 'cancelled' | 'timed_out' | 'action_required';
+  completed_at: ISODateTimeString;
   output: {
     title: string;
     summary: string;
-    text: string;
+    text?: string;
   };
 }
