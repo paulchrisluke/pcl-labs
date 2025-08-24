@@ -35,7 +35,7 @@ We initially joined forces with Dentech as email marketing consultants. Through 
 
 Given the remarkable success of our email marketing efforts, Dentech entrusted us with a broader scope of work. We leveraged our full-stack marketing expertise to develop a brand-new website that accurately reflected Dentech's values and capabilities. This website redesign was complemented by the implementation of email automation workflows to streamline communication and nurture leads. 
 
-We also explored the potential of social media campaigns to further expand Dentech's reach and brand awareness. While the details of these campaigns are not specified, our collaboration undoubtedly encompassed a multi-channel approach to maximize Dentech's marketing impact.
+We expanded into multi-channel distribution—auditing existing social profiles, establishing a posting cadence, and producing thought-leadership clips tailored for LinkedIn and Facebook—to grow reach and brand awareness.
 
 ![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715351481/PCL-Labs/Dentech_home_website_kbnrpe.webp)
 

@@ -3,22 +3,21 @@ import { Env, TwitchTokenResponse } from './types';
 export async function getBroadcasterId(env: Env): Promise<string> {
   try {
     console.log('🔑 Getting Twitch access token...');
-    console.log('Client ID:', env.TWITCH_CLIENT_ID);
-    console.log('Client Secret (first 4 chars):', env.TWITCH_CLIENT_SECRET?.substring(0, 4) + '...');
-    console.log('Client ID length:', env.TWITCH_CLIENT_ID?.length || 0);
-    console.log('Client Secret length:', env.TWITCH_CLIENT_SECRET?.length || 0);
+    // Credentials present; avoid logging their values or metadata.
     
     // Step 1: Get access token
+    const tokenBody = new URLSearchParams({
+      client_id: env.TWITCH_CLIENT_ID,
+      client_secret: env.TWITCH_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    });
+    
     const tokenResponse = await fetch('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `client_id=${env.TWITCH_CLIENT_ID}&client_secret=${env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenBody,
     });
 
-    console.log('Token response status:', tokenResponse.status);
-    
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('Token response error:', errorText);

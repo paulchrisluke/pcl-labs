@@ -317,7 +317,14 @@
 * Run AI calls through **AI Gateway** for logging, rate limit, retries, fallbacks.
 * Do not store raw audio in public; use R2 with tight access policies.
 * Judge must reject sections that include secrets/PII; add a safety axis in rubric.
-
+* PII patterns to detect and redact:
+  - API keys/tokens (regex patterns for common formats)
+  - Email addresses
+  - IP addresses (except localhost/private ranges)
+  - Database connection strings
+  - JWT tokens
+  - SSH keys
+  - Environment variable values (KEY=VALUE patterns)
 ---
 
 ## Local dev & testing

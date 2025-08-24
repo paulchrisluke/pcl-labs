@@ -1,5 +1,24 @@
 import { Env, JudgeResult } from '../types';
 
+interface DiscordEmbed {
+  title: string;
+  description: string;
+  async notifyPRCreated(
+    pr: { number: number; html_url: string },
+    judgeResult: JudgeResult,
+    clipCount: number
+  ): Promise<void> {
+  fields: Array<{
+    name: string;
+    value: string;
+    inline: boolean;
+  }>;
+  footer: {
+    text: string;
+  };
+  timestamp: string;
+}
+
 export class DiscordService {
   constructor(private env: Env) {}
 
@@ -11,7 +30,7 @@ export class DiscordService {
       description: `A new daily development recap has been generated and is ready for review!`,
       color: judgeResult.overall >= 80 ? 0x00ff00 : 0xffa500, // Green if good, orange if needs review
       fields: [
-        {
+  async notifyError(error: Error | { message?: string }): Promise<void> {
           name: '📊 Quality Score',
           value: `${judgeResult.overall}/100`,
           inline: true
@@ -55,21 +74,28 @@ export class DiscordService {
           inline: false
         },
         {
-          name: '⏰ Time',
-          value: new Date().toISOString(),
-          inline: true
-        }
-      ],
-      footer: {
-        text: 'Twitch Clip Recap Pipeline'
-      },
-      timestamp: new Date().toISOString()
-    };
+    // validate Discord config before issuing API request
+    if (!this.env.DISCORD_REVIEW_CHANNEL_ID || !this.env.DISCORD_BOT_TOKEN) {
+      throw new Error(
+        'Discord configuration missing: DISCORD_REVIEW_CHANNEL_ID and DISCORD_BOT_TOKEN are required'
+      );
+    }
 
+    const response = await fetch(
+      `https://discord.com/api/v10/channels/${this.env.DISCORD_REVIEW_CHANNEL_ID}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bot ${this.env.DISCORD_BOT_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+      }
+    );
     await this.sendDiscordMessage(embed);
   }
 
-  private async sendDiscordMessage(embed: any): Promise<void> {
+  private async sendDiscordMessage(embed: DiscordEmbed): Promise<void> {
     const message = {
       embeds: [embed]
     };
