@@ -17,7 +17,7 @@
           {{ blog?.description || 'Blog post description' }}
         </p>
         <!-- Date -->
-        <time v-if="blog?.date" :datetime="blog.date" class="mx-auto max-w-2xl mt-4 text-sm leading-8 text-gray-400 block">
+        <time v-if="blog?.date" :datetime="normalizedDateString" class="mx-auto max-w-2xl mt-4 text-sm leading-8 text-gray-400 block">
           {{ publishedDate }}
         </time>
       </div>
@@ -81,15 +81,34 @@ const { data: blog } = await useAsyncData(`blog-${route.path}`, async () => {
   }
 }, {
   // Use watch option to automatically refetch on route changes
-  watch: () => route.path
+  watch: [contentPath]
+})
+
+// Helper function to normalize date strings
+const normalizeDateString = (dateString) => {
+  if (!dateString) return ''
+  
+  // If it matches date-only format (YYYY-MM-DD), convert to UTC midnight
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return `${dateString}T00:00:00Z`
+  }
+  // If it contains 'T' but no timezone indicator, append 'Z'
+  else if (dateString.includes('T') && !/[Zz]|[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return `${dateString}Z`
+  }
+  // Otherwise leave as-is
+  return dateString
+}
+
+// Computed property for normalized date string (for datetime attribute)
+const normalizedDateString = computed(() => {
+  if (!blog.value?.date) return ''
+  return normalizeDateString(blog.value.date)
 })
 
 // Computed property for deterministic date formatting
 const publishedDate = computed(() => {
   if (!blog.value?.date) return ''
-  
-  // Ensure the date string is treated as UTC by appending "Z" when missing
-  const dateString = blog.value.date.endsWith('Z') ? blog.value.date : `${blog.value.date}Z`
   
   // Format with Intl.DateTimeFormat for deterministic output
   return new Intl.DateTimeFormat('en-US', { 
@@ -97,7 +116,7 @@ const publishedDate = computed(() => {
     month: 'long', 
     day: 'numeric', 
     timeZone: 'UTC' 
-  }).format(new Date(dateString))
+  }).format(new Date(normalizedDateString.value))
 })
 
 useHead({

@@ -1,6 +1,6 @@
 # Daily Clips → Blog (Cloudflare Workers AI + Workflows + GitHub + Discord)
 
-**Goal:** Turn daily Twitch clips into an MDX recap PR for review, with semantic search, an LLM judge gate, and Discord notifications. Runs on **Cloudflare Workers + Workflows** with **Workers AI** models. No servers.
+**Goal:** Turn daily Twitch clips into a Markdown recap PR for review, with semantic search, an LLM judge gate, and Discord notifications. Runs on **Cloudflare Workers + Workflows** with **Workers AI** models. No servers.
 
 > This file is the project brief/spec you can paste into a repo for Cursor. It lays out architecture, env, links, and build steps. It's code-light and implementation-ready.
 
@@ -8,13 +8,13 @@
 
 ## High-level flow
 
-1. **Cron (daily, Asia/Bangkok)** kicks a Workflow run.
+1. **Cron (daily, 09:00 Asia/Bangkok = 02:00 UTC)** kicks a Workflow run.
 2. **Fetch clips** from the last 24h for the broadcaster.
 3. **Transcribe** each (Workers AI → Whisper). If a clip is unusually long, chunk it.
 4. **Score/select** the best 5–12 moments (dev-stream tuned rules).
 5. **Draft**: intro + one section per clip (title, bullets, paragraph, embed, optional VOD timestamp).
 6. **Embed & index**: create embeddings, upsert to Vectorize for semantic search.
-7. **Author MDX** (front‑matter + sections), open a **GitHub PR** in the content repo.
+7. **Author Markdown** (front‑matter + sections), open a **GitHub PR** in the content repo.
 8. **Judge**: second LLM scores the draft (coherence, correctness, dev-signal, flow, length, safety). Publishes a **GitHub Check**.
 9. **Notify**: send **Discord** message with PR link + judge score.
 10. **(Optional) Auto-post** after manual merge/build.
@@ -23,7 +23,7 @@
 [ Cron ] -> [ Workflows Orchestrator ]
    |-> [Twitch Clips] -> [Whisper ASR] -> [Rank/Select] -> [LLM Draft]
    |-> [Embeddings] -> [Vectorize]
-   |-> [MDX file] -> [GitHub PR + Check]
+   |-> [Markdown file] -> [GitHub PR + Check]
    |-> [Discord webhook notify]
    |-> [R2: transcripts/assets]
 ```
@@ -69,7 +69,7 @@
 ## Repos & roles
 
 * **Infra repo** (Workers/Workflows/Bindings): `clip-recap-pipeline`
-* **Content repo** (your site): MDX posts live here. Example: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+* **Content repo** (your site): Markdown posts live here. Example: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
 
 > CI: After you merge the PR, your site host (Pages/Vercel/Netlify) builds and deploys.
 
@@ -128,41 +128,46 @@
 
 ## Daily Workflow (orchestration spec)
 
-**Trigger:** Cron daily at `09:00 Asia/Bangkok`.
+**Trigger:** Cron daily at `0 2 * * *` (02:00 UTC, equivalent to 09:00 Asia/Bangkok). Cloudflare schedules are UTC.
 
 **Steps:**
 
 1. **List Clips** (Twitch Helix `GET /helix/clips?broadcaster_id=...&started_at=...&ended_at=...`)
    * Keep: `id`, `title`, `url`, `duration`, `created_at`, `view_count`, `broadcaster_id`.
    * Paginate using `pagination.cursor` until exhaustion; respect Helix rate limits and add retries with jitter.
-   * Use UTC for `started_at`/`ended_at` boundaries; widen by ±2m to avoid edge losses.
+   * Use UTC for `started_at`/`ended_at` boundaries with half-open interval `[started_at, ended_at)` to avoid double-counting across reruns; widen by ±2m to avoid edge losses.
    * De-dupe by near-time window + similar titles.
 2. **Transcribe** each clip with Whisper
-   * If `duration > 90s`, chunk (Cloudflare tutorial pattern). Save transcript JSON to R2.
-3. **Score & select** (dev-stream rules)
+   * If `duration > 90s`, chunk (Cloudflare tutorial pattern).
+3. **Redact PII** from transcripts
+   * Apply PII redaction patterns before persisting to R2 (do not store raw transcripts).
+   * Redact: API keys/tokens, email addresses, IP addresses, database connection strings, JWT tokens, SSH keys, environment variable values.
+4. **Score & select** (dev-stream rules)
 
    * Boost: "tests pass/green", commit/merge language, issue/PR refs, "fixed/finally/works", "rebase resolved", endpoint 200/log success.
    * Optional visual cues/OCR: "Build succeeded", test counts. (Can be later).
    * Enforce variety & per-hour cap. Keep top 5–12.
-4. **Draft** post
+4. **Store redacted transcripts** to R2
+   * Save redacted transcript JSON to R2 after PII redaction is complete.
+5. **Draft** post
 
    * Compose: front‑matter (title/date/tags/clip\_count/repos), intro, then per‑clip section: H2 title, 2–3 bullets, 3–5 sentence paragraph, Twitch clip embed, optional VOD `?t=` link.
    * Also emit social blurbs (X/Bluesky/Threads/Mastodon/LinkedIn) with canonical blog URL placeholder.
-5. **Embeddings** → Vectorize
+6. **Embeddings** → Vectorize
 
-   * Upsert embeddings for each **clip transcript** and each **section** (store references to VOD/clip IDs).
-6. **Create PR** in content repo
+   * Upsert embeddings for each **redacted clip transcript** and each **section** (store references to VOD/clip IDs).
+7. **Create PR** in content repo
 
    * Branch: `auto/daily-recap-YYYY-MM-DD`
-   * Path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+   * Path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
    * URL: `/blog/development/YYYY-MM-DD-daily-dev-recap`
    * Note: Recaps are time-series content and intentionally include dates in the slug (exception to the “avoid dates in URLs” rule).
    * PR body: include clips table + scores + Judge summary placeholder.
-7. **Judge** (LLM check)
+8. **Judge** (LLM check)
 
    * Run rubric (below). Create a **GitHub Check Run** on the PR head SHA with JSON payload & pass/fail.
    * Label PR: `needs-review` or `needs-polish` if below threshold.
-8. **Discord notify**
+9. **Discord notify**
 
    * Send an embed: title, PR URL, judge score, top clip, clip count. Ping the right role.
 
@@ -185,7 +190,7 @@
 }
 ```
 
-**Transcript** (R2 object)
+**Transcript** (R2 object - redacted)
 
 ```json
 {
@@ -198,7 +203,7 @@
 }
 ```
 
-**Section** (for MDX)
+**Section** (for Markdown)
 
 ```json
 {
@@ -226,6 +231,14 @@
     "length": 8,
     "safety": 7
   },
+  "per_axis_percentages": {
+    "coherence": 90.0,
+    "correctness": 88.0,
+    "dev_signal": 85.0,
+    "narrative_flow": 93.3,
+    "length": 80.0,
+    "safety": 70.0
+  },
   "reasons": ["Tight summary, grounded in transcript"],
   "action": "approve"
 }
@@ -248,7 +261,7 @@
 
 ## Posting targets (first wave)
 
-* **Primary**: MDX site (content repo PR). After merge, your site host deploys.
+* **Primary**: Markdown site (content repo PR). After merge, your site host deploys.
 * **Social blurbs** (optional now, add later): X/Bluesky/Threads/Mastodon/LinkedIn with a teaser + blog link.
 
 ---
@@ -272,16 +285,16 @@
 **M1 — Clips → Transcripts**
 
 * OAuth client creds for Twitch; fetch last‑24h clips.
-* Call Workers AI Whisper; store transcripts in R2. Handle chunking for >90s.
+* Call Workers AI Whisper; redact PII from transcripts before storing to R2. Handle chunking for >90s.
 
 **M2 — Rank & Draft**
 
 * Implement scoring (keywords + basic heuristics); select 5–12.
-* Draft intro + sections; emit MDX string.
+* Draft intro + sections; emit Markdown string.
 
 **M3 — PR & Discord**
 
-* GitHub App: create branch, add MDX, open PR; post a **Check Run** placeholder.
+* GitHub App: create branch, add Markdown, open PR; post a **Check Run** placeholder.
 * Discord webhook: send PR URL + summary.
 
 **M4 — Judge**
@@ -291,7 +304,7 @@
 
 **M5 — Vectorize**
 
-* Generate embeddings for transcripts + sections; upsert to Vectorize.
+* Generate embeddings for redacted transcripts + sections; upsert to Vectorize.
 * Add simple search endpoint (optional).
 
 **M6 — Polish**
@@ -316,7 +329,8 @@
 * Keep all secrets in Wrangler secrets.
 * Run AI calls through **AI Gateway** for logging, rate limit, retries, fallbacks.
 * Do not store raw audio in public; use R2 with tight access policies.
-* Judge must reject sections that include secrets/PII; add a safety axis in rubric.
+* **Redact PII before persisting to R2 (do not store raw transcripts)**.
+* Judge must reject raw input that includes secrets/PII; add a safety axis in rubric.
 * PII patterns to detect and redact:
   - API keys/tokens (regex patterns for common formats)
   - Email addresses
@@ -338,11 +352,11 @@
 ## Open questions (fill in before build)
 
 * Provide the **Discord review channel ID** once created so postings can start.
-* Confirm the desired **PR target branch** (defaulting to `staging` per env) and that MDX lives at `content/blog/development/`.
+* Confirm the desired **PR target branch** (defaulting to `staging` per env) and that Markdown lives at `content/blog/development/`.
 * (Optional) Any additional repos to track for PR links (besides `pcl-labs`).
 * **Blog structure confirmed**: 
   - Route: `pages/blog/[...slug].vue` (catch-all for nested paths)
-  - Content: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+  - Content: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
   - URL: `/blog/development/YYYY-MM-DD-daily-dev-recap`
   - Front-matter: Matches existing blog structure with all required fields
 
@@ -365,7 +379,7 @@
 
 ## Done = when
 
-* A daily Workflow run opens a PR with an MDX recap containing: intro + 5–12 sections (each embedding a clip), plus a Judge Check Run that passes. A Discord message posts the PR link for review.
+* A daily Workflow run opens a PR with a Markdown recap containing: intro + 5–12 sections (each embedding a clip), plus a Judge Check Run that passes. A Discord message posts the PR link for review.
 
 > After merge, your site deploys the post. Social cross‑posting can be added as a follow‑up wave.
 
@@ -374,7 +388,7 @@
 ## Blog Integration with Existing Structure
 
 ### Content Path & Naming Convention
-* **Generated posts**: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+* **Generated posts**: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
 * **Existing posts**: Organized by category (e.g., `content/blog/marketing/effective-ecommerce-conversion-strategies.md`)
 * **Integration**: Generated posts will be in the development category alongside other categorized content
 
@@ -444,7 +458,7 @@ schema:
 * **Technical accuracy**: Must be factually correct based on actual stream content
 
 ### Deployment Flow
-1. **Generate**: Create MDX file with proper front-matter matching existing structure
+1. **Generate**: Create Markdown file with proper front-matter matching existing structure
 2. **PR**: Open pull request to `staging` branch
 3. **Review**: Manual review + AI judge scoring
 4. **Merge**: After approval, merge to staging

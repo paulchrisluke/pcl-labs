@@ -1,5 +1,5 @@
-import { Environment, TwitchClip, TwitchTokenResponse, Transcript } from '../types';
-import { AIService } from '../utils/ai';
+import { Environment, TwitchClip, TwitchTokenResponse, Transcript } from '../types/index.js';
+import { AIService } from '../utils/ai.js';
 
 export class TwitchService {
   private aiService: AIService;
@@ -152,6 +152,8 @@ export class TwitchService {
         throw new Error('Clip not found');
       }
 
+      // TODO: Implement actual audio download from Twitch clips
+      // Current implementation returns a placeholder buffer for testing purposes
       // For now, we'll use a placeholder approach since direct video downloading
       // from Twitch requires additional authentication and may violate ToS
       // In a production environment, you might want to:
@@ -167,7 +169,6 @@ export class TwitchService {
       
       console.log(`Returning placeholder audio buffer for clip: ${clipId}`);
       return placeholderBuffer;
-      
     } catch (error) {
       console.error(`Failed to download clip audio: ${error}`);
       throw error;

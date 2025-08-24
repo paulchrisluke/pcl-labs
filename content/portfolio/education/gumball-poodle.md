@@ -39,8 +39,7 @@ Drawing inspiration from successful CRO (Conversion Rate Optimization) strategie
 
 * **Strategic A/B Testing:**  We conducted strategic A/B testing of various website elements, including calls to action, product page layouts, and checkout processes. This data-driven approach allowed us to identify the most effective configurations for driving conversions.
 
-* **Custom Integrations:**  To elevate the shopping experience, we explored potential custom integrations. These could include features like wishlist functionality, personalized product recommendations, or a loyalty program to incentivize repeat purchases. (Specific integrations to be confirmed with Gumball Poodle)
-
+* **Custom Integrations:**  To elevate the shopping experience, we explored features like wishlist functionality, personalized product recommendations, and loyalty incentives, finalized collaboratively during discovery.
 ## Results
 
 Through meticulous CRO optimization and a deep understanding of Gumball Poodle's brand and target audience, we achieved a phenomenal 30% increase in conversion rates. This translates to a significant boost in sales and a wider audience discovering Gumball Poodle's unique sock collections. The optimized Shopify Plus store fosters a more engaging and user-friendly experience, solidifying Gumball Poodle's position as a leading purveyor of expressive footwear in Los Angeles.

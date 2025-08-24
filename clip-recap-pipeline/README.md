@@ -8,7 +8,7 @@ This pipeline automatically:
 1. Fetches Twitch clips from the last 24 hours
 2. Transcribes clips using Workers AI Whisper
 3. Scores and selects the best moments
-4. Generates a blog post with MDX content
+4. Generates a blog post with Markdown content
 5. Creates a GitHub PR for review
 6. Judges content quality with AI
 7. Sends Discord notifications
@@ -37,6 +37,12 @@ This pipeline automatically:
 
 ### Twitch OAuth Redirect URLs
 Use these exact redirect URIs in your Twitch Developer Application (one per line, must match the redirect_uri used in code):
+
+- Production: https://clip-recap-pipeline.paulchrisluke.workers.dev/oauth/callback
+- Staging: https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/oauth/callback
+- Local Dev: http://localhost:8787/oauth/callback
+
+Note: If your code uses a different callback path, replace `/oauth/callback` above accordingly and keep the same paths in wrangler.toml [routes] and the `redirect_uri` in the OAuth code.
 
 ## Setup
 
@@ -121,7 +127,7 @@ Adjust clip scoring and selection in `src/services/content.ts`:
 
 Generated posts follow the existing blog structure:
 
-- **Path**: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+- **Path**: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
 - **URL**: `/blog/development/YYYY-MM-DD-daily-dev-recap`
 - **Front-matter**: Matches existing blog posts
 - **Content**: Intro + sections with Twitch clip embeds
