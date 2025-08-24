@@ -1,10 +1,10 @@
-import { Env, TwitchClip, TwitchTokenResponse, Transcript } from '../types';
+import { Environment, TwitchClip, TwitchTokenResponse, Transcript } from '../types';
 import { AIService } from '../utils/ai';
 
 export class TwitchService {
   private aiService: AIService;
 
-  constructor(private env: Env) {
+  constructor(private env: Environment) {
     this.aiService = new AIService(env);
   }
 

@@ -1,22 +1,5 @@
-// Simple JWT generation for GitHub App authentication
-// Note: In production, you'd use a proper JWT library
-
-export function generateJWT(privateKey: string, appId: string): string {
-  // This is a simplified JWT implementation
-  // For production, use a proper JWT library like 'jsonwebtoken'
-  
-  const header = {
-    alg: 'RS256',
-    typ: 'JWT'
-  };
-  
-  const payload = {
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (10 * 60), // 10 minutes
-    iss: appId
-  };
-  
 import { createSign } from 'crypto';
+
 // Simple JWT generation for GitHub App authentication
 // Note: In production, you'd use a proper JWT library
 export function generateJWT(privateKey: string, appId: string): string {
@@ -54,5 +37,4 @@ export function generateJWT(privateKey: string, appId: string): string {
   const signature = signer.sign(key); // PKCS#1 v1.5 by default
 
   return `${unsigned}.${toBase64Url(signature)}`;
-}
 }

@@ -1,9 +1,8 @@
-import { Env } from '../types';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { Environment } from '../types';
 
 export async function handleWebhook(
-  request: Request, 
-  env: Env, 
+  request: Request,
+  env: Environment,
   ctx: ExecutionContext
 ): Promise<Response> {
   try {
@@ -35,7 +34,7 @@ export async function handleWebhook(
   }
 }
 
-function verifyWebhookSignature(body: string, signature: string | null, secret: string): boolean {
+async function verifyWebhookSignature(body: string, signature: string | null, secret: string): Promise<boolean> {
   try {
     // Reject null or malformed signatures
     if (!signature || !signature.startsWith('sha256=')) {
@@ -50,17 +49,28 @@ function verifyWebhookSignature(body: string, signature: string | null, secret: 
       return false;
     }
     
+    // Convert secret to Uint8Array
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const bodyData = encoder.encode(body);
+    
+    // Import key for HMAC
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
     // Compute HMAC-SHA256 digest
-    const computedDigest = createHmac('sha256', secret)
-      .update(body)
-      .digest('hex');
+    const signatureBuffer = await crypto.subtle.sign('HMAC', key, bodyData);
+    const computedDigest = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
     
-    // Convert both signatures to Buffers for timing-safe comparison
-    const expectedBuffer = Buffer.from(signatureValue, 'hex');
-    const computedBuffer = Buffer.from(computedDigest, 'hex');
-    
-    // Use timing-safe comparison to prevent timing attacks
-    return timingSafeEqual(expectedBuffer, computedBuffer);
+    // Simple string comparison (timing-safe comparison not available in Web Crypto API)
+    return signatureValue === computedDigest;
   } catch (error) {
     // Return false on any parsing/verification error
     console.error('Webhook signature verification error:', error);
@@ -68,7 +78,7 @@ function verifyWebhookSignature(body: string, signature: string | null, secret: 
   }
 }
 
-async function handlePullRequestEvent(payload: any, env: Env): Promise<Response> {
+async function handlePullRequestEvent(payload: any, env: Environment): Promise<Response> {
   const { action, pull_request } = payload;
   
   console.log(`PR ${action}: #${pull_request.number} - ${pull_request.title}`);
@@ -82,7 +92,7 @@ async function handlePullRequestEvent(payload: any, env: Env): Promise<Response>
   return new Response('OK', { status: 200 });
 }
 
-async function handleCheckRunEvent(payload: any, env: Env): Promise<Response> {
+async function handleCheckRunEvent(payload: any, env: Environment): Promise<Response> {
   const { action, check_run } = payload;
   
   console.log(`Check run ${action}: ${check_run.name} - ${check_run.conclusion}`);

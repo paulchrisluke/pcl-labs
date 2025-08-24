@@ -10,11 +10,19 @@
     "deploy:staging": "wrangler deploy --env staging",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["twitch", "cloudflare", "workers", "ai", "blog", "automation"],
+  "keywords": [
+    "twitch",
+    "cloudflare",
+    "workers",
+    "ai",
+    "blog",
+    "automation"
+  ],
   "author": "Paul Chris Luke",
   "license": "MIT",
   "devDependencies": {
-    "wrangler": "^3.0.0",
-    "@cloudflare/workers-types": "^4.0.0"
+    "@cloudflare/workers-types": "^4.0.0",
+    "@types/node": "^24.3.0",
+    "wrangler": "^3.0.0"
   }
 }

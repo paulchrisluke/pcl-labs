@@ -1,4 +1,4 @@
-import { Env } from '../types';
+import { Environment } from '../types';
 
 export interface AIRetryOptions {
   timeout?: number;
@@ -6,25 +6,28 @@ export interface AIRetryOptions {
 }
 
 export class AIService {
-  constructor(private env: Env) {}
+  constructor(private env: Environment) {}
 
   async callWithRetry(
     model: string, 
     params: any, 
-    options: AIRetryOptions = { timeout: 30000, retries: 2 }
+    options: AIRetryOptions = {}
   ): Promise<any> {
-    for (let i = 0; i <= options.retries!; i++) {
+    const retries = options?.retries ?? 2;
+    const timeout = options?.timeout ?? 30_000;
+    for (let i = 0; i <= retries; i++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), options.timeout);
-        
         const result = await this.env.ai.run(model, params, { signal: controller.signal });
-        clearTimeout(timeoutId);
         return result;
       } catch (error) {
-        if (i === options.retries) throw error;
-        console.log(`AI call failed, retrying... (${i + 1}/${options.retries})`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i))); // Exponential backoff
+        if (i === retries) throw error;
+        console.warn(`AI call failed, retrying... (${i + 1}/${retries})`);
+        const backoffMs = 1000 * Math.pow(2, i); // 1s, 2s, 4s, ...
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
   }
