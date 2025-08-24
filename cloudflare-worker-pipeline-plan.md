@@ -155,7 +155,8 @@
 
    * Branch: `auto/daily-recap-YYYY-MM-DD`
    * Path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
-   * URL: Will be accessible at `/blog/development/YYYY-MM-DD-daily-dev-recap`
+   * URL: `/blog/development/YYYY-MM-DD-daily-dev-recap`
+   * Note: Recaps are time-series content and intentionally include dates in the slug (exception to the “avoid dates in URLs” rule).
    * PR body: include clips table + scores + Judge summary placeholder.
 7. **Judge** (LLM check)
 
