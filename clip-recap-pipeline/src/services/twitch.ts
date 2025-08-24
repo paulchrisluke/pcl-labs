@@ -38,7 +38,7 @@ export class TwitchService {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { expires_in: number };
         console.log(`Token validation successful. Expires in: ${data.expires_in} seconds`);
         return true;
       } else {
@@ -84,7 +84,7 @@ export class TwitchService {
       throw new Error(`Failed to fetch clips: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { data: TwitchClip[] };
     return data.data || [];
   }
 
@@ -145,7 +145,7 @@ export class TwitchService {
         throw new Error(`Failed to get clip info: ${clipResponse.statusText}`);
       }
 
-      const clipData = await clipResponse.json();
+      const clipData = await clipResponse.json() as { data?: TwitchClip[] };
       const clip = clipData.data?.[0];
       
       if (!clip) {

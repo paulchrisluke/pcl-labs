@@ -185,7 +185,7 @@ Format as JSON:
     // Generate JWT for GitHub App
     let jwt: string;
     try {
-      jwt = this.generateJWT();
+      jwt = await this.generateJWT();
     } catch (error) {
       throw new Error(`Failed to generate JWT for GitHub authentication: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -231,7 +231,7 @@ Format as JSON:
     return data.token;
   }
 
-  private generateJWT(): string {
+  private async generateJWT(): Promise<string> {
     return generateJWT(this.env.GITHUB_PRIVATE_KEY, this.env.GITHUB_APP_ID);
   }
 
