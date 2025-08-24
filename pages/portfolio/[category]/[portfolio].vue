@@ -40,15 +40,17 @@
 import { useRoute, useAsyncData } from 'nuxt/app'
 
 const route = useRoute()
-const { path } = route
 
 // Fetch the markdown content based on the slug using queryContent
-const { data: portfolio } = await useAsyncData(`portfolio-${path}`, async () => {
+const { data: portfolio } = await useAsyncData(`portfolio-${route.path}`, async () => {
   try {
-    // Construct the proper content path by removing the leading slash
-    const contentPath = path.replace(/^\//, '')
-    const result = await queryContent(contentPath).findOne()
-    console.log('Portfolio data:', result)
+    // Use route.path directly (including leading slash) for consistency with ContentDoc resolution
+    const result = await queryContent(route.path).findOne()
+    
+    // Only log in development
+    if (process.dev) {
+      console.log('Portfolio data:', result)
+    }
     return result
   } catch (error) {
     console.error('Error fetching portfolio:', error)

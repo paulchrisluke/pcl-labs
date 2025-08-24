@@ -42,16 +42,17 @@
 
 <script setup>
 import { useRoute, useAsyncData, createError } from 'nuxt/app'
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 
 const route = useRoute()
-// Use route.path directly for content querying (don't strip leading slash)
-const contentPath = route.path
+
+// Make contentPath reactive by computing it from route.path
+const contentPath = computed(() => route.path)
 
 // Fetch the markdown content based on the slug using queryContent
-const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async () => {
+const { data: blog } = await useAsyncData(`blog-${route.path}`, async () => {
   try {
-    const result = await queryContent(contentPath).findOne()
+    const result = await queryContent(contentPath.value).findOne()
     
     // Check if blog post exists, if not throw 404 error
     if (!result) {
@@ -61,7 +62,10 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
       })
     }
     
-    console.log('Blog data:', result)
+    // Only log in development
+    if (process.dev) {
+      console.log('Blog data:', result)
+    }
     return result
   } catch (error) {
     // If it's already a Nuxt error, rethrow it
@@ -76,13 +80,8 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
     })
   }
 }, {
-  // Make the key reactive to route changes
-  key: `blog-${route.path}`
-})
-
-// Watch for route changes and refresh the data
-watch(() => route.path, () => {
-  refresh()
+  // Use watch option to automatically refetch on route changes
+  watch: () => route.path
 })
 
 // Computed property for deterministic date formatting

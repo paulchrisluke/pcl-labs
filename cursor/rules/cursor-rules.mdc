@@ -1,6 +1,4 @@
-# =========================
 # Cursor Rules for paulchrisluke.com
-# =========================
 
 - description: |
     Project-wide conventions (Nuxt 3, Tailwind, Vercel, Yarn). Frontend-only.
@@ -112,10 +110,10 @@
 
 - description: |
     Routing, slugs, and pages.
-    - Pages: `pages/index.vue`, `pages/blog/[slug].vue`, `pages/portfolio/[slug].vue`, `pages/contact.vue`, `pages/404.vue`.
-    - Generate static routes for all blog/portfolio entries in `nuxt.config.ts` via `routeRules`/`prerender`.
-    - Use clean slugs (kebab-case). Never include dates in URLs (dates remain in front-matter).
-
+    - Pages: `pages/index.vue`, `pages/blog/[...slug].vue`, `pages/portfolio/[slug].vue`, `pages/contact.vue`, `pages/404.vue`.
+    - Generate static routes for all blog/portfolio entries in `nuxt.config.ts` via `routeRules`/`prerender` that match the catch-all slug pattern.
+    - Use clean slugs (kebab-case). Avoid dates in URLs for evergreen content.
+    - Exception: time-series posts (e.g., daily or weekly recaps) may include dates in the slug for uniqueness and clarity.
   globs:
     - "pages/**"
     - "server/routes/**"
@@ -230,8 +228,3 @@
   globs:
     - "**/*"
   alwaysApply: true
-
----
-
-we use nuxt, tailwind, vercel, yarn, no database, frontend only. focused on seo and structured schema of a personal site paulchrisluke.com with portfolio items, blogs, home and contact pages. 
-and in the future cloudflare worker/pipeline for automating ai driven blog posts
