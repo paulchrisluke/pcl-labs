@@ -3,7 +3,7 @@
     <!-- <Hero /> -->
     <!-- TODO: INSERT BY INDUSTRY COMPONENT HERE -->
     <ServiceGrid id="Services" />
-    <ProductList :limit="4" />
+    <ProductList :portfolioData="portfolioData" :limit="4" />
     <Logos />
     <Stats />
     <Reviews />
@@ -12,7 +12,20 @@
   </div>
 </template>
 <script setup>
+import { useAsyncData } from 'nuxt/app'
 
+// Fetch portfolio data for the home page
+const { data: portfolioData } = await useAsyncData('home-portfolio', async () => {
+  try {
+    console.log('Fetching portfolio data for home page...');
+    const result = await queryContent('portfolio').limit(4).find();
+    console.log('Home page portfolio data:', result);
+    return result;
+  } catch (error) {
+    console.error('Error fetching portfolio data for home:', error);
+    return [];
+  }
+});
 
 useHead({
   title: 'Increase Your Conversions with Web PCL-Labs',

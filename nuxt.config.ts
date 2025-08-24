@@ -1,6 +1,7 @@
 import svgLoader from 'vite-svg-loader'
 
 export default defineNuxtConfig({
+  compatibilityDate: '2025-08-24',
   app: {
     head: {
       charset: 'utf-8',
@@ -22,7 +23,6 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/content',
     'nuxt-gtag',
-    '@nuxtjs/sitemap',
     '@nuxtjs/seo',
   ],
 
@@ -30,16 +30,19 @@ export default defineNuxtConfig({
     id: 'G-NWGNSTDNNX'
 },
 
-  content: {
-    markdown: { 'anchorLinks':false }
-  },
+
+
 
   vite: {
     plugins: [
       svgLoader({
         /* options */
       })
-    ]
+    ],
+    define: {
+      // Suppress deprecation warnings
+      'process.env.NODE_NO_WARNINGS': '1'
+    }
   },
   postcss: {
     plugins: {
@@ -60,8 +63,7 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       routes: [
-        '/proposals/wcm',
-        // Add more proposal slugs here as needed
+        // Add proposal slugs here as needed
       ]
     }
   }
