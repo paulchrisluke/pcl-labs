@@ -1,6 +1,7 @@
 ---
 title: "Gumball Poodle"
 tags: ['Shopify', 'Web Development', 'Marketing']
+category: "education"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Gumball_Poodle_Featured_izz3em.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791178/PCL-Labs/Gumball_Poodle_vndsnm.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"

@@ -1,6 +1,7 @@
 ---
 title: "Not The Best Crypto Agency"
 tags: ['Crypto', 'Web Development', 'Marketing']
+category: "crypto"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789946/PCL-Labs/Not_The_Best_Crypto_Agency_Feature_uzkyll.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791179/PCL-Labs/Phuntoken-1_qtwrie.webp"
 imageAlt: "Gumball Poodle Shopify CRO by PCL Labs"

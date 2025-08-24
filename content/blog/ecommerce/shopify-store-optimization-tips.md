@@ -1,5 +1,6 @@
 ---
 title: "Shopify Store Optimization: 10 Tips to Boost Your Sales"
+category: "ecommerce"
 tags: ['Shopify', 'E-commerce', 'Store Optimization']
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/shopify-optimization.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/shopify-thumbnail.webp"

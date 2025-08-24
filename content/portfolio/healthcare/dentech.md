@@ -1,6 +1,7 @@
 ---
 title: "Dentech"
 tags: ['Healthcare', 'Web Development', 'Marketing']
+category: "healthcare"
 image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789945/PCL-Labs/Dentech_Featured_bph9ld.webp"
 imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791175/PCL-Labs/Dentech_eebrci.webp"
 imageAlt: "Dentech Web Development and Marketing by PCL Labs"
