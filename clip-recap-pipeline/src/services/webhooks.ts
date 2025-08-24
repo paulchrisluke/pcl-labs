@@ -1,8 +1,8 @@
-import { Env } from '../types';
+import { Environment } from '../types';
 
 export async function handleWebhook(
-  request: Request, 
-  env: Env, 
+  request: Request,
+  env: Environment,
   ctx: ExecutionContext
 ): Promise<Response> {
   try {
@@ -10,7 +10,7 @@ export async function handleWebhook(
     const signature = request.headers.get('x-hub-signature-256');
     
     // Verify webhook signature
-    if (!verifyWebhookSignature(body, signature, env.GITHUB_WEBHOOK_SECRET)) {
+    if (!(await verifyWebhookSignature(body, signature, env.GITHUB_WEBHOOK_SECRET))) {
       return new Response('Unauthorized', { status: 401 });
     }
     
@@ -34,13 +34,51 @@ export async function handleWebhook(
   }
 }
 
-function verifyWebhookSignature(body: string, signature: string | null, secret: string): boolean {
-  // This is a simplified signature verification
-  // In production, you'd use crypto to verify the HMAC signature
-  return true; // Placeholder
+async function verifyWebhookSignature(body: string, signature: string | null, secret: string): Promise<boolean> {
+  try {
+    // Reject null or malformed signatures
+    if (!signature || !signature.startsWith('sha256=')) {
+      return false;
+    }
+    
+    // Extract the signature value (remove 'sha256=' prefix)
+    const signatureValue = signature.substring(7);
+    
+    // Validate signature format (should be 64 hex characters)
+    if (!/^[a-f0-9]{64}$/i.test(signatureValue)) {
+      return false;
+    }
+    
+    // Convert secret to Uint8Array
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const bodyData = encoder.encode(body);
+    
+    // Import key for HMAC
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    
+    // Compute HMAC-SHA256 digest
+    const signatureBuffer = await crypto.subtle.sign('HMAC', key, bodyData);
+    const computedDigest = Array.from(new Uint8Array(signatureBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    // Simple string comparison (timing-safe comparison not available in Web Crypto API)
+    return signatureValue === computedDigest;
+  } catch (error) {
+    // Return false on any parsing/verification error
+    console.error('Webhook signature verification error:', error);
+    return false;
+  }
 }
 
-async function handlePullRequestEvent(payload: any, env: Env): Promise<Response> {
+async function handlePullRequestEvent(payload: any, env: Environment): Promise<Response> {
   const { action, pull_request } = payload;
   
   console.log(`PR ${action}: #${pull_request.number} - ${pull_request.title}`);
@@ -54,7 +92,7 @@ async function handlePullRequestEvent(payload: any, env: Env): Promise<Response>
   return new Response('OK', { status: 200 });
 }
 
-async function handleCheckRunEvent(payload: any, env: Env): Promise<Response> {
+async function handleCheckRunEvent(payload: any, env: Environment): Promise<Response> {
   const { action, check_run } = payload;
   
   console.log(`Check run ${action}: ${check_run.name} - ${check_run.conclusion}`);

@@ -2,6 +2,7 @@ name = "clip-recap-pipeline"
 main = "src/index.ts"
 compatibility_date = "2024-01-15"
 
+
 [env.production]
 name = "clip-recap-pipeline"
 
@@ -17,14 +18,40 @@ binding = "ai"
 binding = "VECTORIZE"
 index_name = "clip-recap-embeddings"
 
-# R2 bucket for transcripts and assets
-[[r2_buckets]]
+# Cron triggers (production only). All times are UTC.
+[env.production.triggers]
+crons = [
+  "0 2 * * *",  # Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
+  "0 * * * *"   # Every hour - token validation
+]
+[env.production.ai]
+binding = "ai"
+
+[[env.production.vectorize]]
+binding = "VECTORIZE"
+index_name = "clip-recap-embeddings"
+
+[[env.production.r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 
-# Cron trigger for daily runs
+## Staging bindings
+[env.staging.ai]
+binding = "ai"
+
+[[env.staging.vectorize]]
+binding = "VECTORIZE"
+index_name = "clip-recap-embeddings"
+
+[[env.staging.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "clip-recap-assets"
+# Cron triggers
 [triggers]
-crons = ["0 9 * * *"]  # Daily at 09:00 ICT (Asia/Bangkok)
+crons = [
+  "0 2 * * *",  # Daily at 09:00 ICT (UTC+7) - main pipeline
+  "0 * * * *"   # Every hour - token validation
+]
 
 # Environment variables (set via wrangler secret put)
 # TWITCH_CLIENT_ID

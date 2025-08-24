@@ -1,13 +1,45 @@
-import { Env } from '../types';
+import { Environment } from '../types';
+import { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import { TwitchService } from './twitch';
 import { ContentService } from './content';
 import { DiscordService } from './discord';
 
 export async function handleScheduled(
-  event: ScheduledEvent, 
-  env: Env, 
+  event: ScheduledEvent,
+  env: Environment,
   ctx: ExecutionContext
 ): Promise<void> {
+  console.log(`Scheduled event triggered: ${event.cron}`);
+  
+  // Handle hourly token validation
+  if (event.cron === "0 * * * *") {
+    await handleTokenValidation(env);
+    return;
+  }
+  
+  // Handle daily pipeline (09:00 ICT)
+  if (event.cron === "0 9 * * *") {
+    await handleDailyPipeline(env);
+    return;
+  }
+  
+  console.log(`Unknown cron pattern: ${event.cron}`);
+}
+
+async function handleTokenValidation(env: Environment): Promise<void> {
+  console.log('Starting hourly Twitch token validation...');
+  
+  try {
+    const twitchService = new TwitchService(env);
+    const token = await twitchService.getValidatedToken();
+    console.log('✅ Token validation successful');
+  } catch (error) {
+    console.error('❌ Token validation failed:', error);
+    // Could send Discord notification here if needed
+  }
+}
+
+async function handleDailyPipeline(env: Environment): Promise<void> {
   console.log('Starting daily clip recap pipeline...');
   
   try {
