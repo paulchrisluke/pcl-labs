@@ -41,8 +41,8 @@
 </template>
 
 <script setup>
-import { useRoute, useAsyncData, createError, watch } from 'nuxt/app'
-import { computed } from 'vue'
+import { useRoute, useAsyncData, createError } from 'nuxt/app'
+import { computed, watch } from 'vue'
 
 const route = useRoute()
 // Use route.path directly for content querying (don't strip leading slash)
