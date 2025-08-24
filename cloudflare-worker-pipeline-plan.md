@@ -155,6 +155,7 @@
 
    * Branch: `auto/daily-recap-YYYY-MM-DD`
    * Path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+   * URL: Will be accessible at `/blog/development/YYYY-MM-DD-daily-dev-recap`
    * PR body: include clips table + scores + Judge summary placeholder.
 7. **Judge** (LLM check)
 
@@ -331,6 +332,11 @@
 * Provide the **Discord review channel ID** once created so postings can start.
 * Confirm the desired **PR target branch** (defaulting to `staging` per env) and that MDX lives at `content/blog/development/`.
 * (Optional) Any additional repos to track for PR links (besides `pcl-labs`).
+* **Blog structure confirmed**: 
+  - Route: `pages/blog/[...slug].vue` (catch-all for nested paths)
+  - Content: `content/blog/development/YYYY-MM-DD-daily-dev-recap.mdx`
+  - URL: `/blog/development/YYYY-MM-DD-daily-dev-recap`
+  - Front-matter: Matches existing blog structure with all required fields
 
 ---
 
@@ -378,18 +384,34 @@ imageAlt: "Daily development recap from Twitch stream showing [key achievement]"
 description: "Daily development recap from [date] featuring [number] key moments including [top achievement] and [other highlights]."
 keywords: "development, live coding, twitch, daily recap, [specific tech], PCL-Labs"
 date: "YYYY-MM-DD"
+updated: "YYYY-MM-DD"
+canonical: "https://paulchrisluke.com/blog/development/YYYY-MM-DD-daily-dev-recap"
+draft: false
+cover: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-[date].webp"
+thumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-thumbnail-[date].webp"
+og:
+  alt: "Daily development recap from Twitch stream showing [key achievement]"
+schema:
+  type: "BlogPosting"
 ---
 ```
 
 ### Blog Page Integration
-* **Existing route**: `pages/blog/[blog].vue` already handles both `.md` and `.mdx` files
-* **Generated posts**: Will automatically appear in the blog listing and individual post pages
-* **SEO**: Generated posts will inherit the same SEO optimization as existing posts
+* **Route structure**: `pages/blog/[...slug].vue` uses catch-all parameter to handle nested paths
+* **URL patterns**: 
+  - Generated posts: `/blog/development/YYYY-MM-DD-daily-dev-recap`
+  - Existing posts: `/blog/[category]/[slug]` (e.g., `/blog/marketing/effective-ecommerce-conversion-strategies`)
+* **Content handling**: Route automatically strips leading slash and queries content using `queryContent(contentPath)`
+* **SEO**: Generated posts will inherit the same SEO optimization as existing posts with Open Graph and Twitter meta tags
 
 ### Content Organization
 * **Existing posts**: Professional content (e-commerce, legal, marketing guides)
 * **Generated posts**: Daily development recaps with Twitch clips
 * **Coexistence**: Both types will be listed together in chronological order on the blog index
+* **Categories**: 
+  - `content/blog/development/` - Generated daily recaps
+  - `content/blog/marketing/` - Marketing guides and strategies
+  - `content/blog/ecommerce/` - E-commerce optimization content
 
 ### Image Generation
 * **Requirement**: Generate Cloudinary URLs for `image`, `imageThumbnail`, and `imageAlt`
@@ -405,6 +427,7 @@ date: "YYYY-MM-DD"
 * **Generated**: `/blog/development/YYYY-MM-DD-daily-dev-recap` (clean, SEO-friendly)
 * **Existing**: `/blog/[category]/[slug]` (e.g., `/blog/marketing/effective-ecommerce-conversion-strategies`)
 * **Integration**: Both follow the same URL pattern and routing with category-based organization
+* **Route handling**: Catch-all `[...slug].vue` route handles all nested paths automatically
 
 ### Content Quality Standards
 * **Length**: 800-1500 words (matching existing blog standards)
@@ -413,9 +436,16 @@ date: "YYYY-MM-DD"
 * **Technical accuracy**: Must be factually correct based on actual stream content
 
 ### Deployment Flow
-1. **Generate**: Create MDX file with proper front-matter
+1. **Generate**: Create MDX file with proper front-matter matching existing structure
 2. **PR**: Open pull request to `staging` branch
 3. **Review**: Manual review + AI judge scoring
 4. **Merge**: After approval, merge to staging
 5. **Deploy**: Vercel automatically builds and deploys the new post
 6. **Index**: Post appears in blog listing and search results
+
+### Route Implementation Details
+* **File**: `pages/blog/[...slug].vue` - Catch-all route for nested blog paths
+* **Path handling**: `const contentPath = route.path.replace(/^\//, '')` removes leading slash
+* **Content query**: `queryContent(contentPath).findOne()` fetches the correct content
+* **404 handling**: Proper error handling for missing posts with `createError({ statusCode: 404 })`
+* **SEO**: Comprehensive Open Graph and Twitter meta tags with fallbacks
