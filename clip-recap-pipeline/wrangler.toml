@@ -1,0 +1,38 @@
+name = "clip-recap-pipeline"
+main = "src/index.ts"
+compatibility_date = "2024-01-15"
+
+[env.production]
+name = "clip-recap-pipeline"
+
+[env.staging]
+name = "clip-recap-pipeline-staging"
+
+# Bindings
+[ai]
+binding = "ai"
+
+# Vectorize index for embeddings
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "clip-recap-embeddings"
+
+# R2 bucket for transcripts and assets
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "clip-recap-assets"
+
+# Cron trigger for daily runs
+[triggers]
+crons = ["0 9 * * *"]  # Daily at 09:00 ICT (Asia/Bangkok)
+
+# Environment variables (set via wrangler secret put)
+# TWITCH_CLIENT_ID
+# TWITCH_CLIENT_SECRET  
+# TWITCH_BROADCASTER_ID
+# GITHUB_APP_ID
+# GITHUB_INSTALLATION_ID
+# GITHUB_PRIVATE_KEY
+# GITHUB_WEBHOOK_SECRET
+# DISCORD_BOT_TOKEN
+# DISCORD_REVIEW_CHANNEL_ID
