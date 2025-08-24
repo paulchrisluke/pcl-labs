@@ -45,7 +45,9 @@ const { path } = route
 // Fetch the markdown content based on the slug using queryContent
 const { data: portfolio } = await useAsyncData(`portfolio-${path}`, async () => {
   try {
-    const result = await queryContent(path).findOne()
+    // Construct the proper content path by removing the leading slash
+    const contentPath = path.replace(/^\//, '')
+    const result = await queryContent(contentPath).findOne()
     console.log('Portfolio data:', result)
     return result
   } catch (error) {
