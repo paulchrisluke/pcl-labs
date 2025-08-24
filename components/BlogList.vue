@@ -20,10 +20,10 @@
           class="group relative"
           :aria-label="`Read post: ${post.title}`"
         >
-          <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200">
+          <div class="mt-6 aspect-square rounded-md overflow-hidden bg-gray-200">
             <img 
-              :src="post.imageThumbnail" 
-              :alt="post.imageAlt" 
+              :src="post.imageThumbnail || post.image" 
+              :alt="post.imageAlt || `Thumbnail for ${post.title}`" 
               class="object-cover object-center h-full w-full group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out"
               loading="lazy"
               decoding="async"
