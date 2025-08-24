@@ -1,6 +1,7 @@
 import { Environment, TwitchTokenResponse } from './types';
 import { handleScheduled } from './services/scheduler';
 import { handleWebhook } from './services/webhooks';
+import { handleGitHubRequest } from './routes/github';
 
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
@@ -334,6 +335,11 @@ export default {
           headers: { 'Content-Type': 'application/json' }
         });
       }
+    }
+
+    // GitHub endpoints
+    if (url.pathname.startsWith('/api/github/')) {
+      return handleGitHubRequest(request, env);
     }
 
     // Webhook endpoints
