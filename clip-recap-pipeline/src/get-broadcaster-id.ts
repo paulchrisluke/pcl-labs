@@ -1,6 +1,6 @@
-import { Env, TwitchTokenResponse } from './types';
+import { Environment, TwitchTokenResponse } from './types';
 
-export async function getBroadcasterId(env: Env): Promise<string> {
+export async function getBroadcasterId(env: Environment): Promise<string> {
   try {
     console.log('🔑 Getting Twitch access token...');
     // Credentials present; avoid logging their values or metadata.

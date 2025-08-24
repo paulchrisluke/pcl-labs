@@ -1,9 +1,9 @@
-import { Env, TwitchTokenResponse } from './types';
+import { Environment, TwitchTokenResponse } from './types';
 import { handleScheduled } from './services/scheduler';
 import { handleWebhook } from './services/webhooks';
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     
     // Health check endpoint
@@ -14,7 +14,6 @@ export default {
     // Validate Twitch credentials endpoint
     if (url.pathname === '/validate') {
       try {
-        console.log('🔍 Validating Twitch credentials...');
         console.log('🔍 Validating Twitch credentials...');
         console.log('Validating credentials for Client ID length:', env.TWITCH_CLIENT_ID?.length || 0);
         
@@ -37,9 +36,8 @@ export default {
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
           console.error('Token response error:', errorText);
-            error: `Token request failed: ${tokenResponse.status} - ${errorText}`,
-            client_id_length: env.TWITCH_CLIENT_ID?.length || 0,
-            client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0,
+          return new Response(JSON.stringify({
+            success: false,
             error: `Token request failed: ${tokenResponse.status} - ${errorText}`,
             client_id_length: env.TWITCH_CLIENT_ID?.length || 0,
             client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0,
@@ -156,31 +154,8 @@ export default {
               }))
             }), {
               status: 200,
-const body = await request.json() as { clips?: any[] };
-const clipsToStore = body.clips || [];
-
-if (clipsToStore.length === 0) {
-  return new Response(JSON.stringify({
-    success: false,
-    error: 'No clips provided to store'
-  }), {
-    status: 400,
-    headers: { 'Content-Type': 'application/json' }
-  });
-}
-
-// Validate clip data structure
-for (const clip of clipsToStore) {
-  if (!clip.id || typeof clip.id !== 'string') {
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Each clip must have a valid id'
-    }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
+              headers: { 'Content-Type': 'application/json' }
+            });
 
           case 'POST':
             // Store clips data to R2
@@ -196,6 +171,19 @@ for (const clip of clipsToStore) {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
               });
+            }
+            
+            // Validate clip data structure
+            for (const clip of clipsToStore) {
+              if (!clip.id || typeof clip.id !== 'string') {
+                return new Response(JSON.stringify({
+                  success: false,
+                  error: 'Each clip must have a valid id'
+                }), {
+                  status: 400,
+                  headers: { 'Content-Type': 'application/json' }
+                });
+              }
             }
             
             // Store each clip as a separate file in R2
@@ -278,25 +266,11 @@ for (const clip of clipsToStore) {
         const clipId = url.searchParams.get('id');
         
         if (clipId) {
-          // Limit the number of clips to prevent performance issues
-          const MAX_CLIPS = 100;
-          const objectsToFetch = list.objects.slice(0, MAX_CLIPS);
-
-          // Fetch clips in parallel with batching
-          const batchSize = 10;
-          for (let i = 0; i < objectsToFetch.length; i += batchSize) {
-            const batch = objectsToFetch.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (object) => {
-              const clipObject = await env.R2_BUCKET.get(object.key);
-              return clipObject ? clipObject.json() : null;
-            });
-
-            const batchResults = await Promise.all(batchPromises);
-            clips.push(...batchResults.filter(clip => clip !== null));
-          }
-
-          // Add pagination info to response
-          const hasMore = list.objects.length > MAX_CLIPS;
+          // Get specific clip
+          const clipObject = await env.R2_BUCKET.get(`clips/${clipId}.json`);
+          
+          if (!clipObject) {
+            return new Response(JSON.stringify({
               success: false,
               error: 'Clip not found'
             }), {
@@ -319,18 +293,32 @@ for (const clip of clipsToStore) {
           const list = await env.R2_BUCKET.list({ prefix: 'clips/' });
           const clips = [];
           
-          for (const object of list.objects) {
-            const clipObject = await env.R2_BUCKET.get(object.key);
-            if (clipObject) {
-              const clipData = await clipObject.json();
-              clips.push(clipData);
-            }
+          // Limit the number of clips to prevent performance issues
+          const MAX_CLIPS = 100;
+          const objectsToFetch = list.objects.slice(0, MAX_CLIPS);
+
+          // Fetch clips in parallel with batching
+          const batchSize = 10;
+          for (let i = 0; i < objectsToFetch.length; i += batchSize) {
+            const batch = objectsToFetch.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (object: { key: string }) => {
+              const clipObject = await env.R2_BUCKET.get(object.key);
+              return clipObject ? clipObject.json() : null;
+            });
+
+            const batchResults = await Promise.all(batchPromises);
+            clips.push(...batchResults.filter(clip => clip !== null));
           }
+
+          // Add pagination info to response
+          const hasMore = list.objects.length > MAX_CLIPS;
           
           return new Response(JSON.stringify({
             success: true,
             message: `Found ${clips.length} stored clips`,
-            clips: clips
+            clips: clips,
+            has_more: hasMore,
+            total_objects: list.objects.length
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -357,7 +345,7 @@ for (const clip of clipsToStore) {
     return new Response('Twitch Clip Recap Pipeline', { status: 200 });
   },
 
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(event: ScheduledEvent, env: Environment, ctx: ExecutionContext): Promise<void> {
     await handleScheduled(event, env, ctx);
   }
 };

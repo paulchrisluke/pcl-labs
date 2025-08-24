@@ -1,4 +1,4 @@
-import { Env, TwitchClip, Transcript, BlogPost, JudgeResult, ClipSection } from '../types';
+import { Environment, TwitchClip, Transcript, BlogPost, JudgeResult, ClipSection } from '../types';
 import { generateJWT } from '../utils/jwt';
 import { AIService } from '../utils/ai';
 
@@ -7,7 +7,7 @@ export class ContentService {
   private cachedGitHubToken: string | null = null;
   private cachedGitHubTokenExpiry: number | null = null;
 
-  constructor(private env: Env) {
+  constructor(private env: Environment) {
     this.aiService = new AIService(env);
   }
 
