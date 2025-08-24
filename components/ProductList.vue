@@ -13,7 +13,7 @@
         </nuxt-link>
       </div>
       <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4 md:gap-y-0 lg:gap-x-8">
-        <nuxt-link :to="product._path" v-for="product in portfolioData" :key="product.id" class="group relative">
+        <nuxt-link :to="product._path" v-for="product in portfolioData" :key="product._id" class="group relative">
           <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200 group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out">
             <img :src="product.imageThumbnail" :alt="product.imageAlt" class="object-cover object-center h-full w-full" />
           </div>
@@ -21,7 +21,7 @@
               <span class="absolute inset-0" />
               {{ product.title }}
           </h3>
-          <p class="mt-1 text-sm text-gray-500">{{ product.tags[0] }}</p>
+          <p class="mt-1 text-sm text-gray-500">{{ product.tags?.[0] || '' }}</p>
         </nuxt-link>
       </div>
 
@@ -36,8 +36,11 @@
 </template>
   
 <script setup>
-import { useAsyncData } from 'nuxt/app'
 const props = defineProps({
+  portfolioData: {
+    type: Array,
+    default: () => []
+  },
   limit: {
     type: Number,
     default: 100
@@ -45,10 +48,4 @@ const props = defineProps({
 });
 
 const showSeeAllLink = props.limit <= 10; //will only show see all if you limit the prop to 10 or less
-
-// Fetch the markdown content based on the slug
-const { data: portfolioData } = await useAsyncData('portfolio', () =>
-  queryContent('portfolio').limit(props.limit).find()
-);
-
-  </script>
+</script>
