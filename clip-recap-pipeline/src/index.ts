@@ -928,6 +928,181 @@ export default {
         });
       }
     }
+    
+    // Test Whisper with a simple audio sample first
+    if (url.pathname === '/test-whisper-simple') {
+      try {
+        console.log('🎤 Testing Whisper with simple audio...');
+        
+        // Create a simple test audio as base64 string
+        // This is a minimal valid WAV file with actual audio content
+        const base64Audio = "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT";
+        
+        console.log('Base64 audio length:', base64Audio.length);
+        
+        // Test Whisper - pass audio as a string directly
+        const transcription = await env.ai.run('@cf/openai/whisper', base64Audio);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          transcription: transcription,
+          message: 'Whisper test completed'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Whisper test failed:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Test audio extraction and Whisper transcription
+    if (url.pathname === '/test-transcription') {
+      try {
+        console.log('🎤 Testing audio extraction and Whisper transcription...');
+        
+        // List all stored videos
+        const list = await env.R2_BUCKET.list({ prefix: 'videos/' });
+        
+        if (list.objects.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No videos found in R2 storage'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const results = [];
+        
+        for (const object of list.objects) {
+          try {
+            console.log(`Processing video: ${object.key}`);
+            
+            // Get video from R2
+            const videoObject = await env.R2_BUCKET.get(object.key);
+            
+            if (!videoObject) {
+              results.push({
+                video_key: object.key,
+                success: false,
+                error: 'Video not found in R2'
+              });
+              continue;
+            }
+            
+            const videoBuffer = await videoObject.arrayBuffer();
+            
+            // Extract clip ID from video key
+            const clipIdMatch = object.key.match(/videos\/([^.]+)\.mp4/);
+            if (!clipIdMatch) {
+              results.push({
+                video_key: object.key,
+                success: false,
+                error: 'Could not extract clip ID from video key'
+              });
+              continue;
+            }
+            
+            const clipId = clipIdMatch[1];
+            
+            // For now, we'll use the video buffer directly with Whisper
+            // In a production system, you'd want to extract audio first
+            console.log(`Transcribing video for clip: ${clipId}`);
+            
+            // For testing, let's use just the first 100KB of the video to avoid size issues
+            const maxSize = 100 * 1024; // 100KB
+            const videoArray = new Uint8Array(videoBuffer);
+            const testArray = videoArray.slice(0, maxSize);
+            
+            // Convert to base64 string using a more efficient method
+            let base64Video = '';
+            for (let i = 0; i < testArray.length; i += 1024) {
+              const chunk = testArray.slice(i, i + 1024);
+              base64Video += btoa(String.fromCharCode(...chunk));
+            }
+            
+            console.log(`Base64 video length for ${clipId}:`, base64Video.length);
+            
+            // Use Cloudflare AI Whisper to transcribe the video
+            const transcription = await env.ai.run('@cf/openai/whisper', base64Video);
+            
+            if (transcription && transcription.text) {
+              console.log(`Transcription successful for ${clipId}: ${transcription.text.substring(0, 100)}...`);
+              
+              // Store transcript in R2
+              const transcriptKey = `transcripts/${clipId}.json`;
+              const transcriptData = {
+                clip_id: clipId,
+                transcript: transcription.text,
+                language: 'en',
+                model: 'whisper',
+                created_at: new Date().toISOString(),
+                video_key: object.key,
+                video_size: videoBuffer.byteLength
+              };
+              
+              await env.R2_BUCKET.put(transcriptKey, JSON.stringify(transcriptData), {
+                httpMetadata: {
+                  contentType: 'application/json',
+                },
+              });
+              
+              results.push({
+                video_key: object.key,
+                clip_id: clipId,
+                success: true,
+                transcript_length: transcription.text.length,
+                transcript_preview: transcription.text.substring(0, 100) + '...',
+                transcript_key: transcriptKey
+              });
+            } else {
+              results.push({
+                video_key: object.key,
+                clip_id: clipId,
+                success: false,
+                error: 'No transcription text returned from Whisper'
+              });
+            }
+            
+          } catch (error) {
+            results.push({
+              video_key: object.key,
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Processed ${list.objects.length} videos for transcription`,
+          results: results
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Transcription test failed:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     // GitHub endpoints
     if (url.pathname.startsWith('/api/github/')) {
