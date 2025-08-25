@@ -53,27 +53,6 @@
 
 ---
 
-## Current Implementation Status ✅
-
-**COMPLETED:**
-- ✅ **M0 — Skeleton**: Scaffolded from Workflows starter with Cron triggers
-- ✅ **M1 — Clips → Transcripts**: Twitch OAuth, clip fetching, Workers AI Whisper integration
-- ✅ **M2 — Rank & Draft**: Scoring system, clip selection, blog post generation
-- ✅ **M3 — PR & Discord**: GitHub App integration, PR creation, Discord notifications
-- ✅ **M4 — Judge**: LLM judge with rubric, Check Run integration
-- ✅ **M5 — Vectorize**: Embeddings generation and Vectorize integration
-- ✅ **M6 — Polish**: Social blurbs, repo/PR link detection
-
-**CURRENT STATE:**
-- ✅ **Production Worker**: Deployed at `https://clip-recap-pipeline.paulchrisluke.workers.dev`
-- ✅ **Cron Triggers**: Daily pipeline (02:00 UTC) + hourly token validation
-- ✅ **Service Integration**: Twitch, GitHub, Discord, Workers AI, Vectorize, R2 all configured
-- ✅ **Health Checks**: `/health`, `/validate-twitch`, `/validate-github` endpoints working
-- ✅ **Test Suite**: GitHub and Twitch credential validation tests passing
-- ✅ **Core Pipeline**: Complete daily workflow from clips → transcripts → scoring → blog → PR → judge → Discord
-
-**NEXT MILESTONE: M7 — Schema & Manifest Architecture**
-
 ### M7 — Schema & Manifest Architecture (NEXT MILESTONE)
 
 **Goal:** Define a robust data schema and R2 manifest structure to support automation, search, and content management.
@@ -108,6 +87,7 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
   "tz": "Asia/Bangkok",
   "title": "Daily Devlog — 2025-08-25",
   "summary": "Deadlock fix lands; tests green; cart perf +12%.",
+  "category": "development",              // matches content/blog/development/
   "tags": ["devlog","twitch","recap"],
   "repos": ["paulchrisluke/pcl-labs"],
   "clip_ids": ["ProudRoundCaracal123","..."],
@@ -159,6 +139,7 @@ title: "Daily Devlog — 2025-08-25"
 date: "2025-08-25T02:00:00Z"            # UTC ISO8601
 timezone: "Asia/Bangkok"
 summary: "Deadlock fix lands; tests green; cart perf +12%."
+category: "development"                  # matches content/blog/development/
 tags: ["devlog","twitch","recap"]
 repos: ["paulchrisluke/pcl-labs"]
 clip_count: 7
