@@ -62,6 +62,7 @@ Set these secrets using `wrangler secret put`:
 wrangler secret put TWITCH_CLIENT_ID
 wrangler secret put TWITCH_CLIENT_SECRET
 wrangler secret put TWITCH_BROADCASTER_ID
+wrangler secret put TWITCH_BROADCASTER_LOGIN
 
 # GitHub App
 wrangler secret put GITHUB_APP_ID

@@ -75,8 +75,9 @@ export default {
         const validateData = await validateResponse.json();
         
         // Step 3: Test API call to get user info
+        const loginToTest = env.TWITCH_BROADCASTER_LOGIN || 'paulchrisluke'; // Fallback for backward compatibility
         const userResponse = await fetch(
-          'https://api.twitch.tv/helix/users?login=paulchrisluke',
+          `https://api.twitch.tv/helix/users?login=${loginToTest}`,
           {
             headers: {
               'Client-ID': env.TWITCH_CLIENT_ID,

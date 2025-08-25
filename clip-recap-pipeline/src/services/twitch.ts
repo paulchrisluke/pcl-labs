@@ -1,5 +1,6 @@
 import { Environment, TwitchClip, TwitchTokenResponse, Transcript } from '../types/index.js';
 import { AIService } from '../utils/ai.js';
+import { getBroadcasterId } from '../get-broadcaster-id.js';
 
 export class TwitchService {
   private aiService: AIService;
@@ -66,12 +67,15 @@ export class TwitchService {
   async getRecentClips(): Promise<TwitchClip[]> {
     const token = await this.getValidatedToken();
     
+    // Get broadcaster ID using the new function
+    const broadcasterId = await getBroadcasterId(this.env);
+    
     // Get clips from last 24 hours
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
     const response = await fetch(
-      `https://api.twitch.tv/helix/clips?broadcaster_id=${this.env.TWITCH_BROADCASTER_ID}&started_at=${yesterday.toISOString()}&ended_at=${now.toISOString()}&first=100`,
+      `https://api.twitch.tv/helix/clips?broadcaster_id=${broadcasterId}&started_at=${yesterday.toISOString()}&ended_at=${now.toISOString()}&first=100`,
       {
         headers: {
           'Client-ID': this.env.TWITCH_CLIENT_ID,

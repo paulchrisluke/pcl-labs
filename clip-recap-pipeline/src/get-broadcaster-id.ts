@@ -1,6 +1,17 @@
 import { Environment, TwitchTokenResponse } from './types/index.js';
 
 export async function getBroadcasterId(env: Environment): Promise<string> {
+  // Step 0: Check if broadcaster ID is already provided
+  if (env.TWITCH_BROADCASTER_ID) {
+    console.log('🔑 Using provided TWITCH_BROADCASTER_ID');
+    return env.TWITCH_BROADCASTER_ID;
+  }
+
+  // Step 0.5: Validate that login is provided
+  if (!env.TWITCH_BROADCASTER_LOGIN) {
+    throw new Error('TWITCH_BROADCASTER_LOGIN environment variable is required when TWITCH_BROADCASTER_ID is not provided');
+  }
+
   try {
     console.log('🔑 Getting Twitch access token...');
     // Credentials present; avoid logging their values or metadata.
@@ -28,7 +39,7 @@ export async function getBroadcasterId(env: Environment): Promise<string> {
 
     // Step 2: Get user ID by username
     const userResponse = await fetch(
-      'https://api.twitch.tv/helix/users?login=paulchrisluke',
+      `https://api.twitch.tv/helix/users?login=${env.TWITCH_BROADCASTER_LOGIN}`,
       {
         headers: {
           'Client-ID': env.TWITCH_CLIENT_ID,
@@ -46,7 +57,7 @@ export async function getBroadcasterId(env: Environment): Promise<string> {
     if (userData.data?.length > 0) {
       return userData.data[0].id;
     } else {
-      throw new Error('User paulchrisluke not found');
+      throw new Error(`User ${env.TWITCH_BROADCASTER_LOGIN} not found`);
     }
 
   } catch (error) {
