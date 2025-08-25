@@ -41,9 +41,7 @@ export default {
             success: false,
             error: `Token request failed: ${tokenResponse.status} - ${errorText}`,
             client_id_length: env.TWITCH_CLIENT_ID?.length || 0,
-            client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0,
-            client_id: env.TWITCH_CLIENT_ID,
-            client_secret_preview: env.TWITCH_CLIENT_SECRET?.substring(0, 4) + '...'
+            client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
@@ -134,7 +132,7 @@ export default {
         const twitchService = new TwitchService(env);
         
         switch (request.method) {
-          case 'GET':
+          case 'GET': {
             // Fetch recent clips from Twitch
             console.log('🔍 Fetching recent Twitch clips...');
             const clips = await twitchService.getRecentClips();
@@ -158,8 +156,9 @@ export default {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
             });
+          }
 
-          case 'POST':
+          case 'POST': {
             // Store clips data to R2
             console.log('💾 Storing clips data...');
             const body = await request.json() as { clips?: any[] };
@@ -208,8 +207,9 @@ export default {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
             });
+          }
 
-          case 'PUT':
+          case 'PUT': {
             // Update specific clip data
             console.log('🔄 Updating clip data...');
             const updateBody = await request.json() as { clipId?: string; data?: any };
@@ -240,6 +240,7 @@ export default {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
             });
+          }
 
           default:
             return new Response(JSON.stringify({

@@ -97,15 +97,67 @@ npm run deploy:staging
 npm run deploy
 ```
 
+### Wrangler Configuration
+
+The project uses separate wrangler configuration files for different environments:
+
+- `wrangler.toml` - Main configuration with environment-specific sections
+- `wrangler.production.toml` - Production-specific configuration
+- `wrangler.staging.toml` - Staging-specific configuration
+
+Each environment file contains its own top-level `[triggers]` section for cron schedules.
+
+## Testing
+
+### GitHub Service Test
+
+Test the GitHub service integration:
+
+```bash
+# Set up GitHub tokens (one or more of these)
+export GITHUB_TOKEN="your_global_token"  # Fallback for all repos
+export GITHUB_TOKEN_PAULCHRISLUKE="your_token_for_pcl_labs"
+export GITHUB_TOKEN_BLAWBY="your_token_for_blawby_repos"
+
+# Run the test
+npm test
+```
+
+The test will:
+1. Fetch activity from configured repositories
+2. Aggregate commit, PR, issue, and release counts
+3. Display a summary of daily activity
+4. Show top contributors across all repos
+
+### Token Configuration
+
+Configure tokens in `src/config/repos.json`:
+- Each repository has a `tokenKey` that maps to an environment variable
+- Use `GITHUB_TOKEN` as a global fallback for all repos
+- Set repo-specific tokens to override the global token for specific repositories
+
 ## Configuration
 
 ### Cron Schedule
 
-The pipeline runs daily at 09:00 ICT (UTC+7). Modify in `wrangler.toml`:
+The pipeline runs daily at 09:00 ICT (UTC+7). Modify in the appropriate environment file:
 
+**Production** (`wrangler.production.toml`):
 ```toml
 [triggers]
-crons = ["0 2 * * *"]  # 09:00 ICT (UTC+7)
+crons = [
+  "0 2 * * *",  # Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
+  "0 * * * *"   # Every hour - token validation
+]
+```
+
+**Staging** (`wrangler.staging.toml`):
+```toml
+[triggers]
+crons = [
+  "0 2 * * *",  # Daily at 02:00 UTC (09:00 ICT) - main pipeline
+  "0 * * * *"   # Every hour - token validation
+]
 ```
 
 ### Clip Selection

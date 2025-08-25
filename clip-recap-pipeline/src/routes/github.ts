@@ -65,15 +65,17 @@ export async function handleGitHubRequest(request: Request, env: any): Promise<R
     const githubService = new GitHubService(tokens);
 
     switch (path) {
-      case '/api/github/activity':
+      case '/api/github/activity': {
         // Check if method is allowed for this endpoint
         if (request.method !== 'GET') {
           return createErrorResponse(405, 'Method Not Allowed');
         }
         return await handleActivity(githubService);
+      }
       
-      default:
+      default: {
         return createErrorResponse(404, 'Not found');
+      }
     }
   } catch (error) {
     console.error('GitHub route error:', error);

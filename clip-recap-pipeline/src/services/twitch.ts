@@ -4,12 +4,13 @@ import { getBroadcasterId } from '../get-broadcaster-id.js';
 
 export class TwitchService {
   private aiService: AIService;
+  private tokenCache: { token: string; expiresAt: number } | null = null;
 
   constructor(private env: Environment) {
     this.aiService = new AIService(env);
   }
 
-  private async getAccessToken(): Promise<string> {
+  private async getAccessToken(): Promise<{ token: string; expiresAt: number }> {
     const response = await fetch('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
       headers: {
@@ -27,7 +28,8 @@ export class TwitchService {
     }
 
     const data: TwitchTokenResponse = await response.json();
-    return data.access_token;
+    const now = Date.now();
+    return { token: data.access_token, expiresAt: now + (data.expires_in * 1000) };
   }
 
   async validateToken(token: string): Promise<boolean> {
@@ -53,14 +55,15 @@ export class TwitchService {
   }
 
   async getValidatedToken(): Promise<string> {
-    const token = await this.getAccessToken();
-    
-    // Validate the token as required by Twitch
-    const isValid = await this.validateToken(token);
-    if (!isValid) {
-      throw new Error('Twitch token validation failed');
+    const skewMs = 60_000; // 60s safety buffer
+    if (this.tokenCache && (this.tokenCache.expiresAt - Date.now()) > skewMs) {
+      return this.tokenCache.token;
     }
-    
+    const { token, expiresAt } = await this.getAccessToken();
+    // Validate only on fresh grants (helps diagnostics, avoids validating on every call)
+    const isValid = await this.validateToken(token);
+    if (!isValid) throw new Error('Twitch token validation failed');
+    this.tokenCache = { token, expiresAt };
     return token;
   }
 
