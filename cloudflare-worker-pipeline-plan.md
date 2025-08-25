@@ -320,6 +320,110 @@ Index three granularities:
 * ✅ **Dry-run** mode and fixtures for local tests (Twitch/GitHub off)
 * ✅ **Cron** remains at `02:00 UTC` (09:00 Bangkok)
 
+---
+
+## 🧪 **Testing Strategy & Validation**
+
+### **Current Test Suite** ✅ **WORKING**
+
+**Production Tests:**
+- **GitHub Integration**: `npm run test` → Tests against `https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-github`
+- **Twitch Integration**: `npm run test:twitch` → Tests against `https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-twitch`
+- **Health Check**: `curl https://clip-recap-pipeline.paulchrisluke.workers.dev/health`
+
+**Local Development Tests:**
+- **Local Worker**: `npx wrangler dev --port 8787`
+- **Local Testing**: `WORKER_URL=http://localhost:8787 npm run test:all`
+- **Environment**: Uses same secrets as production for realistic testing
+
+### **M7 Testing Requirements**
+
+**Schema Validation Tests:**
+- **Manifest JSON Schema**: Validate all generated manifests against schema
+- **Front-matter Validation**: Ensure Markdown front-matter meets requirements
+- **Schema.org Compliance**: Validate JSON-LD generation (render-time)
+
+**Integration Tests:**
+- **R2 Storage**: Test manifest storage/retrieval with proper error handling
+- **GitHub PR Creation**: Test PR generation with idempotency
+- **Discord Notifications**: Test message posting to review channel
+- **Vectorize Indexing**: Test embeddings generation and storage
+
+**End-to-End Tests:**
+- **Dry-run Mode**: Complete pipeline without external API calls
+- **Fixture-based Testing**: Use sample clips/transcripts for deterministic results
+- **Error Recovery**: Test pipeline behavior with API failures
+
+**Validation Tests:**
+- **SEO Requirements**: Title length, meta descriptions, canonical URLs
+- **Content Quality**: Judge scoring, content coherence, technical accuracy
+- **Security**: PII redaction, no secrets in output
+
+### **Test Fixtures & Data**
+
+**Sample Clips Dataset:**
+```json
+{
+  "clips": [
+    {
+      "id": "TestClip123",
+      "title": "Tests finally green after deadlock fix",
+      "duration": 52,
+      "view_count": 37,
+      "created_at": "2025-01-15T14:05:33Z"
+    }
+  ],
+  "transcripts": [
+    {
+      "clip_id": "TestClip123",
+      "segments": [
+        {"start_s": 0, "end_s": 5, "text": "okay let's run the tests"},
+        {"start_s": 6, "end_s": 12, "text": "nice they all pass"}
+      ]
+    }
+  ]
+}
+```
+
+**Expected Outputs:**
+- **Manifest**: Valid JSON matching schema
+- **Markdown**: Proper front-matter + content structure
+- **Judge Score**: Overall ≥ 80, all axes ≥ 60
+- **PR**: Created on staging branch with proper labels
+
+### **Testing Commands**
+
+```bash
+# Production tests (current)
+npm run test:all
+
+# Local development tests
+npx wrangler dev --port 8787 &
+WORKER_URL=http://localhost:8787 npm run test:all
+
+# Schema validation (M7)
+npm run test:schema
+
+# End-to-end dry run (M7)
+npm run test:e2e
+
+# Integration tests (M7)
+npm run test:integration
+```
+
+### **Continuous Integration**
+
+**Pre-deployment Checks:**
+- ✅ All tests pass against production worker
+- ✅ Schema validation passes
+- ✅ No PII in test outputs
+- ✅ SEO requirements met
+
+**Post-deployment Validation:**
+- ✅ Health check endpoint responds
+- ✅ GitHub/Twitch validation endpoints work
+- ✅ Cron triggers execute successfully
+
 **Next Immediate Steps:**
 1. Update `src/types/index.ts` with Schema.org compliant interfaces
 2. Create JSON Schema for manifest validation
@@ -833,7 +937,7 @@ schema:
 
 ### Deployment Flow
 1. **Generate**: Create Markdown file with proper front-matter matching existing structure
-2. **PR**: Open pull request to `main` branch
+2. **PR**: Open pull request to `staging` branch
 3. **Review**: Manual review + AI judge scoring
 4. **Merge**: After approval, merge to main
 5. **Deploy**: Vercel automatically builds and deploys the new post
