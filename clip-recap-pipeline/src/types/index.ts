@@ -19,7 +19,6 @@ export interface Environment {
   CONTENT_REPO_OWNER: string;
   CONTENT_REPO_NAME: string;
   CONTENT_REPO_MAIN_BRANCH: string;
-  CONTENT_REPO_STAGING_BRANCH: string;
 }
 
 // ISO DateTime string type for consistent date handling

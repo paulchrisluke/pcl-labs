@@ -408,7 +408,7 @@ Format as JSON:
           title: blogPost.title,
           body: this.generatePRBody(blogPost),
           head: branch,
-          base: this.env.CONTENT_REPO_STAGING_BRANCH,
+          base: this.env.CONTENT_REPO_MAIN_BRANCH,
           draft: false,
         }),
       }

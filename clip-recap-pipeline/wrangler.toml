@@ -26,9 +26,6 @@ crons = [
 [env.production]
 name = "clip-recap-pipeline"
 
-[env.staging]
-name = "clip-recap-pipeline-staging"
-
 [env.production.ai]
 binding = "ai"
 
@@ -37,18 +34,6 @@ binding = "VECTORIZE"
 index_name = "clip-recap-embeddings"
 
 [[env.production.r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "clip-recap-assets"
-
-## Staging bindings
-[env.staging.ai]
-binding = "ai"
-
-[[env.staging.vectorize]]
-binding = "VECTORIZE"
-index_name = "clip-recap-embeddings"
-
-[[env.staging.r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 
@@ -66,4 +51,3 @@ bucket_name = "clip-recap-assets"
 # CONTENT_REPO_OWNER
 # CONTENT_REPO_NAME
 # CONTENT_REPO_MAIN_BRANCH
-# CONTENT_REPO_STAGING_BRANCH

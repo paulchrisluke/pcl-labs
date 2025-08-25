@@ -95,7 +95,7 @@
 * **Branches**:
 
   * `CONTENT_REPO_MAIN_BRANCH=main`
-  * `CONTENT_REPO_STAGING_BRANCH=staging` *(PRs will target staging by default; you can change this knob)*
+
 * **Discord (existing bot, channel delivery)**
 
   * `DISCORD_APPLICATION_ID=1399565650044649492`
@@ -352,7 +352,7 @@
 ## Open questions (fill in before build)
 
 * Provide the **Discord review channel ID** once created so postings can start.
-* Confirm the desired **PR target branch** (defaulting to `staging` per env) and that Markdown lives at `content/blog/development/`.
+* Confirm that Markdown lives at `content/blog/development/`.
 * (Optional) Any additional repos to track for PR links (besides `pcl-labs`).
 * **Blog structure confirmed**: 
   - Route: `pages/blog/[...slug].vue` (catch-all for nested paths)
@@ -459,9 +459,9 @@ schema:
 
 ### Deployment Flow
 1. **Generate**: Create Markdown file with proper front-matter matching existing structure
-2. **PR**: Open pull request to `staging` branch
+2. **PR**: Open pull request to `main` branch
 3. **Review**: Manual review + AI judge scoring
-4. **Merge**: After approval, merge to staging
+4. **Merge**: After approval, merge to main
 5. **Deploy**: Vercel automatically builds and deploys the new post
 6. **Index**: Post appears in blog listing and search results
 
