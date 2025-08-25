@@ -6,6 +6,29 @@
 
 ---
 
+## Current Implementation Status ✅
+
+**COMPLETED:**
+- ✅ **M0 — Skeleton**: Scaffolded from Workflows starter with Cron triggers
+- ✅ **M1 — Clips → Transcripts**: Twitch OAuth, clip fetching, Workers AI Whisper integration
+- ✅ **M2 — Rank & Draft**: Scoring system, clip selection, blog post generation
+- ✅ **M3 — PR & Discord**: GitHub App integration, PR creation, Discord notifications
+- ✅ **M4 — Judge**: LLM judge with rubric, Check Run integration
+- ✅ **M5 — Vectorize**: Embeddings generation and Vectorize integration
+- ✅ **M6 — Polish**: Social blurbs, repo/PR link detection
+
+**CURRENT STATE:**
+- ✅ **Production Worker**: Deployed at `https://clip-recap-pipeline.paulchrisluke.workers.dev`
+- ✅ **Cron Triggers**: Daily pipeline (02:00 UTC) + hourly token validation
+- ✅ **Service Integration**: Twitch, GitHub, Discord, Workers AI, Vectorize, R2 all configured
+- ✅ **Health Checks**: `/health`, `/validate-twitch`, `/validate-github` endpoints working
+- ✅ **Test Suite**: GitHub and Twitch credential validation tests passing
+- ✅ **Core Pipeline**: Complete daily workflow from clips → transcripts → scoring → blog → PR → judge → Discord
+
+**NEXT MILESTONE: M7 — Schema & Manifest Architecture**
+
+---
+
 ## High-level flow
 
 1. **Cron (daily, 09:00 Asia/Bangkok = 02:00 UTC)** kicks a Workflow run.
@@ -27,6 +50,259 @@
    |-> [Discord webhook notify]
    |-> [R2: transcripts/assets]
 ```
+
+---
+
+## Current Implementation Status ✅
+
+**COMPLETED:**
+- ✅ **M0 — Skeleton**: Scaffolded from Workflows starter with Cron triggers
+- ✅ **M1 — Clips → Transcripts**: Twitch OAuth, clip fetching, Workers AI Whisper integration
+- ✅ **M2 — Rank & Draft**: Scoring system, clip selection, blog post generation
+- ✅ **M3 — PR & Discord**: GitHub App integration, PR creation, Discord notifications
+- ✅ **M4 — Judge**: LLM judge with rubric, Check Run integration
+- ✅ **M5 — Vectorize**: Embeddings generation and Vectorize integration
+- ✅ **M6 — Polish**: Social blurbs, repo/PR link detection
+
+**CURRENT STATE:**
+- ✅ **Production Worker**: Deployed at `https://clip-recap-pipeline.paulchrisluke.workers.dev`
+- ✅ **Cron Triggers**: Daily pipeline (02:00 UTC) + hourly token validation
+- ✅ **Service Integration**: Twitch, GitHub, Discord, Workers AI, Vectorize, R2 all configured
+- ✅ **Health Checks**: `/health`, `/validate-twitch`, `/validate-github` endpoints working
+- ✅ **Test Suite**: GitHub and Twitch credential validation tests passing
+- ✅ **Core Pipeline**: Complete daily workflow from clips → transcripts → scoring → blog → PR → judge → Discord
+
+**NEXT MILESTONE: M7 — Schema & Manifest Architecture**
+
+### M7 — Schema & Manifest Architecture (NEXT MILESTONE)
+
+**Goal:** Define a robust data schema and R2 manifest structure to support automation, search, and content management.
+
+#### Recommended Approach (TL;DR)
+
+* **GitHub MDX is the canonical post.**
+* **R2 holds the "manifest + artifacts"** for each post-day (transcripts, scores, section metadata, run logs).
+* **Vectorize** indexes the text (clips + sections + post) for semantic search.
+* Everything shares a stable **`post_id`** (YYYY-MM-DD) and **`clip_id`**s.
+
+#### R2 Layout (keys)
+
+```
+r2://recaps/
+  manifests/YYYY/MM/POST_ID.json              # source-of-truth metadata for the day
+  drafts/YYYY/MM/POST_ID.mdx                  # optional staging copy of the MDX
+  transcripts/CLIP_ID.json                    # ASR output (segments)
+  clips/CLIP_ID/meta.json                     # clip metadata from Twitch
+  assets/POST_ID/cover.jpg                    # images/thumbnails
+  runs/DATE/run-<timestamp>.json              # workflow logs/metrics
+```
+
+#### Manifest Schema (R2) — JSON (authoritative for automation)
+
+Use this to drive PR creation, the judge check, Discord posts, and backfills.
+
+```json
+{
+  "post_id": "2025-08-25",                // YYYY-MM-DD format
+  "date_utc": "2025-08-25T02:00:00Z",
+  "tz": "Asia/Bangkok",
+  "title": "Daily Devlog — 2025-08-25",
+  "summary": "Deadlock fix lands; tests green; cart perf +12%.",
+  "tags": ["devlog","twitch","recap"],
+  "repos": ["paulchrisluke/pcl-labs"],
+  "clip_ids": ["ProudRoundCaracal123","..."],
+  "sections": [
+    {
+      "section_id": "01FZ...ULID",
+      "clip_id": "ProudRoundCaracal123",
+      "title": "Fix: async deadlock — tests green",
+      "bullets": [
+        "Root cause: lock ordering in cart service",
+        "Reworked await path",
+        "All tests pass locally"
+      ],
+      "paragraph": "After chasing a sporadic deadlock...",
+      "score": 87,
+      "repo": "paulchrisluke/pcl-labs",
+      "pr_links": ["https://github.com/paulchrisluke/pcl-labs/pull/42"],
+      "clip_url": "https://clips.twitch.tv/...",
+      "vod_jump": "https://www.twitch.tv/videos/123456789?t=1h24m32s",
+      "start_s": 5050,
+      "end_s": 5110,
+      "entities": ["CheckoutService","locks.py"]
+    }
+  ],
+  "canonical_vod": "https://www.twitch.tv/videos/123456789",
+  "mdx_path": "content/recaps/2025/08/2025-08-25.mdx",
+  "target_branch": "staging",
+  "status": "draft",                        // draft | pr_open | approved | merged | published
+  "judge": {
+    "overall": null,
+    "per_axis": null,
+    "version": "v1"
+  },
+  "social_blurbs": {
+    "bluesky": "Deadlock slain. Tests green. +12% cart perf. Recap:",
+    "threads": "Devlog: deadlock fix, tests pass, perf win →"
+  }
+}
+```
+
+#### MDX Front-matter (GitHub) — LLM-friendly
+
+Front-matter should be concise, stable, and easy to parse. Put the heavy stuff in the manifest JSON.
+
+```yaml
+---
+post_id: "2025-08-25"
+title: "Daily Devlog — 2025-08-25"
+date: "2025-08-25T02:00:00Z"            # UTC ISO8601
+timezone: "Asia/Bangkok"
+summary: "Deadlock fix lands; tests green; cart perf +12%."
+tags: ["devlog","twitch","recap"]
+repos: ["paulchrisluke/pcl-labs"]
+clip_count: 7
+canonical_vod: "https://www.twitch.tv/videos/123456789"
+entities: ["CheckoutService","locks.py","deadlock","tests"]
+canonical_id: "post:2025-08-25"         # stable reference for search/links
+status: "review"                         # review | published
+og_image: "/images/recaps/2025-08-25/cover.jpg"
+source_manifest: "r2://recaps/manifests/2025/08/2025-08-25.json"
+---
+```
+
+#### Vectorize Indexing (semantic search)
+
+Index three granularities:
+
+1. **clip** — text = clip transcript; `meta = {clip_id, date, repo, vod_id, url}`
+2. **section** — text = section title + bullets + paragraph; `meta = {post_id, section_id, clip_id, pr_links[], repo}`
+3. **post** — text = intro + section summaries; `meta = {post_id, date, tags[], repos[]}`
+
+#### Implementation Tasks for M7
+
+1. **Define JSON Schema** for manifest validation
+2. **Update R2 bucket structure** with `recaps/` prefix
+3. **Modify pipeline** to write manifest before PR creation
+4. **Update PR generation** to render MDX from manifest
+5. **Add validation** for unique `post_id` and manifest integrity
+6. **Update Vectorize indexing** with new metadata structure
+
+---
+
+## M7 — Schema & Manifest Architecture (NEXT MILESTONE)
+
+**Goal:** Define a robust data schema and R2 manifest structure to support automation, search, and content management.
+
+### Recommended Approach (TL;DR)
+
+* **GitHub MDX is the canonical post.**
+* **R2 holds the "manifest + artifacts"** for each post-day (transcripts, scores, section metadata, run logs).
+* **Vectorize** indexes the text (clips + sections + post) for semantic search.
+* Everything shares a stable **`post_id`** (YYYY-MM-DD) and **`clip_id`**s.
+
+### R2 Layout (keys)
+
+```
+r2://recaps/
+  manifests/YYYY/MM/POST_ID.json              # source-of-truth metadata for the day
+  drafts/YYYY/MM/POST_ID.mdx                  # optional staging copy of the MDX
+  transcripts/CLIP_ID.json                    # ASR output (segments)
+  clips/CLIP_ID/meta.json                     # clip metadata from Twitch
+  assets/POST_ID/cover.jpg                    # images/thumbnails
+  runs/DATE/run-<timestamp>.json              # workflow logs/metrics
+```
+
+### Manifest Schema (R2) — JSON (authoritative for automation)
+
+Use this to drive PR creation, the judge check, Discord posts, and backfills.
+
+```json
+{
+  "post_id": "2025-08-25",                // YYYY-MM-DD format
+  "date_utc": "2025-08-25T02:00:00Z",
+  "tz": "Asia/Bangkok",
+  "title": "Daily Devlog — 2025-08-25",
+  "summary": "Deadlock fix lands; tests green; cart perf +12%.",
+  "tags": ["devlog","twitch","recap"],
+  "repos": ["paulchrisluke/pcl-labs"],
+  "clip_ids": ["ProudRoundCaracal123","..."],
+  "sections": [
+    {
+      "section_id": "01FZ...ULID",
+      "clip_id": "ProudRoundCaracal123",
+      "title": "Fix: async deadlock — tests green",
+      "bullets": [
+        "Root cause: lock ordering in cart service",
+        "Reworked await path",
+        "All tests pass locally"
+      ],
+      "paragraph": "After chasing a sporadic deadlock...",
+      "score": 87,
+      "repo": "paulchrisluke/pcl-labs",
+      "pr_links": ["https://github.com/paulchrisluke/pcl-labs/pull/42"],
+      "clip_url": "https://clips.twitch.tv/...",
+      "vod_jump": "https://www.twitch.tv/videos/123456789?t=1h24m32s",
+      "start_s": 5050,
+      "end_s": 5110,
+      "entities": ["CheckoutService","locks.py"]
+    }
+  ],
+  "canonical_vod": "https://www.twitch.tv/videos/123456789",
+  "mdx_path": "content/recaps/2025/08/2025-08-25.mdx",
+  "target_branch": "staging",
+  "status": "draft",                        // draft | pr_open | approved | merged | published
+  "judge": {
+    "overall": null,
+    "per_axis": null,
+    "version": "v1"
+  },
+  "social_blurbs": {
+    "bluesky": "Deadlock slain. Tests green. +12% cart perf. Recap:",
+    "threads": "Devlog: deadlock fix, tests pass, perf win →"
+  }
+}
+```
+
+### MDX Front-matter (GitHub) — LLM-friendly
+
+Front-matter should be concise, stable, and easy to parse. Put the heavy stuff in the manifest JSON.
+
+```yaml
+---
+post_id: "2025-08-25"
+title: "Daily Devlog — 2025-08-25"
+date: "2025-08-25T02:00:00Z"            # UTC ISO8601
+timezone: "Asia/Bangkok"
+summary: "Deadlock fix lands; tests green; cart perf +12%."
+tags: ["devlog","twitch","recap"]
+repos: ["paulchrisluke/pcl-labs"]
+clip_count: 7
+canonical_vod: "https://www.twitch.tv/videos/123456789"
+entities: ["CheckoutService","locks.py","deadlock","tests"]
+canonical_id: "post:2025-08-25"         # stable reference for search/links
+status: "review"                         # review | published
+og_image: "/images/recaps/2025-08-25/cover.jpg"
+source_manifest: "r2://recaps/manifests/2025/08/2025-08-25.json"
+---
+```
+
+### Vectorize Indexing (semantic search)
+
+Index three granularities:
+
+1. **clip** — text = clip transcript; `meta = {clip_id, date, repo, vod_id, url}`
+2. **section** — text = section title + bullets + paragraph; `meta = {post_id, section_id, clip_id, pr_links[], repo}`
+3. **post** — text = intro + section summaries; `meta = {post_id, date, tags[], repos[]}`
+
+### Implementation Tasks for M7
+
+1. **Define JSON Schema** for manifest validation
+2. **Update R2 bucket structure** with `recaps/` prefix
+3. **Modify pipeline** to write manifest before PR creation
+4. **Update PR generation** to render MDX from manifest
+5. **Add validation** for unique `post_id` and manifest integrity
+6. **Update Vectorize indexing** with new metadata structure
 
 ---
 
@@ -161,7 +437,7 @@
    * Branch: `auto/daily-recap-YYYY-MM-DD`
    * Path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
    * URL: `/blog/development/YYYY-MM-DD-daily-dev-recap`
-   * Note: Recaps are time-series content and intentionally include dates in the slug (exception to the “avoid dates in URLs” rule).
+   * Note: Recaps are time-series content and intentionally include dates in the slug (exception to the "avoid dates in URLs" rule).
    * PR body: include clips table + scores + Judge summary placeholder.
 8. **Judge** (LLM check)
 
@@ -271,46 +547,6 @@
 * Enable Clips on channel; your extension/mods create short clips daily.
 * **API**: `Get Clips` for the last 24h window. Optionally use **Stream Markers** during live to enrich context/timestamps.
 * We avoid full‑VOD pulling in this phase; link to VOD with `?t=` when a clip provides a reliable offset.
-
----
-
-## Implementation milestones (suggested)
-
-**M0 — Skeleton (Day 0)**
-
-* Scaffold from **Workflows starter**.
-* Add Cron trigger @ 09:00 ICT.
-* Stub steps and environment bindings.
-
-**M1 — Clips → Transcripts**
-
-* OAuth client creds for Twitch; fetch last‑24h clips.
-* Call Workers AI Whisper; redact PII from transcripts before storing to R2. Handle chunking for >90s.
-
-**M2 — Rank & Draft**
-
-* Implement scoring (keywords + basic heuristics); select 5–12.
-* Draft intro + sections; emit Markdown string.
-
-**M3 — PR & Discord**
-
-* GitHub App: create branch, add Markdown, open PR; post a **Check Run** placeholder.
-* Discord webhook: send PR URL + summary.
-
-**M4 — Judge**
-
-* LLM judge with rubric; update Check Run with pass/fail and details.
-* Label PR accordingly.
-
-**M5 — Vectorize**
-
-* Generate embeddings for redacted transcripts + sections; upsert to Vectorize.
-* Add simple search endpoint (optional).
-
-**M6 — Polish**
-
-* Add social blurbs generation (store in PR body).
-* Add repo/PR links auto-detection from transcript (optional OCR/regex on terminal text).
 
 ---
 
