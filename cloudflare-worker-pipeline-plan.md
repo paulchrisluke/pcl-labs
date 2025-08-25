@@ -59,7 +59,7 @@
 
 #### Recommended Approach (TL;DR)
 
-* **GitHub MDX is the canonical post.**
+* **GitHub Markdown is the canonical post.**
 * **R2 holds the "manifest + artifacts"** for each post-day (transcripts, scores, section metadata, run logs).
 * **Vectorize** indexes the text (clips + sections + post) for semantic search.
 * Everything shares a stable **`post_id`** (YYYY-MM-DD) and **`clip_id`**s.
