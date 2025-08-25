@@ -935,12 +935,12 @@ export default {
         console.log('🎤 Testing Whisper with simple audio...');
         
         // Create a simple test audio as base64 string
-        // This is a minimal valid WAV file with actual audio content
+        // This is a minimal valid WAV file with actual audio content (very small)
         const base64Audio = "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT";
         
         console.log('Base64 audio length:', base64Audio.length);
         
-        // Test Whisper - pass audio as a string directly
+        // Test Whisper with the base64 audio string
         const transcription = await env.ai.run('@cf/openai/whisper', base64Audio);
         
         return new Response(JSON.stringify({
@@ -1019,21 +1019,27 @@ export default {
             // In a production system, you'd want to extract audio first
             console.log(`Transcribing video for clip: ${clipId}`);
             
-            // For testing, let's use just the first 100KB of the video to avoid size issues
-            const maxSize = 100 * 1024; // 100KB
-            const videoArray = new Uint8Array(videoBuffer);
-            const testArray = videoArray.slice(0, maxSize);
+            // Extract audio from MP4 and convert to base64 string for Whisper
+            // We'll use a simple approach to extract audio data from the MP4 file
             
-            // Convert to base64 string using a more efficient method
+            const videoArray = new Uint8Array(videoBuffer);
+            
+            // For now, let's try using just the first 100KB of the video as base64
+            // This is a temporary approach to test Whisper functionality
+            const maxSize = 100 * 1024; // 100KB
+            const videoChunk = videoArray.slice(0, maxSize);
+            
+            // Convert to base64 using a more efficient method
             let base64Video = '';
-            for (let i = 0; i < testArray.length; i += 1024) {
-              const chunk = testArray.slice(i, i + 1024);
+            const chunkSize = 1024; // 1KB chunks for base64 conversion
+            for (let i = 0; i < videoChunk.length; i += chunkSize) {
+              const chunk = videoChunk.slice(i, i + chunkSize);
               base64Video += btoa(String.fromCharCode(...chunk));
             }
             
-            console.log(`Base64 video length for ${clipId}:`, base64Video.length);
+            console.log(`Converted ${videoChunk.length} bytes to base64 for ${clipId}`);
             
-            // Use Cloudflare AI Whisper to transcribe the video
+            // Use Cloudflare AI Whisper with the base64 video data
             const transcription = await env.ai.run('@cf/openai/whisper', base64Video);
             
             if (transcription && transcription.text) {
