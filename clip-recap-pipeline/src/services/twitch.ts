@@ -200,16 +200,38 @@ export class TwitchService {
   }
 
   private async transcribeAudio(audioBuffer: ArrayBuffer, clipId: string): Promise<Transcript> {
-    // Use Workers AI Whisper for transcription
-    const result = await this.aiService.callWithRetry('@cf/openai/whisper-large-v3-turbo', {
-      audio: audioBuffer,
-    });
+    try {
+      // Use Workers AI Whisper for transcription
+      const result = await this.aiService.callWithRetry('@cf/openai/whisper-large-v3-turbo', {
+        audio: audioBuffer,
+      });
 
-    return {
-      clip_id: clipId,
-      lang: 'en',
-      segments: result.segments || [],
-    };
+      // Validate that result is non-null
+      if (!result) {
+        throw new Error('AI service returned null or undefined result');
+      }
+
+      // Validate that result.segments is an array, fallback to empty array if missing
+      const segments = Array.isArray(result.segments) ? result.segments : [];
+
+      // Extract language from result, fallback to 'en'
+      const lang = result.language || 'en';
+
+      return {
+        clip_id: clipId,
+        lang,
+        segments,
+      };
+    } catch (error) {
+      console.error(`Transcription failed for clip ${clipId} using Whisper service:`, error);
+      
+      // Return a controlled failure transcript object with predictable shape
+      return {
+        clip_id: clipId,
+        lang: 'en',
+        segments: [],
+      };
+    }
   }
 
   private async storeTranscript(clipId: string, transcript: Transcript): Promise<void> {

@@ -79,6 +79,27 @@ export class DiscordService {
     await this.sendDiscordMessage(embed);
   }
 
+  async notifyTokenValidationErrors(errors: string[]): Promise<void> {
+    console.log('Sending token validation error notification to Discord...');
+    
+    const embed: DiscordEmbed = {
+      title: '🔐 Token Validation Failed',
+      description: 'One or more API tokens failed validation during the hourly check.',
+      color: 0xff6b35, // Orange-red
+      fields: errors.map((error, index) => ({
+        name: `Error ${index + 1}`,
+        value: error,
+        inline: false
+      })),
+      footer: {
+        text: 'Twitch Clip Recap Pipeline - Token Validation'
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    await this.sendDiscordMessage(embed);
+  }
+
   private async sendDiscordMessage(embed: DiscordEmbed): Promise<void> {
     // validate Discord config before issuing API request
     if (!this.env.DISCORD_REVIEW_CHANNEL_ID || !this.env.DISCORD_BOT_TOKEN) {

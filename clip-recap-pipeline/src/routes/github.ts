@@ -34,9 +34,36 @@ export async function handleGitHubRequest(request: Request, env: any): Promise<R
   try {
     // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
+      // Read incoming CORS request headers
+      const requestHeaders = request.headers.get('Access-Control-Request-Headers');
+      const requestMethod = request.headers.get('Access-Control-Request-Method');
+      
+      // Define supported methods for this endpoint
+      const supportedMethods = ['GET', 'POST'];
+      
+      // Build dynamic CORS headers
+      const dynamicCorsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Max-Age': '86400',
+      };
+      
+      // Echo back the requested method if it's supported, otherwise use default
+      if (requestMethod && supportedMethods.includes(requestMethod.toUpperCase())) {
+        dynamicCorsHeaders['Access-Control-Allow-Methods'] = requestMethod.toUpperCase();
+      } else {
+        dynamicCorsHeaders['Access-Control-Allow-Methods'] = 'GET, POST';
+      }
+      
+      // Echo back the requested headers if provided, otherwise use default
+      if (requestHeaders) {
+        dynamicCorsHeaders['Access-Control-Allow-Headers'] = requestHeaders;
+      } else {
+        dynamicCorsHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+      }
+      
       return new Response(null, {
         status: 204,
-        headers: corsHeaders,
+        headers: dynamicCorsHeaders,
       });
     }
 
@@ -59,7 +86,10 @@ export async function handleGitHubRequest(request: Request, env: any): Promise<R
       .map(([key]) => key);
 
     if (missingTokens.length > 0) {
-      return createErrorResponse(500, `Missing GitHub tokens: ${missingTokens.join(', ')}`);
+      // Log the missing tokens server-side for debugging
+      console.error(`Missing GitHub tokens: ${missingTokens.join(', ')}`);
+      // Return generic error to client to avoid exposing secret names
+      return createErrorResponse(500, 'Internal server error');
     }
 
     const githubService = new GitHubService(tokens);

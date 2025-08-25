@@ -1,102 +1,111 @@
-// Simple test script for GitHub service
+// GitHub credentials test for Cloudflare Workers
+// This test works with your deployed worker's /validate-github endpoint
 // Run with: npx tsx test-github.ts
 
-import { GitHubService } from './src/services/github.js';
-import reposConfig from './src/config/repos.json';
-
-async function testGitHubService() {
-  // Build tokens map from environment variables
-  const tokens: Record<string, string> = {};
+async function testGitHubCredentials() {
+  // Get the worker URL from environment or use production as default
+  const workerUrl = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
+  const validateUrl = `${workerUrl}/validate-github`;
   
-  // Add global fallback token
-  const globalToken = process.env.GITHUB_TOKEN;
-  if (globalToken) {
-    // Use global token for all repos that don't have specific tokens
-    for (const repo of reposConfig.repositories) {
-      if (!tokens[repo.tokenKey]) {
-        tokens[repo.tokenKey] = globalToken;
-      }
-    }
+  console.log('🔍 Testing GitHub credentials via Cloudflare Worker...');
+  console.log(`📡 Testing against: ${validateUrl}`);
+  
+  if (!process.env.WORKER_URL) {
+    console.log('ℹ️  No WORKER_URL provided, testing against production worker');
+    console.log('   Available options:');
+    console.log('   - Production: https://clip-recap-pipeline.paulchrisluke.workers.dev');
+    console.log('   - Staging: https://clip-recap-pipeline-staging.paulchrisluke.workers.dev');
+    console.log('   - Local: http://localhost:8787 (set WORKER_URL=http://localhost:8787)');
+  } else {
+    console.log(`✅ Using custom worker URL: ${workerUrl}`);
   }
   
-  // Add repo-specific tokens if they exist
-  for (const repo of reposConfig.repositories) {
-    const repoToken = process.env[repo.tokenKey];
-    if (repoToken) {
-      tokens[repo.tokenKey] = repoToken;
-    }
-  }
-  
-  // Check if we have any tokens
-  if (Object.keys(tokens).length === 0) {
-    console.error('Please set GITHUB_TOKEN environment variable or repo-specific tokens');
-    console.log('You can get a token from: https://github.com/settings/tokens');
-    console.log('Required scopes: repo (for private repos) or public_repo (for public repos)');
-    console.log('Available token keys:', reposConfig.repositories.map(r => r.tokenKey).join(', '));
-    process.exit(1);
-  }
-
   try {
-    console.log('🔍 Testing GitHub service...');
-    console.log('📋 Using tokens for:', Object.keys(tokens).join(', '));
+    console.log('\n🔑 Testing GitHub credentials validation...');
     
-    const githubService = new GitHubService(tokens);
+    const response = await fetch(validateUrl);
     
-    console.log('📊 Gathering daily activity...');
-    const activity = await githubService.gatherDailyActivity();
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Validation request failed');
+      console.error(`  Status: ${response.status} ${response.statusText}`);
+      console.error(`  Error: ${errorText}`);
+      
+      if (response.status === 404) {
+        console.log('\n💡 Make sure your worker is running:');
+        console.log('   - For local testing: npm run dev');
+        console.log('   - For deployed testing: Set WORKER_URL to your worker URL');
+      }
+      
+      process.exit(1);
+    }
     
-    console.log(`✅ Found activity for ${activity.length} repositories:`);
-    activity.forEach(repo => {
-      console.log(`  - ${repo.owner}/${repo.repository}: ${repo.summary.totalCommits} commits, ${repo.summary.totalPRs} PRs`);
-    });
+    const result = await response.json();
     
-    console.log('\n📝 Computing daily summary...');
-    // Compute summary from the activity data
-    const summary = computeDailySummary(activity);
-    console.log('📊 Daily Summary:');
-    console.log(JSON.stringify(summary, null, 2));
+    if (result.success) {
+      console.log('✅ GitHub credentials validation successful!');
+      console.log('📊 Validation details:');
+      console.log(`  Tokens present: ${result.tokens_present}`);
+      console.log(`  Available tokens: ${result.available_tokens.join(', ')}`);
+      console.log(`  API accessible: ${result.api_accessible}`);
+      console.log(`  Repository accessible: ${result.repository_accessible}`);
+      
+      if (result.user_info) {
+        console.log('👤 User info:');
+        console.log(`  Login: ${result.user_info.login}`);
+        console.log(`  ID: ${result.user_info.id}`);
+        console.log(`  Type: ${result.user_info.type}`);
+      }
+      
+      if (result.repo_info) {
+        console.log('📁 Repository info:');
+        console.log(`  Name: ${result.repo_info.name}`);
+        console.log(`  Full name: ${result.repo_info.full_name}`);
+        console.log(`  Private: ${result.repo_info.private}`);
+        console.log(`  Permissions: ${JSON.stringify(result.repo_info.permissions)}`);
+      }
+      
+      console.log('\n🎉 Your GitHub credentials are working correctly!');
+      console.log('🚀 Your Cloudflare Worker can successfully:');
+      console.log('   - Access GitHub API with personal access tokens');
+      console.log('   - Fetch user information');
+      console.log('   - Access repositories (if configured)');
+      console.log('   - Create PRs and manage content');
+      
+    } else {
+      console.error('❌ GitHub credentials validation failed');
+      console.error(`  Error: ${result.error}`);
+      
+      if (result.tokens_present !== undefined) {
+        console.log(`  Tokens present: ${result.tokens_present}`);
+      }
+      if (result.available_tokens) {
+        console.log(`  Available tokens: ${result.available_tokens.join(', ')}`);
+      }
+      
+      console.log('\n🔧 Troubleshooting:');
+      console.log('   1. Check that your GitHub tokens are set as secrets:');
+      console.log('      wrangler secret put GITHUB_TOKEN');
+      console.log('      wrangler secret put GITHUB_TOKEN_PAULCHRISLUKE');
+      console.log('      wrangler secret put GITHUB_TOKEN_BLAWBY');
+      console.log('   2. Verify your GitHub tokens have the correct scopes');
+      console.log('   3. Check that your tokens are not expired');
+      
+      process.exit(1);
+    }
     
   } catch (error) {
-    console.error('❌ Error testing GitHub service:', error);
+    console.error('❌ Error testing GitHub credentials:', error);
+    
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      console.log('\n💡 Network error - possible solutions:');
+      console.log('   - Make sure your worker is running (npm run dev)');
+      console.log('   - Check your WORKER_URL is correct');
+      console.log('   - Verify your network connection');
+    }
+    
     process.exit(1);
   }
 }
 
-function computeDailySummary(activity: any[]) {
-  const summary = {
-    totalRepositories: activity.length,
-    totalCommits: 0,
-    totalPRs: 0,
-    totalIssues: 0,
-    totalReleases: 0,
-    topContributors: new Set<string>(),
-    repositories: activity.map(repo => ({
-      name: `${repo.owner}/${repo.repository}`,
-      commits: repo.summary.totalCommits,
-      prs: repo.summary.totalPRs,
-      issues: repo.summary.totalIssues,
-      releases: repo.summary.totalReleases,
-      contributors: repo.summary.topContributors
-    }))
-  };
-  
-  // Aggregate totals
-  activity.forEach(repo => {
-    summary.totalCommits += repo.summary.totalCommits;
-    summary.totalPRs += repo.summary.totalPRs;
-    summary.totalIssues += repo.summary.totalIssues;
-    summary.totalReleases += repo.summary.totalReleases;
-    
-    // Add contributors to the set
-    repo.summary.topContributors.forEach((contributor: string) => {
-      summary.topContributors.add(contributor);
-    });
-  });
-  
-  // Convert Set to Array for JSON serialization
-  summary.topContributors = Array.from(summary.topContributors);
-  
-  return summary;
-}
-
-testGitHubService();
+testGitHubCredentials();

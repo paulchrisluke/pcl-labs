@@ -114,20 +114,62 @@ Each environment file contains its own top-level `[triggers]` section for cron s
 Test the GitHub service integration:
 
 ```bash
-# Set up GitHub tokens (one or more of these)
-export GITHUB_TOKEN="your_global_token"  # Fallback for all repos
-export GITHUB_TOKEN_PAULCHRISLUKE="your_token_for_pcl_labs"
-export GITHUB_TOKEN_BLAWBY="your_token_for_blawby_repos"
-
-# Run the test
+# Test against production worker (default)
 npm test
+
+# Test against staging worker
+export WORKER_URL="https://clip-recap-pipeline-staging.paulchrisluke.workers.dev"
+npm test
+
+# Test against local development server
+export WORKER_URL="http://localhost:8787"
+npm test
+# Note: Run "npm run dev" in another terminal first for local testing
 ```
 
 The test will:
-1. Fetch activity from configured repositories
-2. Aggregate commit, PR, issue, and release counts
-3. Display a summary of daily activity
-4. Show top contributors across all repos
+1. Connect to your Cloudflare Worker's `/validate-github` endpoint
+2. Test GitHub App credentials stored as secrets
+3. Validate JWT generation and installation token access
+4. Verify repository access and permissions
+5. Check API permissions and scopes
+
+**Note**: This test uses your Cloudflare Workers secrets (set via `wrangler secret put`), not environment variables.
+
+### Twitch Service Test
+
+Test the Twitch service integration:
+
+```bash
+# Test against production worker (default)
+npm run test:twitch
+
+# Test against staging worker
+export WORKER_URL="https://clip-recap-pipeline-staging.paulchrisluke.workers.dev"
+npm run test:twitch
+
+# Test against local development server
+export WORKER_URL="http://localhost:8787"
+npm run test:twitch
+# Note: Run "npm run dev" in another terminal first for local testing
+```
+
+The test will:
+1. Connect to your Cloudflare Worker's `/validate` endpoint
+2. Test Twitch client credentials stored as secrets
+3. Validate token generation and API access
+4. Verify broadcaster ID resolution
+5. Check API permissions and scopes
+
+**Note**: This test uses your Cloudflare Workers secrets (set via `wrangler secret put`), not environment variables.
+
+### Run All Tests
+
+Test both GitHub and Twitch services:
+
+```bash
+npm run test:all
+```
 
 ### Token Configuration
 
@@ -157,15 +199,16 @@ crons = [
 crons = [
   "0 2 * * *",  # Daily at 02:00 UTC (09:00 ICT) - main pipeline
   "0 * * * *"   # Every hour - token validation
-]
-```
+## API Endpoints
 
-### Clip Selection
-
-Adjust clip scoring and selection in `src/services/content.ts`:
-
-- **CLIP_BUDGET**: 5-12 clips per day
-- **Score weights**: Dev-focused keywords and patterns
+- `GET /health` - Health check
+- `POST /webhook/github` - GitHub webhook handler
+  - Verifies `X-Hub-Signature-256` (HMAC SHA-256) with `GITHUB_WEBHOOK_SECRET` ([gist.github.com](https://gist.github.com/bgoonz/11331feafe55e4a77d59989380eca965?utm_source=chatgpt.com))
+  - Rejects non-POST methods with 405
+  - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering) ([gist.github.com](https://gist.github.com/bgoonz/11331feafe55e4a77d59989380eca965?utm_source=chatgpt.com))
+  - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub’s webhook timeout
+- `GET /` - Pipeline status
+## Content Structure
 - **Variety enforcement**: Per-hour caps and diversity
 
 ## API Endpoints
