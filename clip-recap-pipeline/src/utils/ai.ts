@@ -13,8 +13,8 @@ export class AIService {
     params: any, 
     options: AIRetryOptions = {}
   ): Promise<any> {
-    const retries = options?.retries ?? 2;
-    const timeout = options?.timeout ?? 30_000;
+    const retries = Math.max(0, Math.floor(options?.retries ?? 2));
+    const timeout = Math.max(1, Math.floor(options?.timeout ?? 30_000));
     for (let i = 0; i <= retries; i++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);

@@ -35,13 +35,16 @@ export async function handleWebhook(
     console.log(`Received GitHub webhook: ${event} (delivery: ${delivery})`);
 
     switch (event) {
-      case 'pull_request':
+      case 'pull_request': {
         return await handlePullRequestEvent(payload, env);
-      case 'check_run':
+      }
+      case 'check_run': {
         return await handleCheckRunEvent(payload, env);
-      default:
+      }
+      default: {
         console.log(`Unhandled event type: ${event}`);
         return new Response(null, { status: 204 });
+      }
     }
   } catch (error) {
     console.error('Webhook handler error:', error);

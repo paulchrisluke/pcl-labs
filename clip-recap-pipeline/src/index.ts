@@ -1,4 +1,5 @@
 import { Environment, TwitchTokenResponse } from './types/index.js';
+import { validateClipId, validateClipData, validateClipObject } from './utils/validation.js';
 import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
 import { handleGitHubRequest } from './routes/github.js';
@@ -9,15 +10,25 @@ export default {
     
     // Health check endpoint
     if (url.pathname === '/health') {
-      return new Response('OK', { status: 200 });
+      const healthData = {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'Twitch Clip Recap Pipeline',
+        version: '1.0.0',
+        uptime: '24/7',
+        environment: 'production'
+      };
+      
+      return new Response(JSON.stringify(healthData, null, 2), { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     
     // Validate Twitch credentials endpoint
     if (url.pathname === '/validate') {
       try {
         console.log('🔍 Validating Twitch credentials...');
-        console.log('Validating credentials for Client ID length:', env.TWITCH_CLIENT_ID?.length || 0);
-        
         // Step 1: Get access token
         const formData = new URLSearchParams();
         formData.append('client_id', env.TWITCH_CLIENT_ID);
@@ -40,10 +51,8 @@ export default {
           return new Response(JSON.stringify({
             success: false,
             error: `Token request failed: ${tokenResponse.status} - ${errorText}`,
-            client_id_length: env.TWITCH_CLIENT_ID?.length || 0,
-            client_secret_length: env.TWITCH_CLIENT_SECRET?.length || 0,
-            client_id: env.TWITCH_CLIENT_ID,
-            client_secret_preview: env.TWITCH_CLIENT_SECRET?.substring(0, 4) + '...'
+            twitch_client_id_present: !!env.TWITCH_CLIENT_ID,
+            twitch_client_secret_present: !!env.TWITCH_CLIENT_SECRET
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
@@ -75,8 +84,9 @@ export default {
         const validateData = await validateResponse.json();
         
         // Step 3: Test API call to get user info
+        const loginToTest = env.TWITCH_BROADCASTER_LOGIN || 'paulchrisluke'; // Fallback for backward compatibility
         const userResponse = await fetch(
-          'https://api.twitch.tv/helix/users?login=paulchrisluke',
+          `https://api.twitch.tv/helix/users?login=${loginToTest}`,
           {
             headers: {
               'Client-ID': env.TWITCH_CLIENT_ID,
@@ -126,6 +136,146 @@ export default {
       }
     }
 
+    // Validate GitHub credentials endpoint
+    if (url.pathname === '/validate-github') {
+      try {
+        console.log('🔍 Validating GitHub credentials...');
+        
+        // Check if we have any GitHub tokens
+        const tokens = {
+          GITHUB_TOKEN: env.GITHUB_TOKEN,
+          GITHUB_TOKEN_PAULCHRISLUKE: env.GITHUB_TOKEN_PAULCHRISLUKE,
+          GITHUB_TOKEN_BLAWBY: env.GITHUB_TOKEN_BLAWBY,
+        };
+
+        const availableTokens = Object.entries(tokens)
+          .filter(([key, token]) => !!token)
+          .map(([key]) => key);
+
+        if (availableTokens.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No GitHub tokens found',
+            tokens_present: false
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        console.log(`✅ Found ${availableTokens.length} GitHub tokens: ${availableTokens.join(', ')}`);
+
+        // Step 1: Test API access with the first available token
+        const testToken = Object.values(tokens).find(token => !!token);
+        if (!testToken) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No valid GitHub token found'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Step 2: Test API call to get user info
+        try {
+          const userResponse = await fetch('https://api.github.com/user', {
+            headers: {
+              'Authorization': `Bearer ${testToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'clip-recap-pipeline/1.0.0',
+            },
+          });
+
+          if (!userResponse.ok) {
+            const errorText = await userResponse.text();
+            return new Response(JSON.stringify({
+              success: false,
+              error: `GitHub API access failed: ${userResponse.status} - ${errorText}`,
+              tokens_present: true,
+              available_tokens: availableTokens
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+
+          const userData = await userResponse.json();
+          console.log('✅ GitHub API access successful');
+
+          // Step 3: Test repository access (try to access the content repo if configured)
+          let repoAccess = null;
+          if (env.CONTENT_REPO_OWNER && env.CONTENT_REPO_NAME) {
+            try {
+              const repoResponse = await fetch(
+                `https://api.github.com/repos/${env.CONTENT_REPO_OWNER}/${env.CONTENT_REPO_NAME}`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${testToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'clip-recap-pipeline/1.0.0',
+                  },
+                }
+              );
+
+              if (repoResponse.ok) {
+                const repoData = await repoResponse.json();
+                repoAccess = {
+                  name: repoData.name,
+                  full_name: repoData.full_name,
+                  private: repoData.private,
+                  permissions: repoData.permissions
+                };
+                console.log('✅ Repository access successful');
+              } else {
+                console.log('⚠️ Repository access failed (this might be expected)');
+              }
+            } catch (error) {
+              console.log('⚠️ Repository access test failed (this might be expected)');
+            }
+          }
+          
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'GitHub credentials are valid!',
+            tokens_present: true,
+            available_tokens: availableTokens,
+            api_accessible: true,
+            user_info: {
+              login: userData.login,
+              id: userData.id,
+              type: userData.type
+            },
+            repository_accessible: !!repoAccess,
+            repo_info: repoAccess
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+
+        } catch (error) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `GitHub API call failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            tokens_present: true,
+            available_tokens: availableTokens
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Clips management endpoint
     if (url.pathname === '/clips') {
       try {
@@ -133,7 +283,7 @@ export default {
         const twitchService = new TwitchService(env);
         
         switch (request.method) {
-          case 'GET':
+          case 'GET': {
             // Fetch recent clips from Twitch
             console.log('🔍 Fetching recent Twitch clips...');
             const clips = await twitchService.getRecentClips();
@@ -157,12 +307,39 @@ export default {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
             });
+          }
 
-          case 'POST':
+          case 'POST': {
             // Store clips data to R2
             console.log('💾 Storing clips data...');
+            
+            // Check request body size limit (10MB)
+            const contentLength = request.headers.get('content-length');
+            const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
+            if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Request body too large. Maximum size is ${MAX_REQUEST_SIZE / (1024 * 1024)}MB.`
+              }), {
+                status: 413,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
             const body = await request.json() as { clips?: any[] };
             const clipsToStore = body.clips || [];
+            
+            // Validate request size
+            const MAX_CLIPS_PER_REQUEST = 100;
+            if (clipsToStore.length > MAX_CLIPS_PER_REQUEST) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Too many clips. Maximum ${MAX_CLIPS_PER_REQUEST} clips per request.`
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
             
             if (clipsToStore.length === 0) {
               return new Response(JSON.stringify({
@@ -174,22 +351,52 @@ export default {
               });
             }
             
-            // Validate clip data structure
-            for (const clip of clipsToStore) {
-              if (!clip.id || typeof clip.id !== 'string') {
+            // Validate and sanitize each clip
+            const validatedClips = [];
+            for (let i = 0; i < clipsToStore.length; i++) {
+              const clip = clipsToStore[i];
+              
+              // Basic structure validation
+              if (!clip || typeof clip !== 'object' || Array.isArray(clip)) {
                 return new Response(JSON.stringify({
                   success: false,
-                  error: 'Each clip must have a valid id'
+                  error: `Clip at index ${i} must be a valid object`
                 }), {
                   status: 400,
                   headers: { 'Content-Type': 'application/json' }
                 });
               }
+              
+              // Comprehensive validation and sanitization of the entire clip object
+              const clipValidation = validateClipObject(clip);
+              if (!clipValidation.isValid) {
+                return new Response(JSON.stringify({
+                  success: false,
+                  error: `Invalid clip at index ${i}: ${clipValidation.error}`
+                }), {
+                  status: 400,
+                  headers: { 'Content-Type': 'application/json' }
+                });
+              }
+              
+              // Check for duplicate clip IDs
+              if (validatedClips.some(validatedClip => validatedClip.id === clip.id)) {
+                return new Response(JSON.stringify({
+                  success: false,
+                  error: `Duplicate clip ID found: ${clip.id}`
+                }), {
+                  status: 400,
+                  headers: { 'Content-Type': 'application/json' }
+                });
+              }
+              
+              // Use sanitized clip data
+              validatedClips.push(clipValidation.sanitizedData!);
             }
             
-            // Store each clip as a separate file in R2
+            // Store each validated clip as a separate file in R2
             const storedClips = [];
-            for (const clip of clipsToStore) {
+            for (const clip of validatedClips) {
               const key = `clips/${clip.id}.json`;
               await env.R2_BUCKET.put(key, JSON.stringify(clip), {
                 httpMetadata: {
@@ -202,13 +409,19 @@ export default {
             return new Response(JSON.stringify({
               success: true,
               message: `Stored ${storedClips.length} clips to R2`,
-              stored_clips: storedClips
+              stored_clips: storedClips,
+              validation_summary: {
+                total_received: clipsToStore.length,
+                total_stored: storedClips.length,
+                sanitized: validatedClips.some(clip => Object.keys(clip).length > 1)
+              }
             }), {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
             });
+          }
 
-          case 'PUT':
+          case 'PUT': {
             // Update specific clip data
             console.log('🔄 Updating clip data...');
             const updateBody = await request.json() as { clipId?: string; data?: any };
@@ -224,8 +437,35 @@ export default {
               });
             }
             
+            // Validate clipId format and prevent path traversal
+            const clipIdValidation = validateClipId(clipId);
+            if (!clipIdValidation.isValid) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: `Invalid clipId: ${clipIdValidation.error}`
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            // Strict validation of data with field whitelisting and sanitization
+            const dataValidation = validateClipData(data);
+            if (!dataValidation.isValid) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: dataValidation.error
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            // Use sanitized data for storage
+            const sanitizedData = dataValidation.sanitizedData;
+            
             const updateKey = `clips/${clipId}.json`;
-            await env.R2_BUCKET.put(updateKey, JSON.stringify(data), {
+            await env.R2_BUCKET.put(updateKey, JSON.stringify(sanitizedData), {
               httpMetadata: {
                 contentType: 'application/json',
               },
@@ -234,11 +474,13 @@ export default {
             return new Response(JSON.stringify({
               success: true,
               message: `Updated clip ${clipId}`,
-              clip_id: clipId
+              clip_id: clipId,
+              updated_fields: Object.keys(sanitizedData)
             }), {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
             });
+          }
 
           default:
             return new Response(JSON.stringify({
@@ -267,6 +509,18 @@ export default {
         const clipId = url.searchParams.get('id');
         
         if (clipId) {
+          // Validate clipId to prevent path traversal
+          const validation = validateClipId(clipId);
+          if (!validation.isValid) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: validation.error
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
           // Get specific clip
           const clipObject = await env.R2_BUCKET.get(`clips/${clipId}.json`);
           
@@ -347,8 +601,301 @@ export default {
       return handleWebhook(request, env, ctx);
     }
     
-    // Default response
-    return new Response('Twitch Clip Recap Pipeline', { status: 200 });
+    // Default response - API Status Page
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch Clip Recap Pipeline - API Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .status-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .status-card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-online {
+            background: #10b981;
+        }
+        
+        .status-offline {
+            background: #ef4444;
+        }
+        
+        .endpoints {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .endpoints h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+        
+        .endpoint {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .endpoint-header {
+            background: #f9fafb;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .method {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .method.get { background: #dbeafe; color: #1d4ed8; }
+        .method.post { background: #dcfce7; color: #15803d; }
+        .method.put { background: #fef3c7; color: #d97706; }
+        
+        .endpoint-path {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-weight: 600;
+        }
+        
+        .endpoint-description {
+            padding: 1rem;
+            color: #6b7280;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: white;
+            opacity: 0.8;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Twitch Clip Recap Pipeline</h1>
+            <p>Automated daily blog post generation from Twitch clips</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">7</div>
+                <div class="stat-label">API Endpoints</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">Uptime</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">AI</div>
+                <div class="stat-label">Powered</div>
+            </div>
+        </div>
+        
+        <div class="status-grid">
+            <div class="status-card">
+                <h3><span class="status-indicator status-online"></span>Twitch Integration</h3>
+                <p>Connected to Twitch API for clip fetching and processing</p>
+            </div>
+            <div class="status-card">
+                <h3><span class="status-indicator status-online"></span>GitHub Integration</h3>
+                <p>Connected to GitHub for content repository management</p>
+            </div>
+            <div class="status-card">
+                <h3><span class="status-indicator status-online"></span>AI Processing</h3>
+                <p>Workers AI for transcription and content generation</p>
+            </div>
+            <div class="status-card">
+                <h3><span class="status-indicator status-online"></span>Cloud Storage</h3>
+                <p>R2 storage for clips and transcripts</p>
+            </div>
+        </div>
+        
+        <div class="endpoints">
+            <h2>📡 API Endpoints</h2>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/health</span>
+                </div>
+                <div class="endpoint-description">
+                    Health check endpoint to verify service status
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/validate</span>
+                </div>
+                <div class="endpoint-description">
+                    Validate Twitch API credentials and connection
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/validate-github</span>
+                </div>
+                <div class="endpoint-description">
+                    Validate GitHub API credentials and repository access
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/clips</span>
+                </div>
+                <div class="endpoint-description">
+                    Fetch recent Twitch clips from the last 24 hours
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/clips</span>
+                </div>
+                <div class="endpoint-description">
+                    Store clips data to R2 storage
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/clips/stored</span>
+                </div>
+                <div class="endpoint-description">
+                    List all stored clips from R2 storage
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method post">POST</span>
+                    <span class="endpoint-path">/webhook/github</span>
+                </div>
+                <div class="endpoint-description">
+                    GitHub webhook handler for repository events
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Built with Cloudflare Workers • AI-Powered Content Generation</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    
+    return new Response(html, { 
+      status: 200,
+      headers: { 'Content-Type': 'text/html' }
+    });
   },
 
   async scheduled(event: ScheduledEvent, env: Environment, ctx: ExecutionContext): Promise<void> {

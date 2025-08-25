@@ -6,9 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "deploy:staging": "wrangler deploy --env staging",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "deploy": "wrangler deploy --config wrangler.production.toml",
+    "deploy:staging": "wrangler deploy --config wrangler.staging.toml",
+    "test": "npx tsx test-github.ts",
+    "test:twitch": "npx tsx test-twitch.ts",
+    "test:all": "npm run test && npm run test:twitch"
   },
   "keywords": [
     "twitch",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
+    "tsx": "^4.20.5",
     "wrangler": "^3.0.0"
   }
 }

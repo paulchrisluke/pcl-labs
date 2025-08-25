@@ -78,6 +78,28 @@ export class ContentService {
     };
   }
 
+  private parseLLMJSON(raw: string): any {
+    try {
+      // Strip code fences and language hints
+      let cleaned = raw.trim();
+      
+      // Remove markdown code blocks
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+      
+      // Find the first {...} block
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON object found in response');
+      }
+      
+      const jsonStr = jsonMatch[0];
+      return JSON.parse(jsonStr);
+    } catch (error) {
+      console.error('Failed to parse LLM JSON response:', error);
+      throw error;
+    }
+  }
+
   private async generateClipSection(clip: TwitchClip, transcript?: Transcript): Promise<ClipSection> {
     const text = transcript?.segments?.map((s: any) => s.text).join(' ') || '';
     
@@ -120,17 +142,35 @@ Format as JSON:
         clip_url: clip.embed_url,
       };
     }
+    
     try {
-      const parsed = JSON.parse(result.response);
+      const parsed = this.parseLLMJSON(result.response);
+      
+      // Validate and coerce fields
+      const h2 = typeof parsed.h2 === 'string' ? parsed.h2.substring(0, 60) : clip.title;
+      const bullets = Array.isArray(parsed.bullets) && parsed.bullets.length >= 2 && parsed.bullets.length <= 3
+        ? parsed.bullets.filter((b: any) => typeof b === 'string')
+        : ['Development progress', 'Live coding session'];
+      const paragraph = typeof parsed.paragraph === 'string' && parsed.paragraph.length > 50
+        ? parsed.paragraph
+        : 'Interesting development moment captured during the stream.';
+      
+      // Normalize repo to "org/repo" format or undefined
+      let repo: string | undefined;
+      if (typeof parsed.repo === 'string' && parsed.repo.includes('/')) {
+        repo = parsed.repo.trim();
+      }
+      
       return {
         clip_id: clip.id,
-        h2: parsed.h2 || clip.title,
-        bullets: parsed.bullets || ['Key development moment'],
-        paragraph: parsed.paragraph || 'Interesting development progress.',
+        h2,
+        bullets,
+        paragraph,
         clip_url: clip.embed_url,
-        repo: parsed.repo,
+        repo,
       };
     } catch (error) {
+      console.error('AI response parsing failed:', error);
       // Fallback if AI parsing fails
       return {
         clip_id: clip.id,
@@ -180,7 +220,7 @@ Format as JSON:
       
       // Create MDX file
       const mdxContent = this.generateMDX(blogPost);
-      await this.createFile(token, branchName, filePath, mdxContent);
+      await this.createFile(token, branchName, filePath, mdxContent, `Add daily recap for ${blogPost.date}`, blogPost.date);
       
       // Create PR
       const pr = await this.createPullRequest(token, branchName, blogPost);
@@ -302,7 +342,7 @@ Format as JSON:
     return btoa(unescape(encodeURIComponent(content)));
   }
 
-  private async createFile(token: string, branch: string, path: string, content: string): Promise<void> {
+  private async createFile(token: string, branch: string, path: string, content: string, commitMessage: string, date?: string): Promise<void> {
     const response = await fetch(
       `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/contents/${path}`,
       {
@@ -312,7 +352,7 @@ Format as JSON:
           'Accept': 'application/vnd.github.v3+json',
         },
         body: JSON.stringify({
-          message: `Add daily recap for ${new Date().toISOString().split('T')[0]}`,
+          message: commitMessage,
           content: this.encodeBase64UnicodeSafe(content), // Unicode-safe base64 encode
           branch,
         }),
@@ -320,7 +360,38 @@ Format as JSON:
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to create file: ${response.statusText}`);
+      if (response.status === 422) {
+        // Try update: fetch current sha then PUT with sha
+        const getResp = await fetch(
+          `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/contents/${path}?ref=${branch}`,
+          { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' } }
+        );
+        if (!getResp.ok) {
+          const t = await getResp.text().catch(() => '');
+          throw new Error(`Failed to read existing file for update: ${getResp.status} ${getResp.statusText} - ${t}`);
+        }
+        const { sha } = await getResp.json();
+        const upd = await fetch(
+          `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/contents/${path}`,
+          {
+            method: 'PUT',
+            headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github+json' },
+            body: JSON.stringify({
+              message: `Update daily recap for ${date || new Date().toISOString().split('T')[0]}`,
+              content: this.encodeBase64UnicodeSafe(content),
+              branch,
+              sha,
+            }),
+          }
+        );
+        if (!upd.ok) {
+          const t = await upd.text().catch(() => '');
+          throw new Error(`Failed to update existing file: ${upd.status} ${upd.statusText} - ${t}`);
+        }
+        return;
+      }
+      const body = await response.text().catch(() => '');
+      throw new Error(`Failed to create file: ${response.status} ${response.statusText} - ${body}`);
     }
   }
 
@@ -344,7 +415,13 @@ Format as JSON:
     );
 
     if (!response.ok) {
-      throw new Error(`Failed to create PR: ${response.statusText}`);
+      let errorBody: string;
+      try {
+        errorBody = await response.text();
+      } catch {
+        errorBody = 'Unable to read error response body';
+      }
+      throw new Error(`Failed to create PR: ${response.status} ${response.statusText} - ${errorBody}`);
     }
 
     return await response.json();
@@ -454,8 +531,45 @@ Format as JSON:
     });
 
     try {
-      return JSON.parse(result.response);
+      const parsed = this.parseLLMJSON(result.response);
+      
+      // Validate and coerce fields
+      const overall = typeof parsed.overall === 'number' && parsed.overall >= 0 && parsed.overall <= 100 
+        ? parsed.overall : 80;
+      
+      const per_axis = typeof parsed.per_axis === 'object' && parsed.per_axis !== null
+        ? {
+            coherence: typeof parsed.per_axis.coherence === 'number' ? Math.max(0, Math.min(20, parsed.per_axis.coherence)) : 18,
+            correctness: typeof parsed.per_axis.correctness === 'number' ? Math.max(0, Math.min(25, parsed.per_axis.correctness)) : 20,
+            dev_signal: typeof parsed.per_axis.dev_signal === 'number' ? Math.max(0, Math.min(20, parsed.per_axis.dev_signal)) : 16,
+            narrative_flow: typeof parsed.per_axis.narrative_flow === 'number' ? Math.max(0, Math.min(15, parsed.per_axis.narrative_flow)) : 14,
+            length: typeof parsed.per_axis.length === 'number' ? Math.max(0, Math.min(10, parsed.per_axis.length)) : 8,
+            safety: typeof parsed.per_axis.safety === 'number' ? Math.max(0, Math.min(10, parsed.per_axis.safety)) : 6
+          }
+        : {
+            coherence: 18,
+            correctness: 20,
+            dev_signal: 16,
+            narrative_flow: 14,
+            length: 8,
+            safety: 6
+          };
+      
+      const reasons = Array.isArray(parsed.reasons) && parsed.reasons.length > 0
+        ? parsed.reasons.filter((r: any) => typeof r === 'string')
+        : ['AI parsing failed, using fallback'];
+      
+      const action = parsed.action === 'approve' || parsed.action === 'reject' || parsed.action === 'revise'
+        ? parsed.action : 'approve';
+      
+      return {
+        overall,
+        per_axis,
+        reasons,
+        action: action as const
+      };
     } catch (error) {
+      console.error('AI response parsing failed:', error);
       // Fallback
       return {
         overall: 80,
@@ -502,7 +616,7 @@ Format as JSON:
     }
     
     // Create check run
-    await fetch(
+    const checkRunResponse = await fetch(
       `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/check-runs`,
       {
         method: 'POST',
@@ -514,6 +628,7 @@ Format as JSON:
           name: 'Content Quality Judge',
           head_sha: headSha,
           status: 'completed',
+          completed_at: new Date().toISOString(),
           conclusion: judgeResult.overall >= 80 ? 'success' : 'neutral',
           output: {
             title: `Content Quality Score: ${judgeResult.overall}/100`,
@@ -535,6 +650,16 @@ Format as JSON:
         }),
       }
     );
+
+    if (!checkRunResponse.ok) {
+      let errorBody: string;
+      try {
+        errorBody = await checkRunResponse.text();
+      } catch {
+        errorBody = 'Unable to read error response body';
+      }
+      throw new Error(`Failed to create check run: ${checkRunResponse.status} ${checkRunResponse.statusText} - ${errorBody}`);
+    }
   }
 
 }

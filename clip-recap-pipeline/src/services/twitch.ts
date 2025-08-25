@@ -1,14 +1,16 @@
 import { Environment, TwitchClip, TwitchTokenResponse, Transcript } from '../types/index.js';
 import { AIService } from '../utils/ai.js';
+import { getBroadcasterId } from '../get-broadcaster-id.js';
 
 export class TwitchService {
   private aiService: AIService;
+  private tokenCache: { token: string; expiresAt: number } | null = null;
 
   constructor(private env: Environment) {
     this.aiService = new AIService(env);
   }
 
-  private async getAccessToken(): Promise<string> {
+  private async getAccessToken(): Promise<{ token: string; expiresAt: number }> {
     const response = await fetch('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
       headers: {
@@ -26,7 +28,8 @@ export class TwitchService {
     }
 
     const data: TwitchTokenResponse = await response.json();
-    return data.access_token;
+    const now = Date.now();
+    return { token: data.access_token, expiresAt: now + (data.expires_in * 1000) };
   }
 
   async validateToken(token: string): Promise<boolean> {
@@ -52,26 +55,30 @@ export class TwitchService {
   }
 
   async getValidatedToken(): Promise<string> {
-    const token = await this.getAccessToken();
-    
-    // Validate the token as required by Twitch
-    const isValid = await this.validateToken(token);
-    if (!isValid) {
-      throw new Error('Twitch token validation failed');
+    const skewMs = 60_000; // 60s safety buffer
+    if (this.tokenCache && (this.tokenCache.expiresAt - Date.now()) > skewMs) {
+      return this.tokenCache.token;
     }
-    
+    const { token, expiresAt } = await this.getAccessToken();
+    // Validate only on fresh grants (helps diagnostics, avoids validating on every call)
+    const isValid = await this.validateToken(token);
+    if (!isValid) throw new Error('Twitch token validation failed');
+    this.tokenCache = { token, expiresAt };
     return token;
   }
 
   async getRecentClips(): Promise<TwitchClip[]> {
     const token = await this.getValidatedToken();
     
+    // Get broadcaster ID using the new function
+    const broadcasterId = await getBroadcasterId(this.env);
+    
     // Get clips from last 24 hours
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
     const response = await fetch(
-      `https://api.twitch.tv/helix/clips?broadcaster_id=${this.env.TWITCH_BROADCASTER_ID}&started_at=${yesterday.toISOString()}&ended_at=${now.toISOString()}&first=100`,
+      `https://api.twitch.tv/helix/clips?broadcaster_id=${broadcasterId}&started_at=${yesterday.toISOString()}&ended_at=${now.toISOString()}&first=100`,
       {
         headers: {
           'Client-ID': this.env.TWITCH_CLIENT_ID,
@@ -193,16 +200,38 @@ export class TwitchService {
   }
 
   private async transcribeAudio(audioBuffer: ArrayBuffer, clipId: string): Promise<Transcript> {
-    // Use Workers AI Whisper for transcription
-    const result = await this.aiService.callWithRetry('@cf/openai/whisper-large-v3-turbo', {
-      audio: audioBuffer,
-    });
+    try {
+      // Use Workers AI Whisper for transcription
+      const result = await this.aiService.callWithRetry('@cf/openai/whisper-large-v3-turbo', {
+        audio: audioBuffer,
+      });
 
-    return {
-      clip_id: clipId,
-      lang: 'en',
-      segments: result.segments || [],
-    };
+      // Validate that result is non-null
+      if (!result) {
+        throw new Error('AI service returned null or undefined result');
+      }
+
+      // Validate that result.segments is an array, fallback to empty array if missing
+      const segments = Array.isArray(result.segments) ? result.segments : [];
+
+      // Extract language from result, fallback to 'en'
+      const lang = result.language || 'en';
+
+      return {
+        clip_id: clipId,
+        lang,
+        segments,
+      };
+    } catch (error) {
+      console.error(`Transcription failed for clip ${clipId} using Whisper service:`, error);
+      
+      // Return a controlled failure transcript object with predictable shape
+      return {
+        clip_id: clipId,
+        lang: 'en',
+        segments: [],
+      };
+    }
   }
 
   private async storeTranscript(clipId: string, transcript: Transcript): Promise<void> {
