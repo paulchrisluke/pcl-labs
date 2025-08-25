@@ -209,7 +209,7 @@ Format as JSON:
     
     const date = blogPost.date;
     const branchName = `auto/daily-recap-${date}`;
-    const filePath = `content/blog/development/${date}-daily-dev-recap.mdx`;
+    const filePath = `content/blog/development/${date}-daily-dev-recap.md`;
     
     try {
       // Get GitHub installation token
