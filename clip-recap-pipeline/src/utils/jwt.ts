@@ -50,8 +50,11 @@ export async function generateJWT(
   const iat = now - skew;
   const exp = iat + ttl;
   if (exp <= now) throw new Error('generateJWT: exp must be in the future');
-  const iss = String(Number(appId));
-  if (iss === 'NaN') throw new Error('generateJWT: appId must be a numeric string');
+  const appIdNum = Number(appId);
+  if (!Number.isInteger(appIdNum) || appIdNum <= 0) {
+    throw new Error('generateJWT: appId must be a positive integer');
+  }
+  const iss = String(appIdNum);
   const payload = { iat, exp, iss };
 
   const encodedHeader = toBase64Url(JSON.stringify(header));
@@ -61,16 +64,15 @@ export async function generateJWT(
   // Convert PEM private key to CryptoKey
   const pemHeaderPkcs8 = '-----BEGIN PRIVATE KEY-----';
   const pemHeaderPkcs1 = '-----BEGIN RSA PRIVATE KEY-----';
-  const pemFooter = '-----END PRIVATE KEY-----';
-  if (key.includes(pemHeaderPkcs1)) {
-    throw new Error(
-      'generateJWT: PKCS#1 (BEGIN RSA PRIVATE KEY) detected. Convert to PKCS#8 (BEGIN PRIVATE KEY). Example:\n' +
-      '  openssl pkcs8 -topk8 -nocrypt -in rsa-key.pem -out key-pkcs8.pem'
-    );
-  }
-  const pemContents = key
+  const pemFooterPkcs8 = '-----END PRIVATE KEY-----';
+  const pemFooterPkcs1 = '-----END RSA PRIVATE KEY-----';
+  
+  // Strip PEM headers/footers and whitespace for both PKCS#8 and PKCS#1 formats
+  let pemContents = key
     .replace(pemHeaderPkcs8, '')
-    .replace(pemFooter, '')
+    .replace(pemHeaderPkcs1, '')
+    .replace(pemFooterPkcs8, '')
+    .replace(pemFooterPkcs1, '')
     .replace(/\s/g, '');
   
   const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};

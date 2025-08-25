@@ -8,7 +8,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --config wrangler.production.toml",
     "deploy:staging": "wrangler deploy --config wrangler.staging.toml",
-    "test": "npx tsx test-github.ts"
+    "test": "npx tsx test-github.ts",
+    "test:twitch": "npx tsx test-twitch.ts",
+    "test:all": "npm run test && npm run test:twitch"
   },
   "keywords": [
     "twitch",
