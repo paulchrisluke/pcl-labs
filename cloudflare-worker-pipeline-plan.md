@@ -132,83 +132,33 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
 }
 ```
 
-#### MDX Front-matter (GitHub) — Schema.org Compliant
+#### MDX Front-matter (GitHub) — Minimal & LLM-Friendly
 
-Front-matter follows [Schema.org Article](https://schema.org/Article) and [Schema.org VideoObject](https://schema.org/VideoObject) standards for SEO and validation.
+**Decision:** Generate JSON-LD at render time (Nuxt Content layout) rather than stuffing full Schema.org blocks into front-matter. Keep front-matter minimal and LLM-friendly.
 
 ```yaml
 ---
-# Schema.org Article properties
-"@type": "Article"
-"@context": "https://schema.org"
-headline: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
-name: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
-description: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
-articleBody: "Daily development recap from Twitch stream showing key achievements..."
-articleSection: "development"
-datePublished: "2025-08-25T02:00:00Z"    # UTC ISO8601
-dateModified: "2025-08-25T02:00:00Z"    # UTC ISO8601
-author:
-  "@type": "Person"
-  name: "Paul Chris Luke"
-  url: "https://paulchrisluke.com"
-publisher:
-  "@type": "Organization"
-  name: "PCL Labs"
-  url: "https://paulchrisluke.com"
-  logo:
-    "@type": "ImageObject"
-    url: "https://paulchrisluke.com/pcl-labs-logo.svg"
-
-# VideoObject for Twitch clips
-video:
-  "@type": "VideoObject"
-  name: "Daily Dev Stream - 2025-08-25"
-  description: "Live coding session featuring deadlock fixes and test improvements"
-  uploadDate: "2025-08-25T02:00:00Z"
-  duration: "PT4H30M"                    # ISO 8601 duration
-  contentUrl: "https://www.twitch.tv/videos/123456789"
-  embedUrl: "https://www.twitch.tv/videos/123456789"
-  thumbnailUrl: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
-  publisher:
-    "@type": "Organization"
-    name: "Twitch"
-    url: "https://twitch.tv"
-
-# SEO and metadata
-keywords: "development, live coding, twitch, daily recap, deadlock, tests, PCL-Labs"
-image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
-imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-thumbnail-2025-08-25.webp"
-imageAlt: "Daily development recap from Twitch stream showing deadlock fix and test improvements"
-canonical: "https://paulchrisluke.com/blog/development/2025-08-25-daily-dev-recap"
-
-# Blog-specific fields
-category: "development"                  # matches content/blog/development/
-tags: ["Development", "Live Coding", "Twitch", "Daily Recap", "deadlock", "tests"]
+# Core content fields
+post_id: "2025-08-25"                   # stable reference for search/links
+title: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
+date: "2025-08-25T02:00:00Z"            # UTC ISO8601
+timezone: "Asia/Bangkok"
+summary: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
+tags: ["Development", "Live Coding", "Twitch", "Daily Recap"]
 repos: ["paulchrisluke/pcl-labs"]
 clip_count: 7
+canonical_vod: "https://www.twitch.tv/videos/123456789"
 entities: ["CheckoutService", "locks.py", "deadlock", "tests"]
-post_id: "2025-08-25"                   # stable reference for search/links
-status: "review"                         # review | published
+
+# SEO and routing
+canonical: "https://paulchrisluke.com/blog/development/2025-08-25-daily-dev-recap"
+og_image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
 source_manifest: "r2://recaps/manifests/2025/08/2025-08-25.json"
 
-# Open Graph
-og:
-  title: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
-  description: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
-  image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
-  imageAlt: "Daily development recap from Twitch stream showing deadlock fix and test improvements"
-  type: "article"
-  url: "https://paulchrisluke.com/blog/development/2025-08-25-daily-dev-recap"
-
-# Twitter Card
-twitter:
-  card: "summary_large_image"
-  title: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
-  description: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
-  image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
-  imageAlt: "Daily development recap from Twitch stream showing deadlock fix and test improvements"
+# Status
+draft: false                             # or status: "review" | "published"
 ---
+```
 ```
 
 #### Vectorize Indexing (semantic search)
@@ -260,6 +210,121 @@ Index three granularities:
 6. **Add Schema.org validation** to ensure all required properties are present
 7. **Update Vectorize indexing** with new metadata structure
 8. **Create validation tests** for Schema.org compliance and SEO requirements
+
+---
+
+## 🏗️ **Proper Implementation Order (CRITICAL)**
+
+**Before generating any PRs, we need to build the foundation:**
+
+### **Phase 1: Schema & Database Foundation** ⚠️ **DO THIS FIRST**
+1. **Update TypeScript types** to match Schema.org Article/VideoObject
+2. **Create JSON Schema validation** for manifest structure
+3. **Update R2 bucket structure** with `recaps/` prefix and proper organization
+4. **Build manifest storage/retrieval** functions with validation
+5. **Create database migration** to ensure R2 structure is correct
+
+### **Phase 2: Content Generation Engine** ⚠️ **BUILD BEFORE PRs**
+1. **Update BlogPost interface** to include Schema.org fields
+2. **Modify content generation** to create Schema.org compliant content
+3. **Build manifest generation** from clips + transcripts
+4. **Create MDX rendering** from manifest (not direct generation)
+5. **Add validation pipeline** for Schema.org compliance
+
+### **Phase 3: Testing & Validation** ⚠️ **VALIDATE BEFORE PRs**
+1. **Create test fixtures** with sample clips/transcripts
+2. **Build validation tests** for manifest schema
+3. **Test MDX generation** with Schema.org compliance
+4. **Validate SEO requirements** (title length, meta descriptions, etc.)
+5. **Test R2 storage/retrieval** with proper error handling
+
+### **Phase 4: PR Generation** ✅ **ONLY AFTER FOUNDATION**
+1. **Update PR creation** to use manifest-driven approach
+2. **Add Schema.org validation** to PR checks
+3. **Test end-to-end pipeline** with validation
+4. **Deploy and monitor** first few PRs
+
+### **Phase 5: Production & Monitoring** 🚀 **FINAL PHASE**
+1. **Enable daily pipeline** with validation
+2. **Monitor validation failures** and adjust
+3. **Optimize based on real data**
+
+---
+
+**Current Risk Assessment:**
+- ❌ **Types don't match Schema.org** - Need to update `BlogPost` interface
+- ❌ **No manifest validation** - PRs could fail Schema.org compliance
+- ❌ **Direct MDX generation** - Should be manifest-driven
+- ❌ **No test fixtures** - Can't validate before production
+- ❌ **R2 structure undefined** - Storage could be inconsistent
+
+---
+
+## 📋 **Implementation Decisions & Questions for Cursor**
+
+### **Content & Repo** ✅ **DECISIONS LOCKED**
+
+1. **Final path/format:** `content/blog/development/YYYY-MM-DD-daily-dev-recap.md` (Markdown, not MDX)
+2. **Slug builder:** `/blog/development/YYYY-MM-DD-daily-dev-recap` (date + `daily-dev-recap`)
+3. **Branch target:** PRs open against `staging` → merge to `main`
+4. **Front-matter fields (minimal):** `post_id, title, date (UTC), timezone, summary, tags[], repos[], clip_count, canonical_vod, canonical, entities[], og_image, source_manifest, draft(false)|status('review'|'published')`
+
+### **R2 Manifest & Storage** ✅ **DECISIONS LOCKED**
+
+5. **Manifest keyspace:** `recaps/manifests/YYYY/MM/POST_ID.json`
+6. **Transcript storage:** **Redacted only** under `recaps/transcripts/CLIP_ID.json`
+7. **Assets:** Cloudinary URLs in front-matter; **store thumbnails in R2** under `recaps/assets/POST_ID/...`
+8. **JSON Schema:** Use manifest schema defined above; create `/schema/manifest.schema.json` and validator
+
+### **Scoring & Selection** ✅ **DECISIONS LOCKED**
+
+9. **Daily clip budget:** Default **6–12** clips per day
+10. **Weights:** Keep current (tests pass +5, feat/fix/revert +4, build flip +3, merge resolved +3, entities +2, excitement +2, novelty +1, idle −2)
+
+### **Judge Gate** ✅ **DECISIONS LOCKED**
+
+11. **Thresholds:** Approve at **overall ≥ 80** and all axes ≥ 60
+12. **Fail handling:** Label `needs-polish`, post weak axes to PR comment
+
+### **Discord** ✅ **DECISIONS LOCKED**
+
+13. **Channel-only:** `DISCORD_REVIEW_CHANNEL_ID` will be provided; bot perms = send/embed/attach/read history
+
+### **Vectorize** ✅ **DECISIONS LOCKED**
+
+14. **Namespaces & dims:** Single index with `type` in metadata (`clip`, `section`, `post`)
+15. **Embeddings model:** Workers AI BGE variant (confirm dimension for index creation)
+
+### **Idempotency & Ops** ✅ **DECISIONS LOCKED**
+
+16. **Re-runs:** If day re-runs, append new `runs/<ts>.json` and keep latest pointer in manifest
+17. **PR collisions:** If PR exists for `post_id`, update branch/commit instead of opening new one
+18. **Retries:** Proceed if Twitch/GitHub hiccup and annotate PR with "partial day"
+
+### **Security** ✅ **DECISIONS LOCKED**
+
+19. **PII redaction:** Block API keys, JWTs, emails, IPs (public), DSNs, SSH keys, `KEY=VALUE` envs. Implement redaction **before** writing to R2 and **before** embeddings.
+
+---
+
+## 🎯 **M7 "Definition of Done" (Cursor's Checklist)**
+
+* ✅ **Manifest JSON Schema** committed and validated in CI
+* ✅ **R2 layout** created and helper functions implemented (put/get manifest, put transcripts, list day)
+* ✅ **Front-matter generator** maps manifest → Markdown front-matter (minimal set above)
+* ✅ **Renderer** builds Markdown body from manifest sections
+* ✅ **PR builder** uses manifest + renderer; targets `staging`; idempotent if PR exists
+* ✅ **Judge check** runs post-PR and updates GitHub Checks; labels `needs-review` / `needs-polish`
+* ✅ **Discord notifier** posts to `DISCORD_REVIEW_CHANNEL_ID`
+* ✅ **Vectorize upserts** for `clip`, `section`, `post` with agreed metadata
+* ✅ **Dry-run** mode and fixtures for local tests (Twitch/GitHub off)
+* ✅ **Cron** remains at `02:00 UTC` (09:00 Bangkok)
+
+**Next Immediate Steps:**
+1. Update `src/types/index.ts` with Schema.org compliant interfaces
+2. Create JSON Schema for manifest validation
+3. Build test fixtures with sample data
+4. Update content generation to use manifest approach
 
 ---
 
