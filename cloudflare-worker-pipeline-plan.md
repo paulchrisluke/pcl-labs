@@ -69,7 +69,7 @@
 ```
 r2://recaps/
   manifests/YYYY/MM/POST_ID.json              # source-of-truth metadata for the day
-  drafts/YYYY/MM/POST_ID.mdx                  # optional staging copy of the MDX
+  drafts/YYYY/MM/POST_ID.md                  # optional staging copy of the MDX
   transcripts/CLIP_ID.json                    # ASR output (segments)
   clips/CLIP_ID/meta.json                     # clip metadata from Twitch
   assets/POST_ID/cover.jpg                    # images/thumbnails
@@ -117,7 +117,7 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
     }
   ],
   "canonical_vod": "https://www.twitch.tv/videos/123456789",
-  "mdx_path": "content/recaps/2025/08/2025-08-25.mdx",
+  "mdx_path": "content/recaps/2025/08/2025-08-25.md",
   "target_branch": "staging",
   "status": "draft",                        // draft | pr_open | approved | merged | published
   "judge": {
@@ -448,7 +448,7 @@ npm run test:integration
 ```
 r2://recaps/
   manifests/YYYY/MM/POST_ID.json              # source-of-truth metadata for the day
-  drafts/YYYY/MM/POST_ID.mdx                  # optional staging copy of the MDX
+  drafts/YYYY/MM/POST_ID.md                  # optional staging copy of the MDX
   transcripts/CLIP_ID.json                    # ASR output (segments)
   clips/CLIP_ID/meta.json                     # clip metadata from Twitch
   assets/POST_ID/cover.jpg                    # images/thumbnails
@@ -491,7 +491,7 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
     }
   ],
   "canonical_vod": "https://www.twitch.tv/videos/123456789",
-  "mdx_path": "content/recaps/2025/08/2025-08-25.mdx",
+  "mdx_path": "content/recaps/2025/08/2025-08-25.md",
   "target_branch": "staging",
   "status": "draft",                        // draft | pr_open | approved | merged | published
   "judge": {
