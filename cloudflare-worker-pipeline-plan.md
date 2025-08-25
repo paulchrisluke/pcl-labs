@@ -120,7 +120,7 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
   ],
   "canonical_vod": "https://www.twitch.tv/videos/123456789",
   "md_path": "content/blog/development/2025-08-25-daily-dev-recap.md",
-  "target_branch": "staging",
+  "target_branch": "main",
   "status": "draft",
   "judge": {
     "overall": null,
@@ -246,7 +246,7 @@ Index three granularities:
 5. **Store** redacted transcripts to R2
 6. **Draft** post (front‑matter + sections + embeds)
 7. **Embeddings → Vectorize** (clip + section + post)
-8. **Create PR** (branch: `auto/daily-recap-YYYY-MM-DD`; path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`)
+8. **Create PR** (branch: `auto/daily-recap-YYYY-MM-DD`; path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`; target: `main`)
 9. **Judge** (GitHub Check Run)
 10. **Discord** (bot channel post)
 
@@ -411,7 +411,7 @@ Index three granularities:
 * ✅ R2 layout created and helper functions implemented (put/get manifest, put transcripts, list day)
 * ✅ Front‑matter generator maps manifest → Markdown front‑matter (minimal set above)
 * ✅ Renderer builds Markdown body from manifest sections
-* ✅ PR builder uses manifest + renderer; targets `staging`; idempotent if PR exists
+* ✅ PR builder uses manifest + renderer; targets `main`; idempotent if PR exists
 * ✅ Judge check runs post‑PR and updates GitHub Checks; labels `needs-review` / `needs-polish`
 * ✅ Discord notifier posts to `DISCORD_REVIEW_CHANNEL_ID`
 * ✅ Vectorize upserts for `clip`, `section`, `post` with agreed metadata
