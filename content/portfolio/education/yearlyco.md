@@ -1,0 +1,46 @@
+---
+title: "YearlyCo"
+tags: ['Shopify', 'Conversion Rate Optimization']
+category: "education"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v1714789950/PCL-Labs/Yearly_Featured_um91yo.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v1714791185/PCL-Labs/Yearly_bxc3un.webp"
+imageAlt: "Yearlyco Shopify CRO by PCL Labs"
+description: "Yearly Co., a Nashville-based Shopify Plus merchant, handcrafts exquisite, custom-made bangles that celebrate everyday style. Renowned for their commitment to comfort and wearability, Yearly Co. sought to elevate their online store into a seamless and engaging shopping experience. Our agency partnered with Yearly Co. to implement a data-driven approach, optimizing their Shopify Plus store to drive sales and captivate customers seeking unique and handcrafted jewelry."
+keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
+
+---
+
+## Challenge
+
+Yearly Co. was facing issues with their Shopify Plus store in terms of customer journey inefficiencies that hindered optimal user experience and sales conversions. Despite offering high-quality, handcrafted bangles, the store's layout, navigation, and product discovery processes were not effectively guiding potential customers towards making purchases. The challenge was to deeply understand user interactions with the site and pinpoint precise areas for enhancement to ensure a smooth, enjoyable shopping experience that aligns with customer expectations and desires.
+
+### Technologies Used
+
+* CRO Audit Framework
+* Heatmaps & User Session Recordings
+* Shopify Analytics & Conversion Tracking
+
+## Solutions 
+
+### Optimizing the Customer Journey
+
+We embarked on a comprehensive Conversion Rate Optimization (CRO) audit of Yearly Co.'s Shopify Plus store. Utilizing heatmaps, user session recordings, and in-depth Shopify analytics, we gained valuable insights into customer behavior and identified areas for improvement. Our audit revealed opportunities to enhance the user journey from product discovery to checkout, making it easier for customers to find their perfect bangle and complete their purchase with confidence.
+
+### Key Recommendations:
+
+* **Homepage Optimization:** We recommended refining the homepage to showcase the unique craftsmanship and stories behind Yearly Co.'s bangles. Highlighting the Nashville connection and the handmade aspect could resonate with customers seeking locally-made, high-quality jewelry.
+![Yearly Co. homepage hero with product storytelling and Nashville positioning](https://res.cloudinary.com/pcl-labs/image/upload/v1715794061/PCL-Labs/yearlyco_home_jlynr2.webp)
+
+* **Enhanced Product Discovery:** To improve product browsing, we suggested implementing user-friendly filters and categorization based on style, material, and color. Additionally, high-quality product photography and engaging product descriptions could further entice customers.
+![Collection grid showing filters by style, material, and color for bangles](https://res.cloudinary.com/pcl-labs/image/upload/v1715794061/PCL-Labs/yearlyco_product_lwdkqy.webp)
+
+* **Personalized Shopping Experience:** We explored the potential of integrating personalized product recommendations, allowing customers to discover bangles that complement their individual style preferences.
+![Product detail page with related and recommended bangles module](https://res.cloudinary.com/pcl-labs/image/upload/v1715794174/PCL-Labs/yearlyco_related_o8uw6y.webp)
+## Results
+
+By implementing these data-driven CRO recommendations, Yearly Co. witnessed a significant improvement in their Shopify Plus store's performance. This translated to a notable increase in sales and a more engaging shopping experience for their clientele. 
+
+Our collaboration with Yearly Co. exemplifies the impact of strategic CRO. By focusing on user behavior and optimizing the customer journey, we empowered Yearly Co. to leverage their Shopify Plus store's full potential and solidify their position as a leading destination for handcrafted bangles in Nashville. 
+
+![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715794061/PCL-Labs/yearlyco_check_out_kh9xbl.webp)
+

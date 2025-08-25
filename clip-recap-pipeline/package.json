@@ -1,0 +1,33 @@
+{
+  "name": "clip-recap-pipeline",
+  "version": "1.0.0",
+  "description": "Daily Twitch clips to blog recap pipeline using Cloudflare Workers",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --config wrangler.production.toml",
+    "deploy:staging": "wrangler deploy --config wrangler.staging.toml",
+    "test": "npx tsx test-github.ts",
+    "test:twitch": "npx tsx test-twitch.ts",
+    "test:all": "npm run test && npm run test:twitch"
+  },
+  "keywords": [
+    "twitch",
+    "cloudflare",
+    "workers",
+    "ai",
+    "blog",
+    "automation"
+  ],
+  "author": "Paul Chris Luke",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^21.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.0.0",
+    "tsx": "^4.20.5",
+    "wrangler": "^3.0.0"
+  }
+}
