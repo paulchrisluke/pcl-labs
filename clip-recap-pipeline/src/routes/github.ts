@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
+  'Vary': 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+};
+
+// Define allowed methods for each endpoint
+const endpointMethods: Record<string, string[]> = {
+  '/api/github/activity': ['GET'],
+  // Add other endpoints here as they are implemented
+  // '/api/github/other-endpoint': ['GET', 'POST'],
 };
 
 // Helper function to create JSON error responses with CORS headers
@@ -34,29 +42,44 @@ export async function handleGitHubRequest(request: Request, env: any): Promise<R
   try {
     // Handle CORS preflight requests
     if (request.method === 'OPTIONS') {
+      // Parse the request URL to determine the endpoint
+      const url = new URL(request.url);
+      let path = url.pathname;
+      if (path.endsWith('/') && path !== '/') {
+        path = path.slice(0, -1);
+      }
+
       // Read incoming CORS request headers
       const requestHeaders = request.headers.get('Access-Control-Request-Headers');
       const requestMethod = request.headers.get('Access-Control-Request-Method');
       
-      // Define supported methods for this endpoint
-      const supportedMethods = ['GET', 'POST'];
+      // Get allowed methods for this specific endpoint
+      const allowedMethods = endpointMethods[path] || ['GET', 'POST'];
       
       // Build dynamic CORS headers
       const dynamicCorsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Max-Age': '86400',
+        'Vary': 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
       };
       
-      // Echo back the requested method if it's supported, otherwise use default
-      if (requestMethod && supportedMethods.includes(requestMethod.toUpperCase())) {
+      // Set allowed methods based on the endpoint and requested method
+      if (requestMethod && allowedMethods.includes(requestMethod.toUpperCase())) {
+        // If the requested method is allowed for this endpoint, return only that method
         dynamicCorsHeaders['Access-Control-Allow-Methods'] = requestMethod.toUpperCase();
       } else {
-        dynamicCorsHeaders['Access-Control-Allow-Methods'] = 'GET, POST';
+        // If the requested method is not allowed or not specified, return all allowed methods for this endpoint
+        dynamicCorsHeaders['Access-Control-Allow-Methods'] = allowedMethods.join(', ');
       }
       
-      // Echo back the requested headers if provided, otherwise use default
+      // Normalize and set allowed headers
       if (requestHeaders) {
-        dynamicCorsHeaders['Access-Control-Allow-Headers'] = requestHeaders;
+        // Normalize header values by converting to lowercase and removing extra whitespace
+        const normalizedHeaders = requestHeaders
+          .split(',')
+          .map(header => header.trim().toLowerCase())
+          .join(', ');
+        dynamicCorsHeaders['Access-Control-Allow-Headers'] = normalizedHeaders;
       } else {
         dynamicCorsHeaders['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
       }

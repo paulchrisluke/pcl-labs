@@ -43,13 +43,17 @@ export async function generateJWT(
     ? { alg: 'RS256', typ: 'JWT', kid: options.keyId }
     : { alg: 'RS256', typ: 'JWT' }) as const;
 
-  // Backdate iat to avoid clock skew; exp <= iat + 600s (GitHub max)
+  // Backdate iat to avoid clock skew; ensure exp - iat ≤ 600s and exp > now
   const now = Math.floor(Date.now() / 1000);
   const skew = Math.max(0, options.skewSeconds ?? 60);
-  const ttl = Math.min(600, Math.max(60, options.ttlSeconds ?? 600));
+  const requestedTtl = Math.max(1, options.ttlSeconds ?? 600);
+  const ttl = Math.min(600, requestedTtl);
   const iat = now - skew;
-  const exp = iat + ttl;
-  if (exp <= now) throw new Error('generateJWT: exp must be in the future');
+  // Guarantee both: exp > now and exp - iat ≤ 600
+  const exp = Math.min(now + ttl, iat + 600);
+  if (exp <= now) {
+    throw new Error('generateJWT: exp must be in the future; increase ttlSeconds or reduce skewSeconds');
+  }
   const appIdNum = Number(appId);
   if (!Number.isInteger(appIdNum) || appIdNum <= 0) {
     throw new Error('generateJWT: appId must be a positive integer');
@@ -67,14 +71,17 @@ export async function generateJWT(
   const pemFooterPkcs8 = '-----END PRIVATE KEY-----';
   const pemFooterPkcs1 = '-----END RSA PRIVATE KEY-----';
   
-  // Strip PEM headers/footers and whitespace for both PKCS#8 and PKCS#1 formats
-  let pemContents = key
+  // Strip PEM headers/footers and whitespace (Web Crypto requires PKCS#8 private keys)
+  const isPkcs1 = key.includes(pemHeaderPkcs1) || key.includes(pemFooterPkcs1);
+  if (isPkcs1) {
+    throw new Error(
+      'generateJWT: PKCS#1 (BEGIN RSA PRIVATE KEY) is not supported by Web Crypto; convert the key to PKCS#8 (BEGIN PRIVATE KEY).'
+    );
+  }
+  const pemContents = key
     .replace(pemHeaderPkcs8, '')
-    .replace(pemHeaderPkcs1, '')
     .replace(pemFooterPkcs8, '')
-    .replace(pemFooterPkcs1, '')
     .replace(/\s/g, '');
-  
   const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
   const BufferCtor = g.Buffer;
   const binaryKey = BufferCtor
