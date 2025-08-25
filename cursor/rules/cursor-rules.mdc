@@ -173,7 +173,7 @@
 - description: |
     Vercel deployment.
     - Use Nuxt Nitro `vercel` preset; no custom server code.
-    - Enable ISR for blog and portfolio detail pages (e.g., `isr: 60` or suitable minutes).
+    - Enable ISR for blog and portfolio detail pages (e.g., `isr: 60` seconds, i.e., 1 minute; use a suitable TTL in seconds).
     - Set environment vars only if strictly needed and public-safe via `NITRO_*` or `NUXT_PUBLIC_*`.
     - Do not add CI/scripts that conflict with Vercel defaults unless requested.
 

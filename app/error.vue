@@ -33,19 +33,12 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  error: Object
-})
+<script setup lang="ts">
+defineOptions({ name: 'Error' })
 
-const handleError = () => {
+defineProps<{ error: Error | Record<string, unknown> }>()
+
+const handleError = (): void => {
   clearError({ redirect: '/' })
-}
-</script>
-
-<script>
-// This ensures proper 404 generation for SSG/Vercel
-export default {
-  name: 'ErrorPage'
 }
 </script>

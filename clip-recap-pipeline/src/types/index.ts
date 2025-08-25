@@ -6,6 +6,7 @@ export interface Environment {
   TWITCH_CLIENT_ID: string;
   TWITCH_CLIENT_SECRET: string;
   TWITCH_BROADCASTER_ID: string;
+  TWITCH_BROADCASTER_LOGIN?: string; // Optional login for broadcaster ID lookup
   GITHUB_APP_ID: string;
   GITHUB_INSTALLATION_ID: string;
   GITHUB_PRIVATE_KEY: string;

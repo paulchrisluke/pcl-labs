@@ -1,6 +1,10 @@
 // Simple JWT generation for GitHub App authentication using Web Crypto API
 // Note: In production, you'd use a proper JWT library
-export async function generateJWT(privateKey: string, appId: string): Promise<string> {
+export async function generateJWT(
+  privateKey: string,
+  appId: string,
+  options: { keyId?: string; skewSeconds?: number; ttlSeconds?: number } = {}
+): Promise<string> {
   if (!privateKey) throw new Error('generateJWT: privateKey is required');
   if (!appId) throw new Error('generateJWT: appId is required');
 
@@ -34,25 +38,41 @@ export async function generateJWT(privateKey: string, appId: string): Promise<st
       .replace(/=+$/g, '');
   };
 
-  // Header
-  const header = { alg: 'RS256', typ: 'JWT' } as const;
+  // Header (kid optional for GitHub App key id)
+  const header = (options.keyId
+    ? { alg: 'RS256', typ: 'JWT', kid: options.keyId }
+    : { alg: 'RS256', typ: 'JWT' }) as const;
 
-  // Backdate iat by 60s to avoid clock skew; exp = iat + 600s (GitHub max)
+  // Backdate iat to avoid clock skew; exp <= iat + 600s (GitHub max)
   const now = Math.floor(Date.now() / 1000);
-  const iat = now - 60;
-  const exp = iat + 600;
-  const payload = { iat, exp, iss: appId };
+  const skew = Math.max(0, options.skewSeconds ?? 60);
+  const ttl = Math.min(600, Math.max(60, options.ttlSeconds ?? 600));
+  const iat = now - skew;
+  const exp = iat + ttl;
+  if (exp <= now) throw new Error('generateJWT: exp must be in the future');
+  const appIdNum = Number(appId);
+  if (!Number.isInteger(appIdNum) || appIdNum <= 0) {
+    throw new Error('generateJWT: appId must be a positive integer');
+  }
+  const iss = String(appIdNum);
+  const payload = { iat, exp, iss };
 
   const encodedHeader = toBase64Url(JSON.stringify(header));
   const encodedPayload = toBase64Url(JSON.stringify(payload));
   const unsigned = `${encodedHeader}.${encodedPayload}`;
 
   // Convert PEM private key to CryptoKey
-  const pemHeader = '-----BEGIN PRIVATE KEY-----';
-  const pemFooter = '-----END PRIVATE KEY-----';
-  const pemContents = key
-    .replace(pemHeader, '')
-    .replace(pemFooter, '')
+  const pemHeaderPkcs8 = '-----BEGIN PRIVATE KEY-----';
+  const pemHeaderPkcs1 = '-----BEGIN RSA PRIVATE KEY-----';
+  const pemFooterPkcs8 = '-----END PRIVATE KEY-----';
+  const pemFooterPkcs1 = '-----END RSA PRIVATE KEY-----';
+  
+  // Strip PEM headers/footers and whitespace for both PKCS#8 and PKCS#1 formats
+  let pemContents = key
+    .replace(pemHeaderPkcs8, '')
+    .replace(pemHeaderPkcs1, '')
+    .replace(pemFooterPkcs8, '')
+    .replace(pemFooterPkcs1, '')
     .replace(/\s/g, '');
   
   const g: any = typeof globalThis !== 'undefined' ? (globalThis as any) : {};

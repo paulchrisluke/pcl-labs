@@ -1,5 +1,5 @@
-import { Environment } from '../types/index.js';
-import { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
+import type { Environment } from '../types';
+import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import { TwitchService } from './twitch.js';
 import { ContentService } from './content.js';
 import { DiscordService } from './discord.js';
@@ -17,8 +17,8 @@ export async function handleScheduled(
     return;
   }
   
-  // Handle daily pipeline (09:00 ICT)
-  if (event.cron === "0 9 * * *") {
+  // Handle daily pipeline (02:00 UTC = 09:00 ICT)
+  if (event.cron === "0 2 * * *") {
     await handleDailyPipeline(env);
     return;
   }
@@ -27,15 +27,66 @@ export async function handleScheduled(
 }
 
 async function handleTokenValidation(env: Environment): Promise<void> {
-  console.log('Starting hourly Twitch token validation...');
+  console.log('Starting hourly token validation...');
   
+  const validationErrors: string[] = [];
+  
+  // Validate Twitch credentials
   try {
     const twitchService = new TwitchService(env);
     const token = await twitchService.getValidatedToken();
-    console.log('✅ Token validation successful');
+    console.log('✅ Twitch token validation successful');
   } catch (error) {
-    console.error('❌ Token validation failed:', error);
-    // Could send Discord notification here if needed
+    const errorMsg = `Twitch token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error('❌', errorMsg);
+    validationErrors.push(errorMsg);
+  }
+
+  // Validate GitHub credentials
+  try {
+    const contentService = new ContentService(env);
+    const token = await contentService.getGitHubToken();
+    console.log('✅ GitHub App token validation successful');
+  } catch (error) {
+    const errorMsg = `GitHub App token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error('❌', errorMsg);
+    validationErrors.push(errorMsg);
+  }
+
+  // Validate GitHub personal access tokens
+  try {
+    const testToken = env.GITHUB_TOKEN || env.GITHUB_TOKEN_PAULCHRISLUKE || env.GITHUB_TOKEN_BLAWBY;
+    if (testToken) {
+      const response = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${testToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'clip-recap-pipeline/1.0.0',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
+      }
+      
+      console.log('✅ GitHub personal token validation successful');
+    } else {
+      console.log('⚠️ No GitHub personal tokens found to validate');
+    }
+  } catch (error) {
+    const errorMsg = `GitHub personal token validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error('❌', errorMsg);
+    validationErrors.push(errorMsg);
+  }
+
+  // Send Discord notification if there are validation errors
+  if (validationErrors.length > 0) {
+    try {
+      const discordService = new DiscordService(env);
+      await discordService.notifyTokenValidationErrors(validationErrors);
+    } catch (discordError) {
+      console.error('Failed to send token validation error notification:', discordError);
+    }
   }
 }
 
@@ -65,6 +116,10 @@ async function handleDailyPipeline(env: Environment): Promise<void> {
     const selectedClips = await contentService.selectBestClips(clips, transcripts);
     
     // Step 4: Generate blog post
+    if (!selectedClips?.length) {
+      console.log('No clips selected after scoring. Skipping blog generation and PR creation.');
+      return;
+    }
     console.log('Generating blog post...');
     const blogPost = await contentService.generateBlogPost(selectedClips, transcripts);
     
