@@ -11,7 +11,7 @@ keywords: "Shopify, web development, marketing, SEO, PCL-Labs, Paul Chris Luke"
 ---
 ## Challenge
 
-Virtually every product on every shelf in the U.S. was brought there by a truck—making the trucking industry the unsung workhorse of our economy. But currently, this critical industry is being constrained by one of the largest driver shortages in history. Unfilled positions have more than tripled over the past decade, and just this year, the driver turnover rate at major carriers jumped to an incredible 90%. As the largest independent truckload carrier in the country, U.S. Xpress was feeling the strain of 7,000 empty driver’s seats.
+Virtually every product on every shelf in the U.S. was brought there by a truck—making the trucking industry the unsung workhorse of our economy. But currently, this critical industry is being constrained by one of the largest driver shortages in history. Unfilled positions have more than tripled over the past decade, and in 2018, the driver turnover rate at major carriers reached roughly 90% (source: insert citation). As the largest independent truckload carrier in the country, U.S. Xpress was feeling the strain of 7,000 empty driver’s seats.
 
 Due to the nature of their jobs, truckers are in constant motion and the vast majority of potential hires access U.S. Xpress’ landing pages on their phones—often from areas with painfully slow mobile service. As a result, filling out online job applications can be tedious, and frustrated drivers often abandon the process without completing the necessary forms.
 
@@ -39,8 +39,7 @@ The AMP landing page converted 3.412% of visits into completed job applications,
 
 ### Global Recognition
 
-The success of this innovative AMP solution garnered worldwide attention. Paul Chris Luke was invited to speak at Google's prestigious World AMP Conference 2018 in Amsterdam. This conference brought together thought leaders from Google, BuzzFeed, Doodle, Reddit, Vox Media, Airbnb, Booking.com.
-
+The success of this innovative AMP solution garnered worldwide attention. Paul Chris Luke was invited to speak at Google’s AMP Conf 2018 (Amsterdam, February 13–14, 2018). This conference brought together thought leaders from Google, BuzzFeed, Doodle, Reddit, Vox Media, Airbnb, Booking.com.
 <!-- <iframe width="560" height="315" src="https://www.youtube.com/embed/96FNOI8hb2s?si=4cYCCLfAPTKq0mym" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe> -->
 
 **By harnessing the power of Google AMP and fostering a collaborative partnership with Google Developer Support, PCL-Labs revolutionized the mobile advertising landscape.  This case study highlights the potential of innovative solutions to significantly increase mobile conversions and drive substantial cost savings.**

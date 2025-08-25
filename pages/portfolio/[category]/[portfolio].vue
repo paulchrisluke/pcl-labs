@@ -21,12 +21,19 @@
       <!-- Image with Gradient -->
       <div v-if="portfolio?.image" class="relative overflow-hidden pt-16">
           <div class="mx-auto max-w-7xl px-6 lg:px-8">
-            <img :src="portfolio.image" :alt="portfolio.imageAlt || 'PCL Labs Portfolio Item'" class="mb-[-12%] rounded-xl shadow-2xl ring-1 ring-white/10" width="2432" height="1442" />
+            <img
+              :src="portfolio.image"
+              :alt="portfolio.imageAlt || 'PCL Labs Portfolio Item'"
+              class="mb-[-12%] rounded-xl shadow-2xl ring-1 ring-white/10"
+              width="2432"
+              height="1442"
+              loading="lazy"
+            />
             <div class="relative" aria-hidden="true">
               <div class="absolute -inset-x-20 bottom-0 bg-gradient-to-t from-gray-900 pt-[7%]" />
             </div>
           </div>
-        </div>
+      </div>
 
       <!-- Content (Optional) -->
       <ContentDoc class="dark:prose-invert prose mx-auto mt-8" />
@@ -38,6 +45,7 @@
 
 <script setup>
 import { useRoute, useAsyncData } from 'nuxt/app'
+import { queryContent } from '@nuxt/content/composables'
 
 const route = useRoute()
 

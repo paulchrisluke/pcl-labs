@@ -51,8 +51,7 @@ NTBCA provided a comprehensive suite of services designed to empower crypto proj
 
 ## Results: A Launchpad for Success
 
-In just one year, NTBCA served as the launchpad for over 25 successful crypto projects. Each project achieved a profitable launch, a testament to the effectiveness of our multi-faceted approach. Here's what set us apart:
-
+In one year, NTBCA supported launches for 25+ crypto projects, many of which achieved strong launch metrics (e.g., community growth, liquidity, and initial sales). Results vary by market conditions and execution. This case study describes past results and is not financial advice or a guarantee of future performance. Here's what set us apart:
 -   **Streamlined Workflow:** We eliminated the need for multiple agencies, providing a single point of contact and seamless project execution.
 -   **Data-Driven Strategies:** We didn't just guess - we leveraged data and analytics to optimize marketing campaigns and ensure maximum reach.
 -   **Community Champions:** We fostered vibrant online communities through targeted social media campaigns and engaging content.

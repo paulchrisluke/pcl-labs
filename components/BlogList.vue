@@ -70,7 +70,7 @@ const displayedPosts = computed(() => {
 })
 
 const showSeeAllLink = computed(() => {
-  return props.blogData.length > (props.limit ?? Infinity);
+  return props.blogData.length > props.limit;
 });
 
 const dateFmt = new Intl.DateTimeFormat('en-US', {

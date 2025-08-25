@@ -38,7 +38,8 @@ Legal marketing operates under strict ethical guidelines and regulations that do
 Search engine optimization is particularly important for legal practices because potential clients often search for legal services when they need them most.
 
 **Local SEO Focus:**
-- **Google My Business Optimization**: Complete profile with accurate information
+**Local SEO Focus:**
+- **Google Business Profile (GBP) Optimization**: Complete profile with accurate NAP, categories, and services
 - **Local Keywords**: Target location-specific search terms
 - **Review Management**: Encourage and respond to client reviews
 - **Local Citations**: Consistent business information across directories
