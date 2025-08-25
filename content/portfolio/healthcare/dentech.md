@@ -37,7 +37,7 @@ Given the remarkable success of our email marketing efforts, Dentech entrusted u
 
 We expanded into multi-channel distribution—auditing existing social profiles, establishing a posting cadence, and producing thought-leadership clips tailored for LinkedIn and Facebook—to grow reach and brand awareness.
 
-![image](https://res.cloudinary.com/pcl-labs/image/upload/v1715351481/PCL-Labs/Dentech_home_website_kbnrpe.webp)
+![Dentech website homepage showcasing product modules and navigation](https://res.cloudinary.com/pcl-labs/image/upload/f_auto,q_auto,w_1600/v1715351481/PCL-Labs/Dentech_home_website_kbnrpe.webp)
 
 > "Paul is a force to be reckoned with. He is undeniably talented and is able to focus in on what the message is that needs to come across in the marketing piece. Our company is drowning in multiple marketing needs and Paul is able to allocate the resources needed for each piece and execute a plan of action. He has an uncanny ability to draw the vision out of the client and put it into marketing action. Our first email campaign brought in a 60% open rate through Paul's writing. This is up from our typical 20-25% open rate. The feedback, interaction and response rate from our clients from this campaign is priceless. The best move we ever made as a company with Paul's guidance. You would be a fool to not hire him." - Jane, CEO at Dentech
 
