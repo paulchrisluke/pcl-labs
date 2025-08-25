@@ -27,23 +27,28 @@ This pipeline automatically:
 ### Production
 - **Worker**: `https://clip-recap-pipeline.paulchrisluke.workers.dev`
 - **Health Check**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/health`
+- **API Status**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/`
 
 ### Staging
 - **Worker**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev`
 - **Health Check**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/health`
+- **API Status**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/`
 
 ### Development
 - **Local**: `http://localhost:8787` (wrangler dev default)
+- **Health Check**: `http://localhost:8787/health`
+- **API Status**: `http://localhost:8787/`
 
 ### Twitch OAuth Redirect URLs
-Use these exact redirect URIs in your Twitch Developer Application (one per line, must match the redirect_uri used in code):
+Use these exact redirect URIs in your Twitch Developer Application (one per line; must exactly match the redirect_uri used in code). Twitch requires HTTPS for production/staging; http://localhost is allowed for local development.
 
 - Production: https://clip-recap-pipeline.paulchrisluke.workers.dev/oauth/callback
 - Staging: https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/oauth/callback
 - Local Dev: http://localhost:8787/oauth/callback
 
-Note: If your code uses a different callback path, replace `/oauth/callback` above accordingly and keep the same paths in wrangler.toml [routes] and the `redirect_uri` in the OAuth code.
-
+Note: If your code uses a different callback path, replace `/oauth/callback` above accordingly and keep it consistent between your OAuth code and deployment.
+- For workers.dev: no [routes] are needed; ensure your Worker handles the path (e.g., /oauth/callback).
+- For custom domains: ensure your wrangler.toml [routes] send the callback path to this Worker.
 ## Setup
 
 ### Prerequisites
@@ -64,22 +69,35 @@ wrangler secret put TWITCH_CLIENT_SECRET
 wrangler secret put TWITCH_BROADCASTER_ID
 wrangler secret put TWITCH_BROADCASTER_LOGIN
 
-# GitHub App
+# GitHub App (Required)
 wrangler secret put GITHUB_APP_ID
 wrangler secret put GITHUB_INSTALLATION_ID
 wrangler secret put GITHUB_PRIVATE_KEY
 wrangler secret put GITHUB_WEBHOOK_SECRET
 
+# GitHub Personal Access Tokens (Optional - fallback for testing)
+wrangler secret put GITHUB_TOKEN
+wrangler secret put GITHUB_TOKEN_PAULCHRISLUKE
+wrangler secret put GITHUB_TOKEN_BLAWBY
+
 # Discord Bot
 wrangler secret put DISCORD_BOT_TOKEN
 wrangler secret put DISCORD_REVIEW_CHANNEL_ID
-
-# Content Repository
-wrangler secret put CONTENT_REPO_OWNER
-wrangler secret put CONTENT_REPO_NAME
-wrangler secret put CONTENT_REPO_MAIN_BRANCH
-wrangler secret put CONTENT_REPO_STAGING_BRANCH
 ```
+
+### Environment Variables
+
+Set these variables in your `wrangler.toml` file under the `[vars]` section:
+
+```toml
+[vars]
+CONTENT_REPO_OWNER = "your-org"
+CONTENT_REPO_NAME = "your-content-repo"
+CONTENT_REPO_MAIN_BRANCH = "main"
+CONTENT_REPO_STAGING_BRANCH = "staging"
+```
+
+**Tip**: Only credentials, private keys, and sensitive tokens should be stored as secrets. Repository metadata like owner, name, and branch names are safe to store as plain-text variables.
 
 ### Development
 
@@ -106,6 +124,36 @@ The project uses separate wrangler configuration files for different environment
 - `wrangler.staging.toml` - Staging-specific configuration
 
 Each environment file contains its own top-level `[triggers]` section for cron schedules.
+
+#### Required Resource Bindings
+
+**Important**: The following resource bindings must be configured in each environment's wrangler configuration file. Deployments may succeed without these bindings, but runtime operations will fail.
+
+```toml
+# AI binding for AI model access
+[ai]
+binding = "AI"
+
+# Vectorize index for embeddings storage
+[[vectorize]]
+binding = "VECTOR_INDEX"
+index_name = "clips-embeddings"
+
+# R2 bucket for clip storage
+[[r2_buckets]]
+binding = "CLIPS_BUCKET"
+bucket_name = "clip-recap"
+
+# KV namespace for state management
+[[kv_namespaces]]
+binding = "STATE_KV"
+id = "your-kv-namespace-id-here"  # Replace with actual KV namespace ID per environment
+```
+
+**Environment-Specific Configuration**:
+- Add equivalent binding blocks to `wrangler.staging.toml` and `wrangler.production.toml`
+- Replace placeholder IDs and names with actual resource identifiers for each environment
+- KV namespace IDs must be unique per environment and created via Cloudflare dashboard or CLI
 
 ## Testing
 
@@ -155,7 +203,7 @@ npm run test:twitch
 ```
 
 The test will:
-1. Connect to your Cloudflare Worker's `/validate` endpoint
+1. Connect to your Cloudflare Worker's `/validate-twitch` endpoint
 2. Test Twitch client credentials stored as secrets
 3. Validate token generation and API access
 4. Verify broadcaster ID resolution
@@ -199,26 +247,31 @@ crons = [
 crons = [
   "0 2 * * *",  # Daily at 02:00 UTC (09:00 ICT) - main pipeline
   "0 * * * *"   # Every hour - token validation
-## API Endpoints
-
-- `GET /health` - Health check
-- `POST /webhook/github` - GitHub webhook handler
-  - Verifies `X-Hub-Signature-256` (HMAC SHA-256) with `GITHUB_WEBHOOK_SECRET` ([gist.github.com](https://gist.github.com/bgoonz/11331feafe55e4a77d59989380eca965?utm_source=chatgpt.com))
-  - Rejects non-POST methods with 405
-  - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering) ([gist.github.com](https://gist.github.com/bgoonz/11331feafe55e4a77d59989380eca965?utm_source=chatgpt.com))
-  - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub’s webhook timeout
-- `GET /` - Pipeline status
-## Content Structure
-- **Variety enforcement**: Per-hour caps and diversity
+]
+```
 
 ## API Endpoints
 
-- `GET /health` - Health check
+### Core Endpoints
+- `GET /` - API status page with endpoint documentation
+- `GET /health` - Health check endpoint
+
+### Twitch Integration
+- `GET /validate-twitch` - Validate Twitch API credentials and connection
+- `GET /api/twitch/clips` - Fetch recent Twitch clips from the last 24 hours
+- `POST /api/twitch/clips` - Store clips data to R2 storage
+- `GET /api/twitch/clips/stored` - List all stored clips from R2 storage
+### GitHub Integration
+- `GET /validate-github` - Validate GitHub API credentials and repository access
+- `GET /api/github/activity` - Get daily GitHub activity and repository statistics
 - `POST /webhook/github` - GitHub webhook handler
-  - Verifies `X-Hub-Signature-256` with `GITHUB_WEBHOOK_SECRET`
+  - Verifies `X-Hub-Signature-256` (HMAC SHA-256) with `GITHUB_WEBHOOK_SECRET`
   - Rejects non-POST methods with 405
-  - Includes replay protection (timestamp tolerance + idempotency key)
-- `GET /` - Pipeline status
+  - Uses the raw request body (no JSON parsing before HMAC) and constant-time comparison to validate signatures. Expect header format `sha256=<hex>`.
+  - Responds 401/403 on invalid or missing signature; 2xx on success (202 if work is queued).
+  - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering).
+  - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub's webhook timeout.
+
 ## Content Structure
 
 Generated posts follow the existing blog structure:

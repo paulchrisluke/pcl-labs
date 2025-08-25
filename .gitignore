@@ -23,3 +23,12 @@ logs
 .env.*
 !.env.example
 .vercel
+
+# Wrangler build artifacts
+.wrangler/tmp/
+.wrangler/state/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo

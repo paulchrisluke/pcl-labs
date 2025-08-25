@@ -44,9 +44,12 @@ PCL-Labs partnered with Volkswagen to develop a custom Content Management System
 -   **Unlock Granular User Insights:** Gain in-depth visibility into individual employee interactions with emails, including opens, clicks, and engagement metrics.
 -   **Streamlined Workflow:** Upload contact lists, schedule emails, and track user data efficiently within a centralized platform.
 -   **Data-Driven Content Strategy:** Leverage user engagement data to tailor content for maximum effectiveness and employee buy-in.
-<video controls autoplay loop muted playsinline class="w-full">
+<video controls loop muted playsinline class="w-full aspect-video" preload="metadata"
+  poster="https://res.cloudinary.com/pcl-labs/video/upload/v1717156259/PCL-Labs/c7159f0468f4d274bca18e56416dd987_ye6ajo.jpg"
+  aria-label="Volkswagen CMS email tracking demo">
   <source src="https://res.cloudinary.com/pcl-labs/video/upload/v1717156259/PCL-Labs/c7159f0468f4d274bca18e56416dd987_ye6ajo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
+  <track kind="captions" src="/media/volkswagen-demo.en.vtt" srclang="en" label="English captions" default>
+  Your browser does not support the video tag. Watch the demo video.
 </video>
 
 ## Results:

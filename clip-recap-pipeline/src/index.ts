@@ -4,6 +4,87 @@ import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
 import { handleGitHubRequest } from './routes/github.js';
 
+// Helper function to get real service status from Cloudflare workers
+async function getServiceStatus(env: Environment) {
+  const now = new Date();
+  const formatDate = (date: Date) => date.toLocaleString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    hour: '2-digit', 
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+
+  // Production worker URLs
+  const productionUrl = 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
+  const stagingUrl = 'https://clip-recap-pipeline-staging.paulchrisluke.workers.dev';
+
+  // Test Twitch integration against production worker
+  let twitchStatus = { status: 'offline' as const, lastTested: formatDate(now), error: 'Test failed' };
+  try {
+    const response = await fetch(`${productionUrl}/validate-twitch`);
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success) {
+        twitchStatus = { status: 'online', lastTested: formatDate(now), error: '' };
+      } else {
+        twitchStatus = { status: 'offline', lastTested: formatDate(now), error: result.error || 'Validation failed' };
+      }
+    } else {
+      twitchStatus = { status: 'offline', lastTested: formatDate(now), error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    twitchStatus = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
+  }
+
+  // Test GitHub integration against production worker
+  let githubStatus = { status: 'offline' as const, lastTested: formatDate(now), error: 'Test failed' };
+  try {
+    const response = await fetch(`${productionUrl}/validate-github`);
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success) {
+        githubStatus = { status: 'online', lastTested: formatDate(now), error: '' };
+      } else {
+        githubStatus = { status: 'offline', lastTested: formatDate(now), error: result.error || 'Validation failed' };
+      }
+    } else {
+      githubStatus = { status: 'offline', lastTested: formatDate(now), error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    githubStatus = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
+  }
+
+  // Test AI processing (Workers AI binding)
+  let aiStatus = { status: 'offline' as const, lastTested: formatDate(now), error: 'Not available' };
+  try {
+    // Simple test to check if AI binding is available
+    if (env.ai) {
+      aiStatus = { status: 'online', lastTested: formatDate(now), error: '' };
+    }
+  } catch (error) {
+    aiStatus = { status: 'offline', lastTested: formatDate(now), error: 'Binding not available' };
+  }
+
+  // Test Cloud Storage (R2 binding)
+  let storageStatus = { status: 'offline' as const, lastTested: formatDate(now), error: 'Not available' };
+  try {
+    // Simple test to check if R2 binding is available
+    if (env.R2_BUCKET) {
+      storageStatus = { status: 'online', lastTested: formatDate(now), error: '' };
+    }
+  } catch (error) {
+    storageStatus = { status: 'offline', lastTested: formatDate(now), error: 'Binding not available' };
+  }
+
+  return {
+    twitch: twitchStatus,
+    github: githubStatus,
+    ai: aiStatus,
+    storage: storageStatus
+  };
+}
+
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -26,7 +107,7 @@ export default {
     }
     
     // Validate Twitch credentials endpoint
-    if (url.pathname === '/validate') {
+    if (url.pathname === '/validate-twitch') {
       try {
         console.log('🔍 Validating Twitch credentials...');
         // Step 1: Get access token
@@ -276,8 +357,8 @@ export default {
       }
     }
 
-    // Clips management endpoint
-    if (url.pathname === '/clips') {
+    // Twitch clips management endpoint
+    if (url.pathname === '/api/twitch/clips') {
       try {
         const { TwitchService } = await import('./services/twitch');
         const twitchService = new TwitchService(env);
@@ -503,8 +584,8 @@ export default {
       }
     }
 
-    // Read stored clips from R2
-    if (url.pathname.startsWith('/clips/stored')) {
+    // Read stored Twitch clips from R2
+    if (url.pathname.startsWith('/api/twitch/clips/stored')) {
       try {
         const clipId = url.searchParams.get('id');
         
@@ -602,6 +683,7 @@ export default {
     }
     
     // Default response - API Status Page
+    const statusData = await getServiceStatus(env);
     const html = `
 <!DOCTYPE html>
 <html lang="en">
@@ -685,6 +767,23 @@ export default {
         
         .status-offline {
             background: #ef4444;
+        }
+        
+        .status-details {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .last-tested {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        
+        .error-message {
+            display: block;
+            color: #ef4444;
+            font-weight: 500;
         }
         
         .endpoints {
@@ -794,20 +893,36 @@ export default {
         
         <div class="status-grid">
             <div class="status-card">
-                <h3><span class="status-indicator status-online"></span>Twitch Integration</h3>
+                <h3><span class="status-indicator ${statusData.twitch.status === 'online' ? 'status-online' : 'status-offline'}"></span>Twitch Integration</h3>
                 <p>Connected to Twitch API for clip fetching and processing</p>
+                <div class="status-details">
+                    <span class="last-tested">Last tested: ${statusData.twitch.lastTested}</span>
+                    ${statusData.twitch.status === 'offline' ? `<span class="error-message">${statusData.twitch.error}</span>` : ''}
+                </div>
             </div>
             <div class="status-card">
-                <h3><span class="status-indicator status-online"></span>GitHub Integration</h3>
+                <h3><span class="status-indicator ${statusData.github.status === 'online' ? 'status-online' : 'status-offline'}"></span>GitHub Integration</h3>
                 <p>Connected to GitHub for content repository management</p>
+                <div class="status-details">
+                    <span class="last-tested">Last tested: ${statusData.github.lastTested}</span>
+                    ${statusData.github.status === 'offline' ? `<span class="error-message">${statusData.github.error}</span>` : ''}
+                </div>
             </div>
             <div class="status-card">
-                <h3><span class="status-indicator status-online"></span>AI Processing</h3>
+                <h3><span class="status-indicator ${statusData.ai.status === 'online' ? 'status-online' : 'status-offline'}"></span>AI Processing</h3>
                 <p>Workers AI for transcription and content generation</p>
+                <div class="status-details">
+                    <span class="last-tested">Last tested: ${statusData.ai.lastTested}</span>
+                    ${statusData.ai.status === 'offline' ? `<span class="error-message">${statusData.ai.error}</span>` : ''}
+                </div>
             </div>
             <div class="status-card">
-                <h3><span class="status-indicator status-online"></span>Cloud Storage</h3>
+                <h3><span class="status-indicator ${statusData.storage.status === 'online' ? 'status-online' : 'status-offline'}"></span>Cloud Storage</h3>
                 <p>R2 storage for clips and transcripts</p>
+                <div class="status-details">
+                    <span class="last-tested">Last tested: ${statusData.storage.lastTested}</span>
+                    ${statusData.storage.status === 'offline' ? `<span class="error-message">${statusData.storage.error}</span>` : ''}
+                </div>
             </div>
         </div>
         
@@ -827,7 +942,7 @@ export default {
             <div class="endpoint">
                 <div class="endpoint-header">
                     <span class="method get">GET</span>
-                    <span class="endpoint-path">/validate</span>
+                    <span class="endpoint-path">/validate-twitch</span>
                 </div>
                 <div class="endpoint-description">
                     Validate Twitch API credentials and connection
@@ -847,7 +962,17 @@ export default {
             <div class="endpoint">
                 <div class="endpoint-header">
                     <span class="method get">GET</span>
-                    <span class="endpoint-path">/clips</span>
+                    <span class="endpoint-path">/api/github/activity</span>
+                </div>
+                <div class="endpoint-description">
+                    Get daily GitHub activity and repository statistics
+                </div>
+            </div>
+            
+            <div class="endpoint">
+                <div class="endpoint-header">
+                    <span class="method get">GET</span>
+                    <span class="endpoint-path">/api/twitch/clips</span>
                 </div>
                 <div class="endpoint-description">
                     Fetch recent Twitch clips from the last 24 hours
@@ -857,7 +982,7 @@ export default {
             <div class="endpoint">
                 <div class="endpoint-header">
                     <span class="method post">POST</span>
-                    <span class="endpoint-path">/clips</span>
+                    <span class="endpoint-path">/api/twitch/clips</span>
                 </div>
                 <div class="endpoint-description">
                     Store clips data to R2 storage
@@ -867,7 +992,7 @@ export default {
             <div class="endpoint">
                 <div class="endpoint-header">
                     <span class="method get">GET</span>
-                    <span class="endpoint-path">/clips/stored</span>
+                    <span class="endpoint-path">/api/twitch/clips/stored</span>
                 </div>
                 <div class="endpoint-description">
                     List all stored clips from R2 storage
