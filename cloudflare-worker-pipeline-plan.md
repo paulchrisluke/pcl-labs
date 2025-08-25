@@ -86,9 +86,13 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
   "date_utc": "2025-08-25T02:00:00Z",
   "tz": "Asia/Bangkok",
   "title": "Daily Devlog — 2025-08-25",
+  "headline": "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green",
   "summary": "Deadlock fix lands; tests green; cart perf +12%.",
+  "description": "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements.",
   "category": "development",              // matches content/blog/development/
-  "tags": ["devlog","twitch","recap"],
+  "articleSection": "development",        // Schema.org Article.articleSection
+  "tags": ["Development", "Live Coding", "Twitch", "Daily Recap"],
+  "keywords": "development, live coding, twitch, daily recap, deadlock, tests, PCL-Labs",
   "repos": ["paulchrisluke/pcl-labs"],
   "clip_ids": ["ProudRoundCaracal123","..."],
   "sections": [
@@ -128,27 +132,82 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
 }
 ```
 
-#### MDX Front-matter (GitHub) — LLM-friendly
+#### MDX Front-matter (GitHub) — Schema.org Compliant
 
-Front-matter should be concise, stable, and easy to parse. Put the heavy stuff in the manifest JSON.
+Front-matter follows [Schema.org Article](https://schema.org/Article) and [Schema.org VideoObject](https://schema.org/VideoObject) standards for SEO and validation.
 
 ```yaml
 ---
-post_id: "2025-08-25"
-title: "Daily Devlog — 2025-08-25"
-date: "2025-08-25T02:00:00Z"            # UTC ISO8601
-timezone: "Asia/Bangkok"
-summary: "Deadlock fix lands; tests green; cart perf +12%."
+# Schema.org Article properties
+"@type": "Article"
+"@context": "https://schema.org"
+headline: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
+name: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
+description: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
+articleBody: "Daily development recap from Twitch stream showing key achievements..."
+articleSection: "development"
+datePublished: "2025-08-25T02:00:00Z"    # UTC ISO8601
+dateModified: "2025-08-25T02:00:00Z"    # UTC ISO8601
+author:
+  "@type": "Person"
+  name: "Paul Chris Luke"
+  url: "https://paulchrisluke.com"
+publisher:
+  "@type": "Organization"
+  name: "PCL Labs"
+  url: "https://paulchrisluke.com"
+  logo:
+    "@type": "ImageObject"
+    url: "https://paulchrisluke.com/pcl-labs-logo.svg"
+
+# VideoObject for Twitch clips
+video:
+  "@type": "VideoObject"
+  name: "Daily Dev Stream - 2025-08-25"
+  description: "Live coding session featuring deadlock fixes and test improvements"
+  uploadDate: "2025-08-25T02:00:00Z"
+  duration: "PT4H30M"                    # ISO 8601 duration
+  contentUrl: "https://www.twitch.tv/videos/123456789"
+  embedUrl: "https://www.twitch.tv/videos/123456789"
+  thumbnailUrl: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
+  publisher:
+    "@type": "Organization"
+    name: "Twitch"
+    url: "https://twitch.tv"
+
+# SEO and metadata
+keywords: "development, live coding, twitch, daily recap, deadlock, tests, PCL-Labs"
+image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
+imageThumbnail: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-thumbnail-2025-08-25.webp"
+imageAlt: "Daily development recap from Twitch stream showing deadlock fix and test improvements"
+canonical: "https://paulchrisluke.com/blog/development/2025-08-25-daily-dev-recap"
+
+# Blog-specific fields
 category: "development"                  # matches content/blog/development/
-tags: ["devlog","twitch","recap"]
+tags: ["Development", "Live Coding", "Twitch", "Daily Recap", "deadlock", "tests"]
 repos: ["paulchrisluke/pcl-labs"]
 clip_count: 7
-canonical_vod: "https://www.twitch.tv/videos/123456789"
-entities: ["CheckoutService","locks.py","deadlock","tests"]
-canonical_id: "post:2025-08-25"         # stable reference for search/links
+entities: ["CheckoutService", "locks.py", "deadlock", "tests"]
+post_id: "2025-08-25"                   # stable reference for search/links
 status: "review"                         # review | published
-og_image: "/images/recaps/2025-08-25/cover.jpg"
 source_manifest: "r2://recaps/manifests/2025/08/2025-08-25.json"
+
+# Open Graph
+og:
+  title: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
+  description: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
+  image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
+  imageAlt: "Daily development recap from Twitch stream showing deadlock fix and test improvements"
+  type: "article"
+  url: "https://paulchrisluke.com/blog/development/2025-08-25-daily-dev-recap"
+
+# Twitter Card
+twitter:
+  card: "summary_large_image"
+  title: "Daily Devlog — 2025-08-25: Deadlock Fix Lands, Tests Green"
+  description: "Daily development recap from 2025-08-25 featuring 7 key moments including deadlock fix and test improvements."
+  image: "https://res.cloudinary.com/pcl-labs/image/upload/v[timestamp]/PCL-Labs/daily-recap-2025-08-25.webp"
+  imageAlt: "Daily development recap from Twitch stream showing deadlock fix and test improvements"
 ---
 ```
 
@@ -160,14 +219,47 @@ Index three granularities:
 2. **section** — text = section title + bullets + paragraph; `meta = {post_id, section_id, clip_id, pr_links[], repo}`
 3. **post** — text = intro + section summaries; `meta = {post_id, date, tags[], repos[]}`
 
+#### Schema.org Validation Requirements
+
+**Required Schema.org Article properties:**
+- `@type`: "Article"
+- `@context`: "https://schema.org"
+- `headline`: Article title (max 110 chars for Google)
+- `name`: Same as headline
+- `description`: Meta description (150-160 chars)
+- `datePublished`: ISO 8601 date
+- `dateModified`: ISO 8601 date
+- `author`: Person object with name and url
+- `publisher`: Organization object with name, url, and logo
+
+**Required Schema.org VideoObject properties (for Twitch clips):**
+- `@type`: "VideoObject"
+- `name`: Video title
+- `description`: Video description
+- `uploadDate`: ISO 8601 date
+- `duration`: ISO 8601 duration (PT4H30M)
+- `contentUrl`: Direct video URL
+- `embedUrl`: Embeddable URL
+- `thumbnailUrl`: Video thumbnail
+
+**SEO Validation Rules:**
+- Title length: 50-60 characters
+- Meta description: 150-160 characters
+- Keywords: Include primary and secondary terms
+- Canonical URL: Must be absolute
+- Open Graph: Complete og:title, og:description, og:image
+- Twitter Card: Complete twitter:card, twitter:title, twitter:description
+
 #### Implementation Tasks for M7
 
 1. **Define JSON Schema** for manifest validation
 2. **Update R2 bucket structure** with `recaps/` prefix
 3. **Modify pipeline** to write manifest before PR creation
-4. **Update PR generation** to render MDX from manifest
+4. **Update PR generation** to render MDX from manifest with Schema.org compliance
 5. **Add validation** for unique `post_id` and manifest integrity
-6. **Update Vectorize indexing** with new metadata structure
+6. **Add Schema.org validation** to ensure all required properties are present
+7. **Update Vectorize indexing** with new metadata structure
+8. **Create validation tests** for Schema.org compliance and SEO requirements
 
 ---
 
