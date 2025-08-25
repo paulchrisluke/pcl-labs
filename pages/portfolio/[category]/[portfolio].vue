@@ -45,7 +45,6 @@
 
 <script setup>
 import { useRoute, useAsyncData } from 'nuxt/app'
-import { queryContent } from '@nuxt/content/composables'
 
 const route = useRoute()
 
