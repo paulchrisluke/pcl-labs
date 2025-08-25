@@ -1,11 +1,11 @@
 // Twitch credentials test for Cloudflare Workers
-// This test works with your deployed worker's /validate endpoint
+// This test works with your deployed worker's /validate-twitch endpoint
 // Run with: npx tsx test-twitch.ts
 
 async function testTwitchCredentials() {
   // Get the worker URL from environment or use production as default
   const workerUrl = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
-  const validateUrl = `${workerUrl}/validate`;
+  const validateUrl = `${workerUrl}/validate-twitch`;
   
   console.log('🔍 Testing Twitch credentials via Cloudflare Worker...');
   console.log(`📡 Testing against: ${validateUrl}`);

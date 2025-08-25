@@ -27,13 +27,17 @@ This pipeline automatically:
 ### Production
 - **Worker**: `https://clip-recap-pipeline.paulchrisluke.workers.dev`
 - **Health Check**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/health`
+- **API Status**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/`
 
 ### Staging
 - **Worker**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev`
 - **Health Check**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/health`
+- **API Status**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/`
 
 ### Development
 - **Local**: `http://localhost:8787` (wrangler dev default)
+- **Health Check**: `http://localhost:8787/health`
+- **API Status**: `http://localhost:8787/`
 
 ### Twitch OAuth Redirect URLs
 Use these exact redirect URIs in your Twitch Developer Application (one per line, must match the redirect_uri used in code):
@@ -64,11 +68,16 @@ wrangler secret put TWITCH_CLIENT_SECRET
 wrangler secret put TWITCH_BROADCASTER_ID
 wrangler secret put TWITCH_BROADCASTER_LOGIN
 
-# GitHub App
+# GitHub App (Required)
 wrangler secret put GITHUB_APP_ID
 wrangler secret put GITHUB_INSTALLATION_ID
 wrangler secret put GITHUB_PRIVATE_KEY
 wrangler secret put GITHUB_WEBHOOK_SECRET
+
+# GitHub Personal Access Tokens (Optional - fallback for testing)
+wrangler secret put GITHUB_TOKEN
+wrangler secret put GITHUB_TOKEN_PAULCHRISLUKE
+wrangler secret put GITHUB_TOKEN_BLAWBY
 
 # Discord Bot
 wrangler secret put DISCORD_BOT_TOKEN
@@ -155,7 +164,7 @@ npm run test:twitch
 ```
 
 The test will:
-1. Connect to your Cloudflare Worker's `/validate` endpoint
+1. Connect to your Cloudflare Worker's `/validate-twitch` endpoint
 2. Test Twitch client credentials stored as secrets
 3. Validate token generation and API access
 4. Verify broadcaster ID resolution
@@ -199,26 +208,30 @@ crons = [
 crons = [
   "0 2 * * *",  # Daily at 02:00 UTC (09:00 ICT) - main pipeline
   "0 * * * *"   # Every hour - token validation
-## API Endpoints
-
-- `GET /health` - Health check
-- `POST /webhook/github` - GitHub webhook handler
-  - Verifies `X-Hub-Signature-256` (HMAC SHA-256) with `GITHUB_WEBHOOK_SECRET` ([gist.github.com](https://gist.github.com/bgoonz/11331feafe55e4a77d59989380eca965?utm_source=chatgpt.com))
-  - Rejects non-POST methods with 405
-  - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering) ([gist.github.com](https://gist.github.com/bgoonz/11331feafe55e4a77d59989380eca965?utm_source=chatgpt.com))
-  - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub’s webhook timeout
-- `GET /` - Pipeline status
-## Content Structure
-- **Variety enforcement**: Per-hour caps and diversity
+]
+```
 
 ## API Endpoints
 
-- `GET /health` - Health check
+### Core Endpoints
+- `GET /` - API status page with endpoint documentation
+- `GET /health` - Health check endpoint
+
+### Twitch Integration
+- `GET /validate-twitch` - Validate Twitch API credentials and connection
+- `GET /api/twitch/clips` - Fetch recent Twitch clips from the last 24 hours
+- `POST /api/twitch/clips` - Store clips data to R2 storage
+- `GET /api/twitch/clips/stored` - List all stored clips from R2 storage
+
+### GitHub Integration
+- `GET /validate-github` - Validate GitHub API credentials and repository access
+- `GET /api/github/activity` - Get daily GitHub activity and repository statistics
 - `POST /webhook/github` - GitHub webhook handler
-  - Verifies `X-Hub-Signature-256` with `GITHUB_WEBHOOK_SECRET`
+  - Verifies `X-Hub-Signature-256` (HMAC SHA-256) with `GITHUB_WEBHOOK_SECRET`
   - Rejects non-POST methods with 405
-  - Includes replay protection (timestamp tolerance + idempotency key)
-- `GET /` - Pipeline status
+  - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering)
+  - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub's webhook timeout
+
 ## Content Structure
 
 Generated posts follow the existing blog structure:

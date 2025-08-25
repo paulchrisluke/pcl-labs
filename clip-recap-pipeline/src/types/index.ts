@@ -11,6 +11,9 @@ export interface Environment {
   GITHUB_INSTALLATION_ID: string;
   GITHUB_PRIVATE_KEY: string;
   GITHUB_WEBHOOK_SECRET: string;
+  GITHUB_TOKEN?: string;
+  GITHUB_TOKEN_PAULCHRISLUKE?: string;
+  GITHUB_TOKEN_BLAWBY?: string;
   DISCORD_BOT_TOKEN: string;
   DISCORD_REVIEW_CHANNEL_ID: string;
   CONTENT_REPO_OWNER: string;
