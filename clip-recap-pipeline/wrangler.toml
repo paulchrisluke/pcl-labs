@@ -15,10 +15,12 @@ binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 
 # Cron triggers (production only). All times are UTC.
-[triggers]
+# 0 2 * * *  -> Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
+# 0 * * * *  -> Every hour - token validation
+[env.production.triggers]
 crons = [
-  "0 2 * * *",  # Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
-  "0 * * * *"   # Every hour - token validation
+  "0 2 * * *",
+  "0 * * * *"
 ]
 
 [env.production]
