@@ -15,9 +15,8 @@ async function getServiceStatus(env: Environment) {
     timeZoneName: 'short'
   });
 
-  // Production worker URLs
+  // Production worker URL
   const productionUrl = 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
-  const stagingUrl = 'https://clip-recap-pipeline-staging.paulchrisluke.workers.dev';
 
   // Test Twitch integration against production worker
   let twitchStatus = { status: 'offline' as const, lastTested: formatDate(now), error: 'Test failed' };

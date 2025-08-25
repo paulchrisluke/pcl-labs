@@ -14,7 +14,6 @@ async function testTwitchCredentials() {
     console.log('ℹ️  No WORKER_URL provided, testing against production worker');
     console.log('   Available options:');
     console.log('   - Production: https://clip-recap-pipeline.paulchrisluke.workers.dev');
-    console.log('   - Staging: https://clip-recap-pipeline-staging.paulchrisluke.workers.dev');
     console.log('   - Local: http://localhost:8787 (set WORKER_URL=http://localhost:8787)');
   } else {
     console.log(`✅ Using custom worker URL: ${workerUrl}`);

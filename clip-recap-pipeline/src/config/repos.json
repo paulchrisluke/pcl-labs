@@ -24,7 +24,7 @@
     "includeIssues": true,
     "includeReleases": true,
     "filterPatterns": {
-      "includeBranches": ["main", "staging", "develop"],
+      "includeBranches": ["main", "develop"],
       "excludePatterns": ["^dependabot/", "^renovate/", "^chore/", "^docs/"]
     }
   }

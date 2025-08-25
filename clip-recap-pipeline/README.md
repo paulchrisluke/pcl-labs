@@ -29,21 +29,15 @@ This pipeline automatically:
 - **Health Check**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/health`
 - **API Status**: `https://clip-recap-pipeline.paulchrisluke.workers.dev/`
 
-### Staging
-- **Worker**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev`
-- **Health Check**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/health`
-- **API Status**: `https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/`
-
 ### Development
 - **Local**: `http://localhost:8787` (wrangler dev default)
 - **Health Check**: `http://localhost:8787/health`
 - **API Status**: `http://localhost:8787/`
 
 ### Twitch OAuth Redirect URLs
-Use these exact redirect URIs in your Twitch Developer Application (one per line; must exactly match the redirect_uri used in code). Twitch requires HTTPS for production/staging; http://localhost is allowed for local development.
+Use these exact redirect URIs in your Twitch Developer Application (one per line; must exactly match the redirect_uri used in code). Twitch requires HTTPS for production; http://localhost is allowed for local development.
 
 - Production: https://clip-recap-pipeline.paulchrisluke.workers.dev/oauth/callback
-- Staging: https://clip-recap-pipeline-staging.paulchrisluke.workers.dev/oauth/callback
 - Local Dev: http://localhost:8787/oauth/callback
 
 Note: If your code uses a different callback path, replace `/oauth/callback` above accordingly and keep it consistent between your OAuth code and deployment.
@@ -94,7 +88,6 @@ Set these variables in your `wrangler.toml` file under the `[vars]` section:
 CONTENT_REPO_OWNER = "your-org"
 CONTENT_REPO_NAME = "your-content-repo"
 CONTENT_REPO_MAIN_BRANCH = "main"
-CONTENT_REPO_STAGING_BRANCH = "staging"
 ```
 
 **Tip**: Only credentials, private keys, and sensitive tokens should be stored as secrets. Repository metadata like owner, name, and branch names are safe to store as plain-text variables.
@@ -108,9 +101,6 @@ npm install
 # Start development server
 npm run dev
 
-# Deploy to staging
-npm run deploy:staging
-
 # Deploy to production
 npm run deploy
 ```
@@ -121,7 +111,6 @@ The project uses separate wrangler configuration files for different environment
 
 - `wrangler.toml` - Main configuration with environment-specific sections
 - `wrangler.production.toml` - Production-specific configuration
-- `wrangler.staging.toml` - Staging-specific configuration
 
 Each environment file contains its own top-level `[triggers]` section for cron schedules.
 
@@ -165,9 +154,7 @@ Test the GitHub service integration:
 # Test against production worker (default)
 npm test
 
-# Test against staging worker
-export WORKER_URL="https://clip-recap-pipeline-staging.paulchrisluke.workers.dev"
-npm test
+
 
 # Test against local development server
 export WORKER_URL="http://localhost:8787"
@@ -192,9 +179,7 @@ Test the Twitch service integration:
 # Test against production worker (default)
 npm run test:twitch
 
-# Test against staging worker
-export WORKER_URL="https://clip-recap-pipeline-staging.paulchrisluke.workers.dev"
-npm run test:twitch
+
 
 # Test against local development server
 export WORKER_URL="http://localhost:8787"
@@ -241,14 +226,7 @@ crons = [
 ]
 ```
 
-**Staging** (`wrangler.staging.toml`):
-```toml
-[triggers]
-crons = [
-  "0 2 * * *",  # Daily at 02:00 UTC (09:00 ICT) - main pipeline
-  "0 * * * *"   # Every hour - token validation
-]
-```
+
 
 ## API Endpoints
 
