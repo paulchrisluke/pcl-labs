@@ -39,7 +39,7 @@
 6. **Embed & index**: create embeddings, upsert to Vectorize for semantic search.
 7. **Author Markdown** (front‑matter + sections), open a **GitHub PR** in the content repo.
 8. **Judge**: second LLM scores the draft (coherence, correctness, dev-signal, flow, length, safety). Publishes a **GitHub Check**.
-9. **Notify**: send **Discord** message with PR link + judge score.
+9. **Notify**: send **Discord bot channel post** with PR link + judge score.
 10. **(Optional) Auto-post** after manual merge/build.
 
 ```
@@ -82,6 +82,7 @@ Use this to drive PR creation, the judge check, Discord posts, and backfills.
 
 ```json
 {
+  "schema_version": "1.0.0",
   "post_id": "2025-08-25",                // YYYY-MM-DD format
   "date_utc": "2025-08-25T02:00:00Z",
   "tz": "Asia/Bangkok",
@@ -665,27 +666,27 @@ Index three granularities:
    * Boost: "tests pass/green", commit/merge language, issue/PR refs, "fixed/finally/works", "rebase resolved", endpoint 200/log success.
    * Optional visual cues/OCR: "Build succeeded", test counts. (Can be later).
    * Enforce variety & per-hour cap. Keep top 5–12.
-4. **Store redacted transcripts** to R2
+5. **Store redacted transcripts** to R2
    * Save redacted transcript JSON to R2 after PII redaction is complete.
-5. **Draft** post
+6. **Draft** post
 
    * Compose: front‑matter (title/date/tags/clip\_count/repos), intro, then per‑clip section: H2 title, 2–3 bullets, 3–5 sentence paragraph, Twitch clip embed, optional VOD `?t=` link.
    * Also emit social blurbs (X/Bluesky/Threads/Mastodon/LinkedIn) with canonical blog URL placeholder.
-6. **Embeddings** → Vectorize
+7. **Embeddings** → Vectorize
 
    * Upsert embeddings for each **redacted clip transcript** and each **section** (store references to VOD/clip IDs).
-7. **Create PR** in content repo
+8. **Create PR** in content repo
 
    * Branch: `auto/daily-recap-YYYY-MM-DD`
    * Path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`
    * URL: `/blog/development/YYYY-MM-DD-daily-dev-recap`
    * Note: Recaps are time-series content and intentionally include dates in the slug (exception to the "avoid dates in URLs" rule).
    * PR body: include clips table + scores + Judge summary placeholder.
-8. **Judge** (LLM check)
+9. **Judge** (LLM check)
 
    * Run rubric (below). Create a **GitHub Check Run** on the PR head SHA with JSON payload & pass/fail.
    * Label PR: `needs-review` or `needs-polish` if below threshold.
-9. **Discord notify**
+10. **Discord bot channel post**
 
    * Send an embed: title, PR URL, judge score, top clip, clip count. Ping the right role.
 
