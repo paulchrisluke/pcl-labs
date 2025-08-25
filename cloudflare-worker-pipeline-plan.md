@@ -294,7 +294,9 @@ Index three granularities:
 ### **Vectorize** ✅ **DECISIONS LOCKED**
 
 14. **Namespaces & dims:** Single index with `type` in metadata (`clip`, `section`, `post`)
-15. **Embeddings model:** Workers AI BGE variant (confirm dimension for index creation)
+15. **Embeddings model:** `@cf/baai/bge-m3` (cost-effective, multilingual, 1024 dimensions)
+    - Index creator detects dimensions at runtime by creating sample embedding
+    - No manual dimension specification required
 
 ### **Idempotency & Ops** ✅ **DECISIONS LOCKED**
 
@@ -638,7 +640,7 @@ Index three granularities:
 
 * **ASR**: `@cf/openai/whisper-large-v3-turbo` (high accuracy, low cost per minute).
 * **Drafting LLM**: **Gemma (Workers AI catalog)** — use the latest *Instruct* variant available in the catalog link below.
-* **Embeddings**: a Workers‑supported text‑embedding model (e.g., BGE family) for Vectorize.
+* **Embeddings**: `@cf/baai/bge-m3` (cost-effective, multilingual, 1024 dimensions).
 * **Judge LLM**: **Gemma (Workers AI)**, smaller/faster instruct variant for scoring.
 
 > Model catalog (Gemma search): [https://developers.cloudflare.com/workers-ai/models/?search=gem](https://developers.cloudflare.com/workers-ai/models/?search=gem)
