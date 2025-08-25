@@ -24,9 +24,7 @@
     "@octokit/rest": "^21.0.0"
   },
   "devDependencies": {
-   "devDependencies": {
-     "@cloudflare/workers-types": "^4.0.0",
-     "wrangler": "^3.0.0"
-   }
+    "@cloudflare/workers-types": "^4.0.0",
+    "wrangler": "^3.0.0"
   }
 }
