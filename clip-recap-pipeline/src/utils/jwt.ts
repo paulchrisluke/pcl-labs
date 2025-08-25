@@ -1,6 +1,10 @@
 // Simple JWT generation for GitHub App authentication using Web Crypto API
 // Note: In production, you'd use a proper JWT library
-export async function generateJWT(privateKey: string, appId: string): Promise<string> {
+export async function generateJWT(
+  privateKey: string,
+  appId: string,
+  options: { keyId?: string; skewSeconds?: number; ttlSeconds?: number } = {}
+): Promise<string> {
   if (!privateKey) throw new Error('generateJWT: privateKey is required');
   if (!appId) throw new Error('generateJWT: appId is required');
 
@@ -34,24 +38,38 @@ export async function generateJWT(privateKey: string, appId: string): Promise<st
       .replace(/=+$/g, '');
   };
 
-  // Header
-  const header = { alg: 'RS256', typ: 'JWT' } as const;
+  // Header (kid optional for GitHub App key id)
+  const header = (options.keyId
+    ? { alg: 'RS256', typ: 'JWT', kid: options.keyId }
+    : { alg: 'RS256', typ: 'JWT' }) as const;
 
-  // Backdate iat by 60s to avoid clock skew; exp = iat + 600s (GitHub max)
+  // Backdate iat to avoid clock skew; exp <= iat + 600s (GitHub max)
   const now = Math.floor(Date.now() / 1000);
-  const iat = now - 60;
-  const exp = iat + 600;
-  const payload = { iat, exp, iss: appId };
+  const skew = Math.max(0, options.skewSeconds ?? 60);
+  const ttl = Math.min(600, Math.max(60, options.ttlSeconds ?? 600));
+  const iat = now - skew;
+  const exp = iat + ttl;
+  if (exp <= now) throw new Error('generateJWT: exp must be in the future');
+  const iss = String(Number(appId));
+  if (iss === 'NaN') throw new Error('generateJWT: appId must be a numeric string');
+  const payload = { iat, exp, iss };
 
   const encodedHeader = toBase64Url(JSON.stringify(header));
   const encodedPayload = toBase64Url(JSON.stringify(payload));
   const unsigned = `${encodedHeader}.${encodedPayload}`;
 
   // Convert PEM private key to CryptoKey
-  const pemHeader = '-----BEGIN PRIVATE KEY-----';
+  const pemHeaderPkcs8 = '-----BEGIN PRIVATE KEY-----';
+  const pemHeaderPkcs1 = '-----BEGIN RSA PRIVATE KEY-----';
   const pemFooter = '-----END PRIVATE KEY-----';
+  if (key.includes(pemHeaderPkcs1)) {
+    throw new Error(
+      'generateJWT: PKCS#1 (BEGIN RSA PRIVATE KEY) detected. Convert to PKCS#8 (BEGIN PRIVATE KEY). Example:\n' +
+      '  openssl pkcs8 -topk8 -nocrypt -in rsa-key.pem -out key-pkcs8.pem'
+    );
+  }
   const pemContents = key
-    .replace(pemHeader, '')
+    .replace(pemHeaderPkcs8, '')
     .replace(pemFooter, '')
     .replace(/\s/g, '');
   

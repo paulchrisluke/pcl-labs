@@ -2,39 +2,21 @@ name = "clip-recap-pipeline"
 main = "src/index.ts"
 compatibility_date = "2024-01-15"
 
-# Cron triggers (production only). All times are UTC.
+# Cron triggers for production. All times are UTC.
 [triggers]
 crons = [
   "0 2 * * *",  # Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
   "0 * * * *"   # Every hour - token validation
 ]
 
-[env.production]
-name = "clip-recap-pipeline"
-
-[env.staging]
-name = "clip-recap-pipeline-staging"
-
-[env.production.ai]
+[ai]
 binding = "ai"
 
-[[env.production.vectorize]]
+[[vectorize]]
 binding = "VECTORIZE"
 index_name = "clip-recap-embeddings"
 
-[[env.production.r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "clip-recap-assets"
-
-## Staging bindings
-[env.staging.ai]
-binding = "ai"
-
-[[env.staging.vectorize]]
-binding = "VECTORIZE"
-index_name = "clip-recap-embeddings"
-
-[[env.staging.r2_buckets]]
+[[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 

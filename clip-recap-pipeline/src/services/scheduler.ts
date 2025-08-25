@@ -1,5 +1,5 @@
 import { Environment } from '../types/index.js';
-import { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
+import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import { TwitchService } from './twitch.js';
 import { ContentService } from './content.js';
 import { DiscordService } from './discord.js';
@@ -17,8 +17,8 @@ export async function handleScheduled(
     return;
   }
   
-  // Handle daily pipeline (09:00 ICT)
-  if (event.cron === "0 9 * * *") {
+  // Handle daily pipeline (02:00 UTC = 09:00 ICT)
+  if (event.cron === "0 2 * * *") {
     await handleDailyPipeline(env);
     return;
   }
