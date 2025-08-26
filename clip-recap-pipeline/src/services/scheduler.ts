@@ -107,6 +107,18 @@ async function handleDailyPipeline(env: Environment): Promise<void> {
       return;
     }
     
+    // Step 1.5: Store clips to R2
+    console.log(`Storing ${clips.length} clips to R2...`);
+    for (const clip of clips) {
+      const key = `clips/${clip.id}.json`;
+      await env.R2_BUCKET.put(key, JSON.stringify(clip), {
+        httpMetadata: {
+          contentType: 'application/json',
+        },
+      });
+    }
+    console.log('✅ Clips stored to R2');
+    
     // Step 2: Score and select best clips
     console.log('Scoring and selecting clips...');
     const selectedClips = await contentService.selectBestClips(clips, []);

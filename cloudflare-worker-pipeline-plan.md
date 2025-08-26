@@ -21,10 +21,13 @@
 * ✅ **Cron Triggers**: Daily pipeline (02:00 UTC) + hourly token validation
 * ✅ **Service Integration**: Twitch, GitHub, Discord, Workers AI, Vectorize, R2 all configured
 * ✅ **Health Checks**: `/health`, `/validate-twitch`, `/validate-github` endpoints working
-* ✅ **Test Suite**: GitHub and Twitch credential validation tests passing
-* ✅ **Core Pipeline**: Complete daily workflow from clips → transcripts → scoring → blog → PR → judge → Discord
+* ✅ **Test Suite**: Complete test coverage (health, Twitch, GitHub, pipeline functionality)
+* ✅ **Core Pipeline**: Complete daily workflow from clips → storage → scoring → blog → PR → judge → Discord
+* ✅ **Database Operations**: Clip storage and retrieval from R2 working correctly
+* ✅ **Pipeline Testing**: Full end-to-end pipeline validation with 10 clips stored
 
-**NEXT MILESTONE: M7 — Schema & Manifest Architecture**
+
+**NEXT MILESTONE: M7 — Audio Extraction & Whisper Transcription**
 
 ---
 
@@ -32,31 +35,73 @@
 
 1. **Cron (daily, 09:00 Asia/Bangkok = 02:00 UTC)** kicks a Workflow run.
 2. **Fetch clips** from the last 24h for the broadcaster.
-3. **Transcribe** each (Workers AI → Whisper). If a clip is unusually long, chunk it.
-4. **Redact PII** from transcripts (before any storage or embeddings).
-5. **Score/select** the best 6–12 moments (dev‑stream tuned rules).
-6. **Store** redacted transcripts to R2.
-7. **Draft**: intro + one section per clip (title, bullets, paragraph, embed, optional VOD timestamp).
-8. **Embed & index**: create embeddings, upsert to Vectorize for semantic search.
-9. **Author Markdown** (front‑matter + sections), open a **GitHub PR** in the content repo.
-10. **Judge**: second LLM scores the draft (coherence, correctness, dev‑signal, flow, length, safety). Publishes a **GitHub Check**.
-11. **Notify**: send **Discord bot channel post** with PR link + judge score.
-12. **(Optional) Auto‑post** after manual merge/build.
+3. **Download videos** using yt-dlp from Twitch clip URLs.
+4. **Extract audio** using FFmpeg.wasm to convert MP4 to audio format.
+5. **Transcribe** each (Workers AI → Whisper). If a clip is unusually long, chunk it.
+6. **Redact PII** from transcripts (before any storage or embeddings).
+7. **Score/select** the best 6–12 moments (dev‑stream tuned rules).
+8. **Store** redacted transcripts to R2.
+9. **Draft**: intro + one section per clip (title, bullets, paragraph, embed, optional VOD timestamp).
+10. **Embed & index**: create embeddings, upsert to Vectorize for semantic search.
+11. **Author Markdown** (front‑matter + sections), open a **GitHub PR** in the content repo.
+12. **Judge**: second LLM scores the draft (coherence, correctness, dev‑signal, flow, length, safety). Publishes a **GitHub Check**.
+13. **Notify**: send **Discord bot channel post** with PR link + judge score.
+14. **(Optional) Auto‑post** after manual merge/build.
 
 ```
 [ Cron ] -> [ Workflows Orchestrator ]
-   |-> [Twitch Clips] -> [Whisper ASR] -> [Rank/Select] -> [LLM Draft]
+   |-> [Twitch Clips] -> [yt-dlp Download] -> [FFmpeg Audio] -> [Whisper ASR] -> [Rank/Select] -> [LLM Draft]
    |-> [Embeddings] -> [Vectorize]
    |-> [Markdown file] -> [GitHub PR + Check]
    |-> [Discord bot channel post]
-   |-> [R2: transcripts/assets]
+   |-> [R2: clips/audio/transcripts/assets]
 ```
 
 ---
 
-## M7 — Schema & Manifest Architecture (NEXT MILESTONE)
+## M7 — Audio Extraction & Whisper Transcription (NEXT MILESTONE)
 
-**Goal:** Define a robust data schema and R2 manifest structure to support automation, search, and content management.
+**Goal:** Download Twitch clip videos, extract audio, and transcribe using Cloudflare Workers AI Whisper.
+
+### Current Progress ✅
+
+* ✅ **Twitch API Integration**: Successfully fetching clip metadata and URLs
+* ✅ **R2 Storage**: Clip metadata stored in R2 bucket with proper structure
+* ✅ **Pipeline Foundation**: Complete daily workflow with clip storage and retrieval
+* ✅ **Test Coverage**: Full test suite validating all pipeline components
+* ✅ **Database Operations**: 10 clips currently stored and retrievable
+
+### Next Steps 🔄
+
+1. **Video Download**: Implement yt-dlp integration to download Twitch clip MP4 files
+2. **Audio Extraction**: Use FFmpeg.wasm to convert MP4 to audio format (WAV/MP3) for Whisper
+3. **Whisper Integration**: Use `@cf/openai/whisper-large-v3-turbo` for transcription
+4. **Transcript Storage**: Store transcripts in R2 with proper schema
+5. **Pipeline Integration**: Connect audio processing to main daily workflow
+
+### Technical Approach
+
+* **Video Download**: Use yt-dlp with Twitch clip URLs to download MP4 files
+* **Audio Extraction**: Use FFmpeg.wasm to extract audio from MP4 (Web Audio API limitations)
+* **Whisper Model**: `@cf/openai/whisper-large-v3-turbo` for high-quality transcription
+* **Chunking**: Handle clips longer than 90 seconds by chunking audio
+* **Storage**: Store transcripts as JSON with segments and metadata
+* **Error Handling**: Robust retry logic for download and transcription failures
+
+### Implementation Tasks
+
+1. **Add yt-dlp dependency** to package.json
+2. **Create video download service** with Twitch clip URL processing
+3. **Add FFmpeg.wasm integration** for audio extraction
+4. **Implement Whisper transcription service** with chunking support
+5. **Update R2 storage schema** to include audio files and transcripts
+6. **Modify daily pipeline** to include audio processing step
+7. **Add audio processing tests** to test suite
+8. **Update manifest schema** to include transcript metadata
+
+---
+
+## M8 — Schema & Manifest Architecture (FUTURE MILESTONE)
 
 ### Recommended Approach (TL;DR)
 
@@ -73,6 +118,8 @@ r2://recaps/
   drafts/YYYY/MM/POST_ID.md                   # optional staging copy of the Markdown
   transcripts/CLIP_ID.json                    # ASR output (segments, redacted)
   clips/CLIP_ID/meta.json                     # clip metadata from Twitch
+  clips/CLIP_ID/video.mp4                     # downloaded video file
+  clips/CLIP_ID/audio.wav                     # extracted audio file
   assets/POST_ID/cover.jpg                    # images/thumbnails
   runs/DATE/run-<timestamp>.json              # workflow logs/metrics
 ```
@@ -182,14 +229,25 @@ Index three granularities:
 
 ## Implementation Tasks for M7
 
-1. **Define JSON Schema** for manifest validation → `/schema/manifest.schema.json`
-2. **Update R2 bucket structure** with `recaps/` prefix
-3. **Modify pipeline** to write manifest **before** PR creation
-4. **Update PR generation** to render Markdown from manifest
-5. **Add validation** for unique `post_id` and manifest integrity
-6. **Add Schema.org validation** at render time
-7. **Update Vectorize indexing** with new metadata structure
-8. **Create validation tests** (schema + SEO + safety/PII)
+### Audio Processing Pipeline
+1. **Add yt-dlp dependency** to package.json for video downloading
+2. **Add FFmpeg.wasm dependency** for audio extraction
+3. **Create video download service** with Twitch clip URL processing
+4. **Implement audio extraction service** using FFmpeg.wasm
+5. **Add Whisper transcription service** with chunking support
+6. **Update R2 storage schema** to include audio files and transcripts
+7. **Modify daily pipeline** to include audio processing steps
+8. **Add audio processing tests** to test suite
+
+### Manifest & Schema Updates
+9. **Define JSON Schema** for manifest validation → `/schema/manifest.schema.json`
+10. **Update R2 bucket structure** with `recaps/` prefix and audio/video paths
+11. **Modify pipeline** to write manifest **before** PR creation
+12. **Update PR generation** to render Markdown from manifest
+13. **Add validation** for unique `post_id` and manifest integrity
+14. **Add Schema.org validation** at render time
+15. **Update Vectorize indexing** with new metadata structure
+16. **Create validation tests** (schema + SEO + safety/PII)
 
 ---
 
@@ -205,14 +263,17 @@ Index three granularities:
 
 ### Secrets (Wrangler vars)
 
-* `CF_ACCOUNT_ID`, `CF_API_TOKEN`
-* `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`
-* `TWITCH_BROADCASTER_ID`
-* `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, `GITHUB_PRIVATE_KEY`
-* `CONTENT_REPO_OWNER=paulchrisluke`, `CONTENT_REPO_NAME=pcl-labs`
-* `CONTENT_REPO_MAIN_BRANCH=main`
-* `DISCORD_APPLICATION_ID=1399565650044649492`, `DISCORD_BOT_TOKEN`, `DISCORD_REVIEW_CHANNEL_ID`, `DELIVERY_MODE=channel`
-* Optional (AI Gateway): `GOOGLE_AI_STUDIO_API_KEY`, `AI_GATEWAY_ID`, `AI_GATEWAY_URL`
+**✅ Currently Configured:**
+* `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_BROADCASTER_ID`
+* `GITHUB_TOKEN`, `GITHUB_TOKEN_PAULCHRISLUKE`, `GITHUB_TOKEN_BLAWBY`
+
+**❌ Still Needed for Full Pipeline:**
+* `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, `GITHUB_PRIVATE_KEY` (for PR creation)
+* `DISCORD_BOT_TOKEN`, `DISCORD_REVIEW_CHANNEL_ID` (for notifications)
+* `CONTENT_REPO_OWNER=paulchrisluke`, `CONTENT_REPO_NAME=pcl-labs`, `CONTENT_REPO_MAIN_BRANCH=main` (environment variables)
+
+**Optional (AI Gateway):**
+* `GOOGLE_AI_STUDIO_API_KEY`, `AI_GATEWAY_ID`, `AI_GATEWAY_URL`
 
 ### Bindings (wrangler.toml)
 
@@ -240,15 +301,17 @@ Index three granularities:
 **Steps:**
 
 1. **List Clips** (`GET /helix/clips`)
-2. **Transcribe** (chunk if `duration > 90s`)
-3. **Redact PII** (regex library + denylist rules)
-4. **Score & select** (dev‑stream heuristics)
-5. **Store** redacted transcripts to R2
-6. **Draft** post (front‑matter + sections + embeds)
-7. **Embeddings → Vectorize** (clip + section + post)
-8. **Create PR** (branch: `auto/daily-recap-YYYY-MM-DD`; path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`; target: `main`)
-9. **Judge** (GitHub Check Run)
-10. **Discord** (bot channel post)
+2. **Download Videos** (yt-dlp from Twitch clip URLs)
+3. **Extract Audio** (FFmpeg.wasm MP4 → WAV/MP3)
+4. **Transcribe** (chunk if `duration > 90s`)
+5. **Redact PII** (regex library + denylist rules)
+6. **Score & select** (dev‑stream heuristics)
+7. **Store** redacted transcripts to R2
+8. **Draft** post (front‑matter + sections + embeds)
+9. **Embeddings → Vectorize** (clip + section + post)
+10. **Create PR** (branch: `auto/daily-recap-YYYY-MM-DD`; path: `content/blog/development/YYYY-MM-DD-daily-dev-recap.md`; target: `main`)
+11. **Judge** (GitHub Check Run)
+12. **Discord** (bot channel post)
 
 ---
 
@@ -422,13 +485,46 @@ Index three granularities:
 
 ## Seed issues for Cursor (create in infra repo)
 
-1. **Schema**: Add `/schema/manifest.schema.json` + AJV validator + CI step
-2. **R2 Helpers**: `putManifest/getManifest/listDay` + `putTranscript` (redacted)
-3. **Renderer**: manifest → Markdown (front‑matter + sections)
-4. **PR Builder**: create/update branch `auto/daily-recap-YYYY-MM-DD`, open PR to `staging`, add labels
-5. **Judge Check**: run rubric (Gemma‑instruct), create GitHub Check Run, gate on thresholds
-6. **Vectorize Upserts**: embed + upsert `clip|section|post` metadata
-7. **Discord Notify**: post embed to `DISCORD_REVIEW_CHANNEL_ID`; retry & error surfacing
-8. **Dry‑run & Fixtures**: local e2e without external APIs
-9. **SEO Validator**: title/meta/canonical rules; warn in PR if out of bounds
-10. **PII Redactor**: regex + tests; enforce pre‑R2 and pre‑embeddings
+### Audio Processing Pipeline
+1. **Video Download Service**: Add yt-dlp dependency and create service for Twitch clip downloads
+2. **Audio Extraction Service**: Add FFmpeg.wasm dependency and create service for MP4 → WAV/MP3 conversion
+3. **Whisper Transcription Service**: Create service using `@cf/openai/whisper-large-v3-turbo` with chunking support
+4. **Audio Processing Tests**: Add comprehensive tests for video download, audio extraction, and transcription
+5. **Pipeline Integration**: Modify daily pipeline to include audio processing steps
+
+### Manifest & Schema Updates
+6. **Schema**: Add `/schema/manifest.schema.json` + AJV validator + CI step
+7. **R2 Helpers**: `putManifest/getManifest/listDay` + `putTranscript` (redacted) + audio/video storage
+8. **Renderer**: manifest → Markdown (front‑matter + sections)
+9. **PR Builder**: create/update branch `auto/daily-recap-YYYY-MM-DD`, open PR to `staging`, add labels
+10. **Judge Check**: run rubric (Gemma‑instruct), create GitHub Check Run, gate on thresholds
+11. **Vectorize Upserts**: embed + upsert `clip|section|post` metadata
+12. **Discord Notify**: post embed to `DISCORD_REVIEW_CHANNEL_ID`; retry & error surfacing
+13. **Dry‑run & Fixtures**: local e2e without external APIs
+14. **SEO Validator**: title/meta/canonical rules; warn in PR if out of bounds
+15. **PII Redactor**: regex + tests; enforce pre‑R2 and pre‑embeddings
+
+---
+
+## 🎯 M7 "Definition of Done" (Cursor's Checklist)
+
+### Audio Processing Pipeline
+* ✅ yt-dlp integration working for Twitch clip downloads
+* ✅ FFmpeg.wasm integration working for audio extraction (MP4 → WAV/MP3)
+* ✅ Whisper transcription service with chunking support
+* ✅ Audio files stored in R2 with proper metadata
+* ✅ Transcripts stored in R2 with proper schema
+* ✅ Daily pipeline includes audio processing steps
+* ✅ Audio processing tests passing
+
+### Manifest & Schema Updates
+* ✅ Manifest JSON Schema committed and validated in CI
+* ✅ R2 layout created and helper functions implemented (put/get manifest, put transcripts, list day)
+* ✅ Front‑matter generator maps manifest → Markdown front‑matter (minimal set above)
+* ✅ Renderer builds Markdown body from manifest sections
+* ✅ PR builder uses manifest + renderer; targets `main`; idempotent if PR exists
+* ✅ Judge check runs post‑PR and updates GitHub Checks; labels `needs-review` / `needs-polish`
+* ✅ Discord notifier posts to `DISCORD_REVIEW_CHANNEL_ID`
+* ✅ Vectorize upserts for `clip`, `section`, `post` with agreed metadata
+* ✅ Dry‑run mode and fixtures for local tests (Twitch/GitHub off)
+* ✅ Cron remains at `02:00 UTC` (09:00 Bangkok)
