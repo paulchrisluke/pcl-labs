@@ -159,23 +159,11 @@ export class TwitchService {
         throw new Error('Clip not found');
       }
 
-      // TODO: Implement actual audio download from Twitch clips
-      // Current implementation returns a placeholder buffer for testing purposes
-      // For now, we'll use a placeholder approach since direct video downloading
-      // from Twitch requires additional authentication and may violate ToS
-      // In a production environment, you might want to:
-      // 1. Use a service like yt-dlp with proper authentication
-      // 2. Use Twitch's official APIs if available
-      // 3. Implement a different approach for audio extraction
+      // The Twitch Helix API doesn't provide direct video URLs
+      // Video URL extraction requires additional authentication and may violate ToS
+      // This is a pipeline limitation that needs to be addressed properly
+      throw new Error(`Video URL extraction not implemented for clip ${clipId}. Twitch Helix API does not provide direct video URLs. This requires additional authentication and may violate ToS.`);
       
-      console.log(`Clip found: ${clip.title} (${clip.duration}s)`);
-      
-      // For now, return a placeholder buffer - in production you'd download the actual audio
-      // This allows the pipeline to continue testing other components
-      const placeholderBuffer = new ArrayBuffer(1024); // 1KB placeholder
-      
-      console.log(`Returning placeholder audio buffer for clip: ${clipId}`);
-      return placeholderBuffer;
     } catch (error) {
       console.error(`Failed to download clip audio: ${error}`);
       throw error;

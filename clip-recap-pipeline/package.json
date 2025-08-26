@@ -6,10 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy --config wrangler.production.toml",
+    "dev:info": "echo 'Local dev server starts on random port (check terminal output)' && echo 'Secrets are NOT available in local dev - use production for testing integrations' && wrangler dev",
+    "deploy": "wrangler deploy",
     "test": "npx tsx test-github.ts",
     "test:twitch": "npx tsx test-twitch.ts",
-    "test:all": "npm run test && npm run test:twitch"
+    "test:all": "npm run test && npm run test:twitch",
+    "test:local": "echo '⚠️  Local tests will fail - secrets not available in local dev' && echo 'Use: WORKER_URL=http://localhost:PORT npm run test:all' && echo 'Or test against production: npm run test:all'",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
   },
   "keywords": [
     "twitch",
@@ -27,6 +32,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
     "tsx": "^4.20.5",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.32.0"
   }
 }

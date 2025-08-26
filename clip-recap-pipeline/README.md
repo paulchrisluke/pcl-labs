@@ -98,12 +98,22 @@ CONTENT_REPO_MAIN_BRANCH = "main"
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (uses random port - check terminal output)
 npm run dev
+
+# Start development server with helpful info
+npm run dev:info
 
 # Deploy to production
 npm run deploy
 ```
+
+### Local Development Notes
+
+⚠️ **Important**: Local development has limitations:
+- **Random port**: The dev server uses a random port (e.g., `http://localhost:54987`), not always 8787
+- **No secrets**: Local dev cannot access `wrangler secret` values - integrations will fail
+- **Use production for testing**: Run `npm run test:all` to test against the deployed worker
 
 ### Wrangler Configuration
 
@@ -144,64 +154,17 @@ id = "your-kv-namespace-id-here"  # Replace with actual KV namespace ID per envi
 - Replace placeholder IDs and names with actual resource identifiers for each environment
 - KV namespace IDs must be unique per environment and created via Cloudflare dashboard or CLI
 
-## Testing
-
-### GitHub Service Test
-
-Test the GitHub service integration:
+### Testing
 
 ```bash
-# Test against production worker (default)
-npm test
-
-
-
-# Test against local development server
-export WORKER_URL="http://localhost:8787"
-npm test
-# Note: Run "npm run dev" in another terminal first for local testing
-```
-
-The test will:
-1. Connect to your Cloudflare Worker's `/validate-github` endpoint
-2. Test GitHub App credentials stored as secrets
-3. Validate JWT generation and installation token access
-4. Verify repository access and permissions
-5. Check API permissions and scopes
-
-**Note**: This test uses your Cloudflare Workers secrets (set via `wrangler secret put`), not environment variables.
-
-### Twitch Service Test
-
-Test the Twitch service integration:
-
-```bash
-# Test against production worker (default)
-npm run test:twitch
-
-
-
-# Test against local development server
-export WORKER_URL="http://localhost:8787"
-npm run test:twitch
-# Note: Run "npm run dev" in another terminal first for local testing
-```
-
-The test will:
-1. Connect to your Cloudflare Worker's `/validate-twitch` endpoint
-2. Test Twitch client credentials stored as secrets
-3. Validate token generation and API access
-4. Verify broadcaster ID resolution
-5. Check API permissions and scopes
-
-**Note**: This test uses your Cloudflare Workers secrets (set via `wrangler secret put`), not environment variables.
-
-### Run All Tests
-
-Test both GitHub and Twitch services:
-
-```bash
+# Test against production worker (recommended)
 npm run test:all
+
+# Test against local dev server (will fail due to missing secrets)
+npm run test:local
+
+# Test with custom worker URL
+WORKER_URL=http://localhost:54987 npm run test:all
 ```
 
 ### Token Configuration

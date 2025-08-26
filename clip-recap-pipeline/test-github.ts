@@ -14,9 +14,13 @@ async function testGitHubCredentials() {
     console.log('ℹ️  No WORKER_URL provided, testing against production worker');
     console.log('   Available options:');
     console.log('   - Production: https://clip-recap-pipeline.paulchrisluke.workers.dev');
-    console.log('   - Local: http://localhost:8787 (set WORKER_URL=http://localhost:8787)');
+    console.log('   - Local: http://localhost:PORT (set WORKER_URL=http://localhost:PORT)');
+    console.log('   ⚠️  Note: Local tests will fail - secrets not available in local dev');
   } else {
     console.log(`✅ Using custom worker URL: ${workerUrl}`);
+    if (workerUrl.includes('localhost')) {
+      console.log('⚠️  Local dev detected - secrets may not be available');
+    }
   }
   
   try {
