@@ -31,5 +31,11 @@
       "dest": "/index.html",
       "continue": true
     }
-  ]
+  ],
+  "functions": {
+    "server/api/audio_processor.py": {
+      "maxDuration": 900,
+      "memory": 3008
+    }
+  }
 }

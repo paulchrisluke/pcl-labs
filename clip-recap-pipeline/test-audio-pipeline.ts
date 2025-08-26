@@ -18,19 +18,73 @@ interface TestResult {
   data?: any;
 }
 
+interface FetchResult {
+  ok: boolean;
+  status: number;
+  body: any;
+  text?: string;
+}
+
+/**
+ * Fetch with timeout and proper error handling
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 30000): Promise<FetchResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // Try to parse JSON, fall back to text if it fails
+    let body: any;
+    let text: string | undefined;
+    
+    try {
+      body = await response.json();
+    } catch (jsonError) {
+      // If JSON parsing fails, get the text content
+      text = await response.text();
+      body = { error: 'Non-JSON response', text };
+    }
+    
+    return {
+      ok: response.ok,
+      status: response.status,
+      body,
+      text
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    
+    throw error;
+  }
+}
+
 async function testHealthEndpoints(): Promise<TestResult[]> {
   const results: TestResult[] = [];
   
   // Test worker health
   try {
     console.log('🔍 Testing worker health...');
-    const workerResponse = await fetch(`${WORKER_URL}/health`);
-    const workerHealth = await workerResponse.json();
+    const workerResult = await fetchWithTimeout(`${WORKER_URL}/health`);
     
     results.push({
       name: 'Worker Health',
-      success: workerResponse.ok && workerHealth.status === 'healthy',
-      data: workerHealth
+      success: workerResult.ok && workerResult.body.status === 'healthy',
+      data: {
+        status: workerResult.status,
+        body: workerResult.body,
+        text: workerResult.text
+      }
     });
   } catch (error) {
     results.push({
@@ -43,13 +97,16 @@ async function testHealthEndpoints(): Promise<TestResult[]> {
   // Test audio processor health
   try {
     console.log('🔍 Testing audio processor health...');
-    const audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/health`);
-    const audioHealth = await audioResponse.json();
+    const audioResult = await fetchWithTimeout(`${AUDIO_PROCESSOR_URL}/health`);
     
     results.push({
       name: 'Audio Processor Health',
-      success: audioResponse.ok && audioHealth.status === 'healthy',
-      data: audioHealth
+      success: audioResult.ok && audioResult.body.status === 'healthy',
+      data: {
+        status: audioResult.status,
+        body: audioResult.body,
+        text: audioResult.text
+      }
     });
   } catch (error) {
     results.push({

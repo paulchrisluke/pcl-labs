@@ -65,9 +65,10 @@ class TaskManager:
         for attempt in range(self._max_retries):
             task_id = self._generate_task_id()
             
-            # Check if this ID already exists
-            if task_id not in self._tasks:
-                return task_id
+            # Check if this ID already exists - acquire lock during existence check
+            with self._lock:
+                if task_id not in self._tasks:
+                    return task_id
             
             logger.warning(f"Task ID collision detected on attempt {attempt + 1}, retrying...")
             time.sleep(0.001)  # Small delay to reduce collision probability
@@ -78,8 +79,10 @@ class TaskManager:
         random_suffix = secrets.token_hex(8)
         fallback_id = f"fallback-{timestamp}-{random_suffix}"
         
-        if fallback_id in self._tasks:
-            raise RuntimeError("Critical: Unable to generate unique task ID")
+        # Check fallback ID existence with lock as well
+        with self._lock:
+            if fallback_id in self._tasks:
+                raise RuntimeError("Critical: Unable to generate unique task ID")
         
         return fallback_id
     

@@ -91,33 +91,44 @@
 * ❌ **Transcript Storage**: No transcript data structures
 * ❌ **Audio Processing Pipeline**: No audio → text conversion
 
-### Audio Processing Tasks 🔄
+### Runtime Architecture Decision
 
-1. **Audio Extraction**: Add FFmpeg.wasm to extract audio from downloaded MP4 files
-2. **Whisper Integration**: Add Workers AI Whisper transcription to the Python API
-3. **Transcript Storage**: Create transcript data structures and R2 storage
-4. **Audio Processing Pipeline**: Implement audio → text conversion workflow
-5. **API Enhancement**: Add transcription endpoints to existing API
+**Chosen Approach: Option A - Server-side Python Audio Processing**
 
-### Integration Tasks 🔄
+* **Audio Extraction Runtime**: Python server using static FFmpeg binary
+* **Transcription Runtime**: Python server calling Workers AI Whisper API
+* **Storage**: R2 bucket accessible from both Python server and Workers
+* **Orchestration**: Cloudflare Workers coordinate with Python API
+* **No Cross-Runtime Confusion**: Clear separation of responsibilities
 
-6. **API Integration**: Call enhanced Python API from Cloudflare Workers pipeline
-7. **Workflow Updates**: Modify daily workflow to use Python API for audio processing
-8. **Error Handling**: Robust error handling between Workers and Python API
-9. **Data Flow**: Ensure proper data flow from Workers → Python API → R2 → Workers
-10. **Testing**: End-to-end testing of integrated pipeline
+### Audio Processing Implementation Options
 
-### Technical Approach
+**Option A: Server-side Python Audio Processing (RECOMMENDED)**
+- **Audio Extraction**: Use static FFmpeg binary in Python server (leverage existing `server/src/ffmpeg_utils.py`)
+- **Whisper Integration**: Use Workers AI Whisper transcription from Python API
+- **Deployment**: Ensure FFmpeg binary is available in Vercel deployment
+- **Requirements**: Update `server/requirements.txt` only for Python libraries
+- **Endpoints**: Use existing `/api/audio_processor` endpoint with enhanced functionality
 
-* **Audio Extraction**: Use FFmpeg.wasm to convert MP4 to WAV/MP3 for Whisper
+**Option B: Worker-side Audio Processing**
+- **Audio Extraction**: Use FFmpeg.wasm inside Cloudflare Workers
+- **Whisper Integration**: Use Workers AI Whisper transcription directly in Workers
+- **Packaging**: Bundle FFmpeg.wasm with Worker deployment
+- **CI/CD**: Add Worker-side packaging steps for WASM bundling
+- **Flow**: Worker-hosted transcription without Python API dependency
+
+### Technical Approach (Option A - Recommended)
+
+* **Audio Extraction**: Use static FFmpeg binary in Python server via `server/src/ffmpeg_utils.py`
 * **Whisper Model**: `@cf/openai/whisper-large-v3-turbo` for high-quality transcription
 * **Chunking**: Handle clips longer than 90 seconds by chunking audio
-* **Storage**: Store transcripts as JSON with segments and metadata
+* **Storage**: Store transcripts as JSON with segments and metadata in R2
 * **API Calls**: Use fetch() from Workers to call Python API endpoints
 * **Data Exchange**: JSON payloads for clip processing requests
 * **Error Handling**: Retry logic and fallback mechanisms
 * **Storage Coordination**: Ensure R2 access from both Workers and Python API
 * **Monitoring**: Health checks and logging across both systems
+* **Deployment**: Ensure FFmpeg binary availability in Vercel environment
 
 ---
 
@@ -249,21 +260,30 @@ Index three granularities:
 
 ## Implementation Tasks for M7
 
-### Audio Processing Implementation
-1. **Add FFmpeg.wasm dependency** to requirements.txt for audio extraction
-2. **Create audio extraction service** using FFmpeg.wasm to convert MP4 to WAV/MP3
-3. **Add Whisper transcription service** with chunking support using Workers AI
+### Audio Processing Implementation (Option A - Recommended)
+
+1. **Ensure FFmpeg binary availability** in Vercel deployment environment
+2. **Enhance existing audio extraction** using `server/src/ffmpeg_utils.py` for MP4 to WAV conversion
+3. **Add Whisper transcription service** with chunking support using Workers AI from Python API
 4. **Update R2 storage schema** to include audio files and transcripts
 5. **Modify clip processing** to include audio extraction and transcription
-6. **Add transcription endpoints** to the Python API
+6. **Enhance existing `/api/audio_processor` endpoint** with transcription capabilities
 7. **Add audio processing tests** to test suite
+8. **Update Python requirements** only for necessary libraries (no FFmpeg.wasm)
 
-### Integration Tasks
+### Integration Tasks (Option A - Recommended)
 8. **API Integration**: Call enhanced Python API from Cloudflare Workers pipeline
 9. **Workflow Updates**: Modify daily workflow to use Python API for audio processing
 10. **Error Handling**: Implement robust error handling between Workers and Python API
 11. **Data Flow**: Ensure proper data flow from Workers → Python API → R2 → Workers
 12. **Testing**: End-to-end testing of integrated pipeline
+
+### Alternative Implementation (Option B - Worker-side)
+13. **FFmpeg.wasm Integration**: Add FFmpeg.wasm to Worker deployment
+14. **Worker-side Audio Processing**: Implement audio extraction directly in Workers
+15. **WASM Bundling**: Add CI/CD steps to bundle FFmpeg.wasm with Worker
+16. **Direct Transcription**: Use Workers AI Whisper directly in Worker environment
+17. **Remove Python Dependency**: Eliminate Python API dependency for audio processing
 
 ### Manifest & Schema Updates
 6. **Define JSON Schema** for manifest validation → `/schema/manifest.schema.json`
