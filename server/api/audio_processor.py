@@ -54,11 +54,10 @@ class R2Storage:
     def __init__(self):
         # Validate required environment variables
         self.account_id = self._validate_required_env('CLOUDFLARE_ACCOUNT_ID')
-        self.zone_id = self._validate_required_env('CLOUDFLARE_ZONE_ID')
         self.api_token = self._validate_required_env('CLOUDFLARE_API_TOKEN')
         self.bucket = self._validate_required_env('R2_BUCKET')
         
-        if not all([self.account_id, self.zone_id, self.api_token, self.bucket]):
+        if not all([self.account_id, self.api_token, self.bucket]):
             logger.warning("Missing required Cloudflare environment variables - R2 uploads will be disabled")
             self.enabled = False
         else:

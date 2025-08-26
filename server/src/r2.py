@@ -1,6 +1,11 @@
 import os
 import requests
 import logging
+import urllib.parse
+import xml.etree.ElementTree as ET
+import hmac
+import hashlib
+import datetime
 from typing import Dict, Optional, Any
 from pathlib import Path
 
@@ -11,17 +16,20 @@ class R2Storage:
     def __init__(self):
         # Validate required environment variables
         self.account_id = self._validate_required_env('CLOUDFLARE_ACCOUNT_ID')
-        self.zone_id = self._validate_required_env('CLOUDFLARE_ZONE_ID')
         self.api_token = self._validate_required_env('CLOUDFLARE_API_TOKEN')
         self.bucket = self._validate_required_env('R2_BUCKET')
         
-        if not all([self.account_id, self.zone_id, self.api_token, self.bucket]):
+        if not all([self.account_id, self.api_token, self.bucket]):
             raise ValueError("Missing required Cloudflare environment variables")
         
-        self.base_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/storage/buckets/{self.bucket}"
+        # Bucket management API (for create/list/get/delete bucket operations)
+        self.bucket_api_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/r2/buckets"
+        
+        # Object operations use R2 REST API
+        self.object_api_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/r2/buckets/{self.bucket}/objects"
+        
         self.headers = {
-            'Authorization': f'Bearer {self.api_token}',
-            'Content-Type': 'application/json'
+            'Authorization': f'Bearer {self.api_token}'
         }
     
     def _validate_required_env(self, env_name: str) -> str:
@@ -37,26 +45,23 @@ class R2Storage:
         Raises:
             ValueError: If environment variable is missing or empty
         """
-        try:
-            env_value = os.getenv(env_name)
-            if not env_value:
-                logger.error(f"Required environment variable {env_name} is missing or empty")
-                return ""
-            
-            # Trim whitespace
-            env_value = env_value.strip()
-            
-            if not env_value:
-                logger.error(f"Required environment variable {env_name} is empty after trimming")
-                return ""
-            
-            logger.info(f"Using {env_name} = '{env_value[:8]}...' (truncated for security)")
-            return env_value
-            
-        except Exception as e:
-            logger.error(f"Error validating {env_name}: {e}")
-            return ""
-    
+        env_value = os.getenv(env_name)
+        if not env_value:
+            logger.error(f"Required environment variable {env_name} is missing or empty")
+            raise ValueError(f"Missing required environment variable: {env_name}")
+        
+        # Trim whitespace
+        env_value = env_value.strip()
+        
+        if not env_value:
+            logger.error(f"Required environment variable {env_name} is empty after trimming")
+            raise ValueError(f"Empty environment variable after trimming: {env_name}")
+        
+        logger.info(f"Using {env_name} = '{env_value[:8]}...' (truncated for security)")
+        return env_value
+
+
+
     def _validate_metadata(self, metadata: Dict[str, str]) -> Optional[Dict[str, str]]:
         """
         Validate metadata dictionary for R2 storage.
@@ -113,13 +118,28 @@ class R2Storage:
                     truncated_bytes = value_bytes[:256]
                     value = truncated_bytes.decode('utf-8', errors='ignore')
                 
-                # Ensure ASCII compatibility
+                # Encode non-ASCII characters to preserve data while ensuring compatibility
                 try:
+                    # Try ASCII encoding first
                     key.encode('ascii')
                     value.encode('ascii')
                 except UnicodeEncodeError:
-                    logger.warning(f"Metadata key or value contains non-ASCII characters, skipping: {key}")
-                    continue
+                    # If non-ASCII characters exist, encode them as URL-safe strings
+                    try:
+                        safe_key = urllib.parse.quote(key, safe='')
+                        safe_value = urllib.parse.quote(value, safe='')
+                        
+                        # Check if encoded values are still within limits
+                        if len(safe_key.encode('utf-8')) <= 128 and len(safe_value.encode('utf-8')) <= 256:
+                            key = safe_key
+                            value = safe_value
+                            logger.info(f"Encoded non-ASCII metadata: {key} -> {safe_key}")
+                        else:
+                            logger.warning(f"Encoded metadata too long, skipping: {key}")
+                            continue
+                    except Exception as encode_error:
+                        logger.warning(f"Failed to encode non-ASCII metadata, skipping: {key} - {encode_error}")
+                        continue
                 
                 validated_metadata[key] = value
             
@@ -135,7 +155,7 @@ class R2Storage:
             return None
 
     def put_file(self, key: str, file_path: str, content_type: str, metadata: Optional[Dict[str, str]] = None) -> bool:
-        """Upload a file to R2 storage using Cloudflare API"""
+        """Upload a file to R2 storage using S3-compatible API"""
         try:
             with open(file_path, 'rb') as f:
                 data = f.read()
@@ -145,9 +165,9 @@ class R2Storage:
             return False
 
     def put_data(self, key: str, data: bytes, content_type: str, metadata: Optional[Dict[str, str]] = None) -> bool:
-        """Upload data directly to R2 storage using Cloudflare API"""
+        """Upload data directly to R2 storage using R2 REST API"""
         try:
-            url = f"{self.base_url}/objects/{key}"
+            url = f"{self.object_api_url}/{key}"
             headers = {
                 'Authorization': f'Bearer {self.api_token}',
                 'Content-Type': content_type
@@ -158,7 +178,7 @@ class R2Storage:
                 validated_metadata = self._validate_metadata(metadata)
                 if validated_metadata:
                     for k, v in validated_metadata.items():
-                        headers[f'X-Meta-{k}'] = v
+                        headers[f'x-amz-meta-{k}'] = v
             
             response = requests.put(url, data=data, headers=headers)
             response.raise_for_status()
@@ -169,9 +189,9 @@ class R2Storage:
             return False
 
     def get_file(self, key: str) -> Optional[bytes]:
-        """Download a file from R2 storage using Cloudflare API"""
+        """Download a file from R2 storage using R2 REST API"""
         try:
-            url = f"{self.base_url}/objects/{key}"
+            url = f"{self.object_api_url}/{key}"
             headers = {'Authorization': f'Bearer {self.api_token}'}
             
             response = requests.get(url, headers=headers)
@@ -182,9 +202,9 @@ class R2Storage:
             return None
 
     def file_exists(self, key: str) -> bool:
-        """Check if a file exists in R2 storage using Cloudflare API"""
+        """Check if a file exists in R2 storage using R2 REST API"""
         try:
-            url = f"{self.base_url}/objects/{key}"
+            url = f"{self.object_api_url}/{key}"
             headers = {'Authorization': f'Bearer {self.api_token}'}
             
             response = requests.head(url, headers=headers)
@@ -195,7 +215,7 @@ class R2Storage:
 
     def list_files(self, prefix: str = "", limit: Optional[int] = None, cursor: Optional[str] = None) -> Dict[str, Any]:
         """
-        List files in R2 storage with given prefix using Cloudflare API
+        List files in R2 storage with given prefix using R2 REST API
         
         Args:
             prefix: File prefix to filter by
@@ -209,7 +229,7 @@ class R2Storage:
             - 'truncated': Boolean indicating if there are more results
         """
         try:
-            url = f"{self.base_url}/objects"
+            url = self.object_api_url
             params = {}
             
             if prefix:
@@ -227,13 +247,25 @@ class R2Storage:
             data = response.json()
             if data.get('success'):
                 result = data.get('result', {})
-                objects = [obj['name'] for obj in result.get('objects', [])]
-                
-                return {
-                    'objects': objects,
-                    'cursor': result.get('cursor'),
-                    'truncated': result.get('truncated', False)
-                }
+                if isinstance(result, dict):
+                    objects_list = result.get('objects', [])
+                    if isinstance(objects_list, list):
+                        objects = [obj['name'] for obj in objects_list if isinstance(obj, dict) and 'name' in obj]
+                    else:
+                        objects = []
+                    
+                    return {
+                        'objects': objects,
+                        'cursor': result.get('cursor'),
+                        'truncated': result.get('truncated', False)
+                    }
+                else:
+                    logger.error(f"Unexpected result format: {type(result)}")
+                    return {
+                        'objects': [],
+                        'cursor': None,
+                        'truncated': False
+                    }
             else:
                 logger.error(f"API error listing files: {data.get('errors', [])}")
                 return {
@@ -250,9 +282,9 @@ class R2Storage:
             }
 
     def delete(self, key: str) -> bool:
-        """Delete a file from R2 storage using Cloudflare API"""
+        """Delete a file from R2 storage using R2 REST API"""
         try:
-            url = f"{self.base_url}/objects/{key}"
+            url = f"{self.object_api_url}/{key}"
             headers = {'Authorization': f'Bearer {self.api_token}'}
             
             response = requests.delete(url, headers=headers)
@@ -262,3 +294,60 @@ class R2Storage:
         except Exception as e:
             logger.error(f"Error deleting {key}: {e}")
             return False
+
+    def bucket_exists(self) -> bool:
+        """Check if the R2 bucket exists using bucket management API"""
+        try:
+            url = f"{self.bucket_api_url}/{self.bucket}"
+            headers = {'Authorization': f'Bearer {self.api_token}'}
+            
+            response = requests.get(url, headers=headers)
+            return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Error checking if bucket exists: {e}")
+            return False
+
+    def create_bucket(self) -> bool:
+        """Create the R2 bucket using bucket management API"""
+        try:
+            url = self.bucket_api_url
+            headers = {
+                'Authorization': f'Bearer {self.api_token}',
+                'Content-Type': 'application/json'
+            }
+            data = {
+                'name': self.bucket
+            }
+            
+            response = requests.post(url, json=data, headers=headers)
+            response.raise_for_status()
+            logger.info(f"Successfully created bucket {self.bucket}")
+            return True
+        except Exception as e:
+            logger.error(f"Error creating bucket {self.bucket}: {e}")
+            return False
+
+    def list_buckets(self) -> list:
+        """List all R2 buckets using bucket management API"""
+        try:
+            url = self.bucket_api_url
+            headers = {'Authorization': f'Bearer {self.api_token}'}
+            
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('success'):
+                result = data.get('result', [])
+                if isinstance(result, list):
+                    buckets = [bucket['name'] for bucket in result if isinstance(bucket, dict) and 'name' in bucket]
+                    return buckets
+                else:
+                    logger.error(f"Unexpected result format: {type(result)}")
+                    return []
+            else:
+                logger.error(f"API error listing buckets: {data.get('errors', [])}")
+                return []
+        except Exception as e:
+            logger.error(f"Error listing buckets: {e}")
+            return []

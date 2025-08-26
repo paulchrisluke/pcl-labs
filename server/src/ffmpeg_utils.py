@@ -176,7 +176,7 @@ def _get_duration_with_ffmpeg(file_path: Path) -> Optional[float]:
         
         # Use regex to match duration pattern with variable decimals and localization
         # Pattern matches: Duration: HH:MM:SS.mm or Duration: HH:MM:SS,mm (comma as decimal separator)
-        duration_pattern = r'Duration:\s*(\d{2}):(\d{2}):(\d{2}[.,]\d+)'
+        duration_pattern = r'Duration:\s*(\d+):(\d{2}):(\d{2}[.,]\d+)'
         match = re.search(duration_pattern, result.stderr)
         
         if not match:
@@ -270,7 +270,7 @@ def chunk_audio(input_wav: Path, output_dir: Path, chunk_duration: int = 90) -> 
                     str(output_file)
                 ]
                 
-                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)
                 
                 # Verify the chunk file was created and has content
                 if output_file.exists() and output_file.stat().st_size > 0:
@@ -279,6 +279,9 @@ def chunk_audio(input_wav: Path, output_dir: Path, chunk_duration: int = 90) -> 
                 else:
                     logger.error(f"Chunk file {i+1} was not created or is empty: {output_file}")
                     
+            except subprocess.TimeoutExpired:
+                logger.error(f"FFmpeg timed out after 300 seconds creating chunk {i+1} for {input_wav}")
+                continue
             except subprocess.CalledProcessError as e:
                 logger.error(f"FFmpeg error creating chunk {i+1}: {e}")
                 logger.error(f"FFmpeg stderr: {e.stderr}")

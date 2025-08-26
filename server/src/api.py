@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -178,11 +179,20 @@ async def list_processed_clips(limit: int = 50, cursor: Optional[str] = None):
         raise HTTPException(status_code=500, detail=f"Failed to list clips: {str(e)}")
 
 @app.delete("/cleanup/{clip_id}")
-async def cleanup_clip(clip_id: str, dry_run: bool = True, confirm: bool = False, authorization: str = None):
+async def cleanup_clip(
+    clip_id: str, 
+    dry_run: bool = True, 
+    confirm: bool = False, 
+    authorization: Optional[str] = Header(None, alias="Authorization")
+):
     """Remove all files for a specific clip (for testing/cleanup)"""
     
     # Validate authorization if provided
     if authorization:
+        # Remove 'Bearer ' prefix if present
+        if authorization.startswith('Bearer '):
+            authorization = authorization[7:]
+        
         expected_auth = os.getenv('CLEANUP_AUTHORIZATION')
         if not expected_auth or authorization != expected_auth:
             raise HTTPException(status_code=401, detail="Invalid authorization")
@@ -235,7 +245,8 @@ async def cleanup_clip(clip_id: str, dry_run: bool = True, confirm: bool = False
         
         # Also check for chunked audio files
         chunk_prefix = f"audio/{clip_id}/"
-        chunk_result = processor.r2.list_files(chunk_prefix, limit=None, cursor=None)
+        # Use a reasonable limit to prevent memory issues with large numbers of chunks
+        chunk_result = processor.r2.list_files(chunk_prefix, limit=1000, cursor=None)
         chunk_files = chunk_result['objects']
         files_to_delete.extend(chunk_files)
         
@@ -306,7 +317,6 @@ async def cleanup_clip(clip_id: str, dry_run: bool = True, confirm: bool = False
         
         # Return appropriate status code
         if status_code == 207:
-            from fastapi.responses import JSONResponse
             return JSONResponse(
                 status_code=status_code,
                 content=response_data
@@ -343,9 +353,9 @@ async def delete_task(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    # Remove from task manager
-    if task_id in task_manager._tasks:
-        del task_manager._tasks[task_id]
+    # Remove from task manager using the public API
+    if not task_manager.delete_task(task_id):
+        raise HTTPException(status_code=500, detail="Failed to delete task")
     
     return {"message": f"Task {task_id} deleted"}
 

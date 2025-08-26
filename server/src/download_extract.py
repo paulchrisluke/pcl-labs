@@ -4,6 +4,8 @@ import json
 import time
 import logging
 import subprocess
+import re
+import urllib.parse
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Any, List
 from dotenv import load_dotenv
@@ -151,10 +153,10 @@ class AudioProcessor:
         node_env = self._validate_string_env('NODE_ENV', '').lower()
         python_env = self._validate_string_env('PYTHON_ENV', '').lower()
         
-        # Production environments - never disable SSL verification
+        # Production environments - never allow insecure SSL
         if node_env == 'production' or python_env == 'production':
             if allow_insecure:
-                logger.warning("SSL certificate verification disabled in production environment - this is not recommended for security reasons")
+                raise RuntimeError("SSL certificate verification cannot be disabled in production environment for security reasons")
             return False
         
         # Development/testing environments - allow disabling if explicitly configured
@@ -232,13 +234,28 @@ class AudioProcessor:
                     truncated_bytes = value_bytes[:256]
                     value = truncated_bytes.decode('utf-8', errors='ignore')
                 
-                # Ensure ASCII compatibility
+                # Encode non-ASCII characters to preserve data while ensuring compatibility
                 try:
+                    # Try ASCII encoding first
                     key.encode('ascii')
                     value.encode('ascii')
                 except UnicodeEncodeError:
-                    logger.warning(f"Metadata key or value contains non-ASCII characters, skipping: {key}")
-                    continue
+                    # If non-ASCII characters exist, encode them as URL-safe strings
+                    try:
+                        safe_key = urllib.parse.quote(key, safe='')
+                        safe_value = urllib.parse.quote(value, safe='')
+                        
+                        # Check if encoded values are still within limits
+                        if len(safe_key.encode('utf-8')) <= 128 and len(safe_value.encode('utf-8')) <= 256:
+                            key = safe_key
+                            value = safe_value
+                            logger.info(f"Encoded non-ASCII metadata: {key} -> {safe_key}")
+                        else:
+                            logger.warning(f"Encoded metadata too long, skipping: {key}")
+                            continue
+                    except Exception as encode_error:
+                        logger.warning(f"Failed to encode non-ASCII metadata, skipping: {key} - {encode_error}")
+                        continue
                 
                 validated_metadata[key] = value
             
@@ -297,13 +314,28 @@ class AudioProcessor:
                     truncated_bytes = value_bytes[:256]
                     value = truncated_bytes.decode('utf-8', errors='ignore')
                 
-                # Ensure ASCII compatibility
+                # Encode non-ASCII characters to preserve data while ensuring compatibility
                 try:
+                    # Try ASCII encoding first
                     key.encode('ascii')
                     value.encode('ascii')
                 except UnicodeEncodeError:
-                    logger.warning(f"Chunk metadata key or value contains non-ASCII characters, skipping: {key}")
-                    continue
+                    # If non-ASCII characters exist, encode them as URL-safe strings
+                    try:
+                        safe_key = urllib.parse.quote(key, safe='')
+                        safe_value = urllib.parse.quote(value, safe='')
+                        
+                        # Check if encoded values are still within limits
+                        if len(safe_key.encode('utf-8')) <= 128 and len(safe_value.encode('utf-8')) <= 256:
+                            key = safe_key
+                            value = safe_value
+                            logger.info(f"Encoded non-ASCII chunk metadata: {key} -> {safe_key}")
+                        else:
+                            logger.warning(f"Encoded chunk metadata too long, skipping: {key}")
+                            continue
+                    except Exception as encode_error:
+                        logger.warning(f"Failed to encode non-ASCII chunk metadata, skipping: {key} - {encode_error}")
+                        continue
                 
                 validated_metadata[key] = value
             
@@ -358,7 +390,9 @@ class AudioProcessor:
                     # List files to find any existing chunks
                     chunk_prefix = f"audio/{clip_id}/chunk_"
                     all_files_result = self.r2.list_files(chunk_prefix)
-                    all_files = all_files_result['objects']
+                    all_files = all_files_result.get('objects', []) if all_files_result else []
+                    if not all_files_result:
+                        logger.warning(f"list_files returned None for prefix: {chunk_prefix}")
                     existing_chunks = [f for f in all_files if f.startswith(chunk_prefix) and f.endswith('.wav')]
                     
                     if existing_chunks:
@@ -376,12 +410,13 @@ class AudioProcessor:
                             chunk_indices = []
                             for chunk_file in existing_chunks:
                                 try:
-                                    # Extract chunk index from filename (e.g., "chunk_001.wav" -> 1)
+                                    # Extract chunk index from filename using regex for robust parsing
                                     filename = chunk_file.split('/')[-1]
-                                    if filename.startswith('chunk_') and filename.endswith('.wav'):
-                                        index_str = filename[6:-4]  # Remove "chunk_" and ".wav"
-                                        chunk_indices.append(int(index_str))
-                                except (ValueError, IndexError):
+                                    # Match pattern: chunk_<digits>.wav
+                                    match = re.match(r'^chunk_(\d+)\.wav$', filename)
+                                    if match:
+                                        chunk_indices.append(int(match.group(1)))
+                                except (ValueError, IndexError, AttributeError):
                                     continue
                             
                             if chunk_indices:
@@ -520,7 +555,7 @@ class AudioProcessor:
             ]
             
             logger.info(f"Converting {input_path} to {output_path}")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)
             
             # Verify output file
             if output_path.exists() and output_path.stat().st_size > 0:
@@ -530,6 +565,9 @@ class AudioProcessor:
                 logger.error(f"Conversion failed: output file {output_path} is missing or empty")
                 return False
                 
+        except subprocess.TimeoutExpired:
+            logger.error(f"FFmpeg conversion timed out after 300 seconds for {input_path}")
+            return False
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg conversion error: {e}")
             logger.error(f"FFmpeg stderr: {e.stderr}")
