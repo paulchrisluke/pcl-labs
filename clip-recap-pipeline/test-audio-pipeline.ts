@@ -1,0 +1,276 @@
+#!/usr/bin/env node
+/**
+ * Test script for audio processing pipeline integration
+ */
+
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
+
+const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
+const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'http://localhost:8000';
+
+interface TestResult {
+  name: string;
+  success: boolean;
+  error?: string;
+  data?: any;
+}
+
+async function testHealthEndpoints(): Promise<TestResult[]> {
+  const results: TestResult[] = [];
+  
+  // Test worker health
+  try {
+    console.log('🔍 Testing worker health...');
+    const workerResponse = await fetch(`${WORKER_URL}/health`);
+    const workerHealth = await workerResponse.json();
+    
+    results.push({
+      name: 'Worker Health',
+      success: workerResponse.ok && workerHealth.status === 'healthy',
+      data: workerHealth
+    });
+  } catch (error) {
+    results.push({
+      name: 'Worker Health',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+  
+  // Test audio processor health
+  try {
+    console.log('🔍 Testing audio processor health...');
+    const audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/health`);
+    const audioHealth = await audioResponse.json();
+    
+    results.push({
+      name: 'Audio Processor Health',
+      success: audioResponse.ok && audioHealth.status === 'healthy',
+      data: audioHealth
+    });
+  } catch (error) {
+    results.push({
+      name: 'Audio Processor Health',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+  
+  return results;
+}
+
+async function testClipProcessing(): Promise<TestResult[]> {
+  const results: TestResult[] = [];
+  
+  // Get a real clip ID from stored clips
+  let testClipId: string;
+  
+  try {
+    console.log('🔍 Fetching stored clips to get a test clip ID...');
+    const clipsResponse = await fetch(`${WORKER_URL}/api/twitch/clips/stored`);
+    const clipsResult = await clipsResponse.json();
+    
+    if (!clipsResponse.ok || !clipsResult.success || !clipsResult.clips || clipsResult.clips.length === 0) {
+      throw new Error('No stored clips available for testing');
+    }
+    
+    // Use the first available clip
+    testClipId = clipsResult.clips[0].id;
+    console.log(`📋 Using stored clip ID: ${testClipId}`);
+  } catch (error) {
+    results.push({
+      name: 'Clip Processing',
+      success: false,
+      error: `Failed to get stored clip: ${error instanceof Error ? error.message : 'Unknown error'}`
+    });
+    return results;
+  }
+  
+  try {
+    console.log(`🎵 Testing clip processing for ${testClipId}...`);
+    
+    // Test audio processing
+    const audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/process-clips`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        clip_ids: [testClipId],
+        background: false
+      })
+    });
+    
+    const audioResult = await audioResponse.json();
+    
+    results.push({
+      name: 'Audio Processing',
+      success: audioResponse.ok && audioResult.success,
+      data: audioResult
+    });
+    
+    // Wait for processing to complete
+    if (audioResponse.ok) {
+      console.log('⏳ Waiting for audio processing...');
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      
+      // Test transcription
+      const transcribeResponse = await fetch(`${WORKER_URL}/api/transcribe/clip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clipId: testClipId
+        })
+      });
+      
+      const transcribeResult = await transcribeResponse.json();
+      
+      results.push({
+        name: 'Transcription',
+        success: transcribeResponse.ok && transcribeResult.success,
+        data: transcribeResult
+      });
+      
+      // Test transcript status
+      const statusResponse = await fetch(`${WORKER_URL}/api/transcribe/status/${testClipId}`);
+      const statusResult = await statusResponse.json();
+      
+      results.push({
+        name: 'Transcript Status',
+        success: statusResponse.ok && statusResult.has_transcript,
+        data: statusResult
+      });
+    }
+    
+  } catch (error) {
+    results.push({
+      name: 'Clip Processing',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+  
+  return results;
+}
+
+async function testStoredClips(): Promise<TestResult[]> {
+  const results: TestResult[] = [];
+  
+  try {
+    console.log('📖 Testing stored clips...');
+    
+    // Get stored clips
+    const clipsResponse = await fetch(`${WORKER_URL}/api/twitch/clips/stored`);
+    const clipsResult = await clipsResponse.json();
+    
+    results.push({
+      name: 'Stored Clips',
+      success: clipsResponse.ok && clipsResult.success,
+      data: {
+        total_clips: clipsResult.clips?.length || 0,
+        has_more: clipsResult.has_more
+      }
+    });
+    
+    // Test processed clips list
+    const processedResponse = await fetch(`${AUDIO_PROCESSOR_URL}/list-processed-clips?limit=10`);
+    const processedResult = await processedResponse.json();
+    
+    results.push({
+      name: 'Processed Clips',
+      success: processedResponse.ok,
+      data: processedResult
+    });
+    
+  } catch (error) {
+    results.push({
+      name: 'Stored Clips',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+  
+  return results;
+}
+
+async function main() {
+  console.log('🧪 Testing Audio Processing Pipeline Integration\n');
+  console.log(`Worker URL: ${WORKER_URL}`);
+  console.log(`Audio Processor URL: ${AUDIO_PROCESSOR_URL}\n`);
+  
+  const allResults: TestResult[] = [];
+  
+  // Run health tests
+  console.log('=== Health Tests ===');
+  const healthResults = await testHealthEndpoints();
+  allResults.push(...healthResults);
+  
+  for (const result of healthResults) {
+    const status = result.success ? '✅' : '❌';
+    console.log(`${status} ${result.name}: ${result.success ? 'PASS' : result.error}`);
+  }
+  
+  console.log();
+  
+  // Run stored clips tests
+  console.log('=== Stored Clips Tests ===');
+  const storedResults = await testStoredClips();
+  allResults.push(...storedResults);
+  
+  for (const result of storedResults) {
+    const status = result.success ? '✅' : '❌';
+    console.log(`${status} ${result.name}: ${result.success ? 'PASS' : result.error}`);
+    if (result.data) {
+      console.log(`   Data: ${JSON.stringify(result.data)}`);
+    }
+  }
+  
+  console.log();
+  
+  // Run clip processing tests (only if health checks pass)
+  const healthPassed = healthResults.every(r => r.success);
+  if (healthPassed) {
+    console.log('=== Clip Processing Tests ===');
+    const processingResults = await testClipProcessing();
+    allResults.push(...processingResults);
+    
+    for (const result of processingResults) {
+      const status = result.success ? '✅' : '❌';
+      console.log(`${status} ${result.name}: ${result.success ? 'PASS' : result.error}`);
+      if (result.data) {
+        console.log(`   Data: ${JSON.stringify(result.data)}`);
+      }
+    }
+  } else {
+    console.log('⚠️ Skipping clip processing tests due to health check failures');
+  }
+  
+  console.log();
+  
+  // Summary
+  console.log('=== Test Summary ===');
+  const passed = allResults.filter(r => r.success).length;
+  const total = allResults.length;
+  
+  console.log(`Overall: ${passed}/${total} tests passed`);
+  
+  if (passed === total) {
+    console.log('🎉 All tests passed! Audio processing pipeline is working correctly.');
+    process.exit(0);
+  } else {
+    console.log('⚠️ Some tests failed. Please check the issues above.');
+    process.exit(1);
+  }
+}
+
+if (require.main === module) {
+  main().catch(error => {
+    console.error('Test failed with error:', error);
+    process.exit(1);
+  });
+}

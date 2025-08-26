@@ -1,133 +1,280 @@
-# Nuxt 3 Minimal Starter
+# PCL Labs - Audio Processing & Web Development
 
-Look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A comprehensive web application with Nuxt.js frontend and Python audio processing API, featuring Twitch clip processing and Cloudflare R2 storage integration.
 
-## Setup
+## 🚀 Features
 
-Make sure to install the dependencies:
+- **Nuxt.js 3 Frontend** - Modern, responsive web application
+- **Python Audio Processor API** - Serverless function for processing Twitch clips
+- **Cloudflare R2 Storage** - Scalable object storage for processed audio/video files
+- **Twitch Integration** - Download and process Twitch clips
+- **Automated Testing** - R2-based testing with real data
+- **Vercel Deployment** - Full-stack deployment with serverless functions
 
+## 📁 Project Structure
+
+```
+pcl-labs/
+├── app/                    # Nuxt.js app components
+├── components/             # Vue.js components
+├── content/                # Markdown content (blog, portfolio)
+├── pages/                  # Nuxt.js pages
+├── server/
+│   └── api/
+│       └── audio_processor.py  # Python API for audio processing
+├── clip-recap-pipeline/    # Cloudflare Workers pipeline
+├── vercel.json            # Vercel deployment configuration
+└── test_audio_processor.py # R2-based testing script
+```
+
+## 🛠️ Setup
+
+### Prerequisites
+
+- Node.js 18+ 
+- Python 3.8+
+- Vercel CLI
+- Cloudflare account (for R2 storage)
+
+### Installation
+
+1. **Clone the repository:**
 ```bash
-# npm
+git clone <repository-url>
+cd pcl-labs
+```
+
+2. **Install frontend dependencies:**
+```bash
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
+# or
 yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
+3. **Install Python dependencies:**
+```bash
+pip install -r requirements.txt
+```
 
-Start the development server on `http://localhost:3000`:
+4. **Install Vercel CLI:**
+```bash
+npm i -g vercel
+```
+
+## 🚀 Development
+
+### Frontend Development
+
+Start the Nuxt.js development server:
 
 ```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm run dev
-
-# yarn
+# or
 yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+The application will be available at `http://localhost:3000`
 
-Build the application for production:
+### API Development
+
+The Python API is deployed as a serverless function on Vercel. For local development:
+
+1. **Test the deployed API:**
+```bash
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor
+```
+
+2. **Run the R2-based test script:**
+```bash
+python3 test_audio_processor.py
+```
+
+## 🎵 Audio Processor API
+
+### Endpoints
+
+- **`GET /api/audio_processor`** - Health check and status
+- **`GET /api/audio_processor/latest`** - Get latest clip from R2 storage
+- **`GET /api/audio_processor/clips`** - List all clips in R2 storage
+- **`POST /api/audio_processor`** - Process Twitch clips
+
+### Example Usage
 
 ```bash
-# npm
-npm run build
+# Health check
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor
 
-# pnpm
-pnpm run build
+# Get latest clip
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor/latest
 
-# yarn
-yarn build
-
-# bun
-bun run build
+# Process clips
+curl -X POST https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor \
+  -H "Content-Type: application/json" \
+  -d '{"clip_ids": ["your-clip-id"], "background": false}'
 ```
 
-Locally preview production build:
+## ☁️ Cloudflare R2 Storage
+
+### Configuration
+
+Set the following environment variables in Vercel:
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm run preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_ZONE_ID=your_zone_id
+CLOUDFLARE_API_TOKEN=your_api_token
+R2_BUCKET=your_bucket_name
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+### Features
 
-## Adding a New Proposal
+- **Automatic upload** of processed clips to R2
+- **Metadata storage** with clip information
+- **Public URL generation** for uploaded files
+- **Latest clip retrieval** for testing
 
-To add a new proposal to the site:
+## 🧪 Testing
 
-1. **Create a Markdown file** in the `content/proposals/` directory. Use a descriptive filename, e.g. `client-name-project-title.md`.
-2. **Add the following frontmatter** at the top of your file (update the values as needed):
+### R2-Based Testing
+
+The test script automatically uses your R2 storage for realistic testing:
+
+```bash
+python3 test_audio_processor.py
+```
+
+**Test Features:**
+- ✅ Health check validation
+- ✅ R2 configuration verification
+- ✅ Latest clip retrieval
+- ✅ Real clip processing
+- ✅ Detailed result reporting
+
+### Manual Testing
+
+```bash
+# Test health endpoint
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor
+
+# Test latest clip endpoint
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor/latest
+
+# Test clips listing
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor/clips
+```
+
+## 🚀 Deployment
+
+### Vercel Deployment
+
+1. **Deploy to production:**
+```bash
+vercel --prod
+```
+
+2. **Deploy to preview:**
+```bash
+vercel
+```
+
+### Environment Variables
+
+Configure these in your Vercel project settings:
+
+**Required for R2 Storage:**
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_ZONE_ID` 
+- `CLOUDFLARE_API_TOKEN`
+- `R2_BUCKET`
+
+**Optional:**
+- `NODE_ENV=production`
+
+## 📝 Content Management
+
+### Adding Blog Posts
+
+1. Create a Markdown file in `content/blog/[category]/`
+2. Add frontmatter with metadata
+3. Write content using Markdown
+
+### Adding Portfolio Items
+
+1. Create a Markdown file in `content/portfolio/[category]/`
+2. Add frontmatter with project details
+3. Include images in `public/img/`
+
+### Example Frontmatter
 
 ```yaml
 ---
-title: Your Proposal Title
-description: A short summary of the proposal's purpose and value.
-keywords: keyword1, keyword2, keyword3
-client: Client Name
-date: YYYY-MM-DD
-estimatedCost: $X,XXX–$Y,YYY/month
-timeline: Project timeline or delivery estimate
+title: Your Content Title
+description: Brief description
+date: 2024-01-01
+tags: [tag1, tag2]
 ---
 ```
 
-3. **Write your proposal content** below the frontmatter, using Markdown for formatting.
+## 🔧 Configuration
 
-### Example
+### Vercel Configuration
 
-```markdown
----
-title: Your Proposal Title
-description: A short summary of the proposal's purpose and value.
-keywords: keyword1, keyword2, keyword3
-client: Client Name
-date: YYYY-MM-DD
-estimatedCost: $X,XXX–$Y,YYY/month
-timeline: Project timeline or delivery estimate
----
+The `vercel.json` file configures:
+- **Build settings** for Nuxt.js and Python
+- **API routes** for serverless functions
+- **SPA fallback** for client-side routing
 
-# Your Proposal Title
+### Nuxt Configuration
 
-...rest of your proposal...
+Key settings in `nuxt.config.ts`:
+- Content module configuration
+- Build optimization
+- Environment variables
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **R2 Storage Not Configured**
+   - Verify environment variables are set in Vercel
+   - Check API token permissions (R2 Storage:Edit)
+
+2. **API Function Invocation Failed**
+   - Ensure requirements.txt is in the root directory
+   - Check Python dependencies are compatible
+
+3. **Clip Processing Errors**
+   - Verify Twitch clip IDs are valid
+   - Check network connectivity for downloads
+
+### Debug Commands
+
+```bash
+# Check API health
+curl https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor
+
+# View deployment logs
+vercel logs
+
+# Test local development
+npm run dev
 ```
 
-- Make sure to keep the frontmatter at the very top of the file.
-- Use clear, descriptive values for each field.
-- For more examples, see existing files in `content/proposals/`.
+## 📄 License
 
-## Proposal Access Password
+This project is proprietary and confidential.
 
-To access the proposals section on the site, a password is required. This password is currently hardcoded in the file `pages/proposals/index.vue`.
+## 🤝 Contributing
 
-- **Default password:** `$p1ckl3s!`
-- To change the password, open `pages/proposals/index.vue` and update the following line:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-  ```js
-  if (password.value === '$p1ckl3s!') {
-  ```
+## 📞 Support
 
-- After changing the password, redeploy or restart your development server for the change to take effect.
-
-**Note:** For improved security, consider moving the password to an environment variable or a secure storage solution if you need to change it frequently or use different passwords for different environments.
+For questions or issues:
+- Check the troubleshooting section
+- Review API documentation
+- Contact the development team

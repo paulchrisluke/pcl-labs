@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": ".output/public"
+      }
+    },
+    {
+      "src": "server/api/audio_processor.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/audio_processor/(.*)",
+      "dest": "/server/api/audio_processor.py"
+    },
+    {
+      "src": "/api/audio_processor",
+      "dest": "/server/api/audio_processor.py"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/server/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html",
+      "continue": true
+    }
+  ]
+}
