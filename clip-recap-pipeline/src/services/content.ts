@@ -1,4 +1,4 @@
-import { Environment, TwitchClip, Transcript, BlogPost, JudgeResult, ClipSection } from '../types/index.js';
+import { Environment, TwitchClip, BlogPost, JudgeResult, ClipSection } from '../types/index.js';
 import { generateJWT } from '../utils/jwt.js';
 import { AIService } from '../utils/ai.js';
 
@@ -11,13 +11,12 @@ export class ContentService {
     this.aiService = new AIService(env);
   }
 
-  async selectBestClips(clips: TwitchClip[], transcripts: Transcript[]): Promise<TwitchClip[]> {
+  async selectBestClips(clips: TwitchClip[], transcripts: any[]): Promise<TwitchClip[]> {
     console.log('Selecting best clips...');
     
-    // Score clips based on dev-focused criteria
+    // Score clips based on metadata only (no transcripts available)
     const scoredClips = clips.map(clip => {
-      const transcript = transcripts.find(t => t.clip_id === clip.id);
-      const score = this.scoreClip(clip, transcript);
+      const score = this.scoreClip(clip);
       return { clip, score };
     });
 
@@ -31,37 +30,39 @@ export class ContentService {
     return sortedClips;
   }
 
-  private scoreClip(clip: TwitchClip, transcript?: Transcript): number {
+  private scoreClip(clip: TwitchClip): number {
     let score = 0;
-    const text = transcript?.segments?.map((s: any) => s.text).join(' ').toLowerCase() || '';
-
-    // Dev-focused scoring
-    if (text.includes('test') && (text.includes('pass') || text.includes('green'))) score += 5;
-    if (text.includes('commit') || text.includes('merge') || text.includes('pr')) score += 4;
-    if (text.includes('fix') || text.includes('bug') || text.includes('issue')) score += 4;
-    if (text.includes('build') && (text.includes('success') || text.includes('fail'))) score += 3;
-    if (text.includes('finally') || text.includes('works')) score += 3;
-    if (text.includes('error') || text.includes('exception')) score += 2;
-    if (text.includes('deploy') || text.includes('release')) score += 2;
     
+    // Score based on clip metadata only
     // View count bonus (but not too much)
     score += Math.min(clip.view_count / 10, 5);
     
     // Duration penalty for very long clips
     if (clip.duration > 120) score -= 2;
     
+    // Bonus for recent clips
+    const clipDate = new Date(clip.created_at);
+    const now = new Date();
+    const hoursSinceCreation = (now.getTime() - clipDate.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceCreation < 6) score += 2; // Bonus for clips from last 6 hours
+    
+    // Bonus for clips with descriptive titles
+    const title = clip.title.toLowerCase();
+    if (title.includes('fix') || title.includes('bug') || title.includes('issue')) score += 3;
+    if (title.includes('test') || title.includes('build')) score += 2;
+    if (title.includes('deploy') || title.includes('release')) score += 2;
+    
     return score;
   }
 
-  async generateBlogPost(clips: TwitchClip[], transcripts: Transcript[]): Promise<BlogPost> {
+  async generateBlogPost(clips: TwitchClip[], transcripts: any[]): Promise<BlogPost> {
     console.log('Generating blog post...');
     
     const date = new Date().toISOString().split('T')[0];
     const sections: ClipSection[] = [];
 
     for (const clip of clips) {
-      const transcript = transcripts.find(t => t.clip_id === clip.id);
-      const section = await this.generateClipSection(clip, transcript);
+      const section = await this.generateClipSection(clip);
       sections.push(section);
     }
 
@@ -100,15 +101,14 @@ export class ContentService {
     }
   }
 
-  private async generateClipSection(clip: TwitchClip, transcript?: Transcript): Promise<ClipSection> {
-    const text = transcript?.segments?.map((s: any) => s.text).join(' ') || '';
-    
+  private async generateClipSection(clip: TwitchClip): Promise<ClipSection> {
     // Generate section using Workers AI
     const prompt = `Create a blog section for this Twitch clip:
 
 Clip Title: ${clip.title}
 Duration: ${clip.duration} seconds
-Transcript: ${text}
+View Count: ${clip.view_count}
+Created: ${clip.created_at}
 
 Generate:
 1. A compelling H2 title (max 60 chars)
@@ -504,7 +504,7 @@ Content: ${blogPost.sections.map((s: any) => s.paragraph).join(' ')}
 
 Rate on a scale of 0-100 for each category:
 - Coherence (0-20): Each section stands alone
-- Technical correctness (0-25): Matches transcript/clip content
+- Technical correctness (0-25): Matches clip metadata and content
 - Dev signal (0-20): Clear development milestones
 - Narrative flow (0-15): Setup → attempt → result
 - Length/clarity (0-10): Precise, no fluff

@@ -4,17 +4,22 @@
   "description": "Daily Twitch clips to blog recap pipeline using Cloudflare Workers",
   "main": "src/index.ts",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "wrangler dev",
-    "dev:info": "echo 'Local dev server starts on random port (check terminal output)' && echo 'Secrets are NOT available in local dev - use production for testing integrations' && wrangler dev",
+    "dev:info": "echo 'Local dev runs on http://127.0.0.1:8787 by default (override with --port)' && echo 'Use .dev.vars for local secrets; production secrets are not auto-loaded (use --env <name> or --remote for edge testing)' && wrangler dev",
     "deploy": "wrangler deploy",
     "test": "npx tsx test-github.ts",
     "test:twitch": "npx tsx test-twitch.ts",
     "test:all": "npm run test && npm run test:twitch",
-    "test:local": "echo '⚠️  Local tests will fail - secrets not available in local dev' && echo 'Use: WORKER_URL=http://localhost:PORT npm run test:all' && echo 'Or test against production: npm run test:all'",
+    "test:local": "echo '⚠️  Local tests require secrets not available in local dev' && echo 'To test locally:' && echo '  1. Start dev server: npm run dev (runs on http://127.0.0.1:8787)' && echo '  2. Set WORKER_URL=http://127.0.0.1:8787' && echo '  3. Run: WORKER_URL=http://127.0.0.1:8787 npm run test:all' && echo '  4. Or test against production: npm run test:all' && echo 'Note: Use .dev.vars file or --remote flag to access secrets'",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/**/*.ts",
-    "format": "prettier --write src/**/*.ts"
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
   "keywords": [
     "twitch",
@@ -31,7 +36,10 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
+    "eslint": "^9.8.0",
+    "prettier": "^3.3.3",
     "tsx": "^4.20.5",
+    "typescript": "^5.6.0",
     "wrangler": "^4.32.0"
   }
 }

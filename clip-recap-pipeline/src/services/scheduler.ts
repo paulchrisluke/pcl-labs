@@ -107,34 +107,30 @@ async function handleDailyPipeline(env: Environment): Promise<void> {
       return;
     }
     
-    // Step 2: Transcribe clips
-    console.log(`Transcribing ${clips.length} clips...`);
-    const transcripts = await twitchService.transcribeClips(clips);
-    
-    // Step 3: Score and select best clips
+    // Step 2: Score and select best clips
     console.log('Scoring and selecting clips...');
-    const selectedClips = await contentService.selectBestClips(clips, transcripts);
+    const selectedClips = await contentService.selectBestClips(clips, []);
     
-    // Step 4: Generate blog post
+    // Step 3: Generate blog post
     if (!selectedClips?.length) {
       console.log('No clips selected after scoring. Skipping blog generation and PR creation.');
       return;
     }
     console.log('Generating blog post...');
-    const blogPost = await contentService.generateBlogPost(selectedClips, transcripts);
+    const blogPost = await contentService.generateBlogPost(selectedClips, []);
     
-    // Step 5: Create GitHub PR
+    // Step 4: Create GitHub PR
     console.log('Creating GitHub PR...');
     const pr = await contentService.createPR(blogPost);
     
-    // Step 6: Judge the content
+    // Step 5: Judge the content
     console.log('Running content judge...');
     const judgeResult = await contentService.judgeContent(blogPost);
     
-    // Step 7: Update PR with judge results
+    // Step 6: Update PR with judge results
     await contentService.updatePRWithJudgeResults(pr.number, judgeResult);
     
-    // Step 8: Send Discord notification
+    // Step 7: Send Discord notification
     console.log('Sending Discord notification...');
     await discordService.notifyPRCreated(pr, judgeResult, selectedClips.length);
     
