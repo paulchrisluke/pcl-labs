@@ -10,7 +10,11 @@
     },
     {
       "src": "server/api/audio_processor.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 900,
+        "memory": 3008
+      }
     }
   ],
   "routes": [
@@ -31,11 +35,5 @@
       "dest": "/index.html",
       "continue": true
     }
-  ],
-  "functions": {
-    "server/api/audio_processor.py": {
-      "maxDuration": 900,
-      "memory": 3008
-    }
-  }
+  ]
 }
