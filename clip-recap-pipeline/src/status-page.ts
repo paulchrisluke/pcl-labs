@@ -1,4 +1,4 @@
-import { Environment } from './types/index.js';
+import type { Environment } from './types/index.js';
 import { calculateUptime } from './utils/uptime.js';
 
 // Declare fetch as available globally (Cloudflare Workers environment)
@@ -29,8 +29,18 @@ function formatDate(date: Date): string {
 async function validateServiceEndpoint(endpoint: string, serviceName: string, now: Date): Promise<ServiceStatus> {
   let status: ServiceStatus = { status: 'offline', lastTested: formatDate(now), error: 'Test failed' };
   
+  // Create AbortController with 5 second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  
   try {
-    const response = await fetch(endpoint);
+    const response = await fetch(endpoint, {
+      signal: controller.signal
+    });
+    
+    // Clear timeout since fetch completed
+    clearTimeout(timeoutId);
+    
     if (response.ok) {
       const result = await response.json() as { success?: boolean; error?: string };
       if (result.success) {
@@ -42,7 +52,18 @@ async function validateServiceEndpoint(endpoint: string, serviceName: string, no
       status = { status: 'offline', lastTested: formatDate(now), error: `HTTP ${response.status}` };
     }
   } catch (error) {
-    status = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
+    // Clear timeout in case of error
+    clearTimeout(timeoutId);
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        status = { status: 'offline', lastTested: formatDate(now), error: 'Timeout after 5s' };
+      } else {
+        status = { status: 'offline', lastTested: formatDate(now), error: error.message };
+      }
+    } else {
+      status = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
+    }
   }
   
   return status;
@@ -51,44 +72,44 @@ async function validateServiceEndpoint(endpoint: string, serviceName: string, no
 /**
  * Helper function to check binding availability
  */
-function checkBindingStatus(binding: any, now: Date, bindingName: string): ServiceStatus {
+function checkBindingStatus(binding: unknown, now: Date): ServiceStatus {
   try {
     if (binding) {
       return { status: 'online', lastTested: formatDate(now), error: '' };
     } else {
       return { status: 'offline', lastTested: formatDate(now), error: 'Not available' };
     }
-  } catch (error) {
+  } catch {
     return { status: 'offline', lastTested: formatDate(now), error: 'Binding not available' };
   }
 }
 
 // Helper function to get real service status from Cloudflare workers
-async function getServiceStatus(env: Environment) {
+async function getServiceStatus(env: Environment, baseUrl?: string) {
   const now = new Date();
 
-  // Production worker URL
-  const productionUrl = 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
+  // Use provided baseUrl or default to production worker URL
+  const serviceUrl = baseUrl || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
 
-  // Test Twitch integration against production worker
+  // Test Twitch integration against the service URL
   const twitchStatus = await validateServiceEndpoint(
-    `${productionUrl}/validate-twitch`,
+    `${serviceUrl}/validate-twitch`,
     'Twitch',
     now
   );
 
-  // Test GitHub integration against production worker
+  // Test GitHub integration against the service URL
   const githubStatus = await validateServiceEndpoint(
-    `${productionUrl}/validate-github`,
+    `${serviceUrl}/validate-github`,
     'GitHub',
     now
   );
 
   // Test AI processing (Workers AI binding)
-  const aiStatus = checkBindingStatus(env.ai, now, 'AI');
+  const aiStatus = checkBindingStatus(env.ai, now);
 
   // Test Cloud Storage (R2 binding)
-  const storageStatus = checkBindingStatus(env.R2_BUCKET, now, 'R2');
+  const storageStatus = checkBindingStatus(env.R2_BUCKET, now);
 
   return {
     twitch: twitchStatus,
@@ -98,8 +119,8 @@ async function getServiceStatus(env: Environment) {
   };
 }
 
-export async function generateStatusPage(env: Environment): Promise<string> {
-  const statusData = await getServiceStatus(env);
+export async function generateStatusPage(env: Environment, baseUrl?: string): Promise<string> {
+  const statusData = await getServiceStatus(env, baseUrl);
   
   return `<!DOCTYPE html>
 <html lang="en">

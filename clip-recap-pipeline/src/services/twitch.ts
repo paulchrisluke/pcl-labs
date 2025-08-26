@@ -1,4 +1,4 @@
-import { Environment, TwitchClip, TwitchTokenResponse } from '../types/index.js';
+import type { Environment, TwitchClip, TwitchTokenResponse } from '../types/index.js';
 import { getBroadcasterId } from '../get-broadcaster-id.js';
 
 export class TwitchService {

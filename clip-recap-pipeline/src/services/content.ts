@@ -1,4 +1,4 @@
-import { Environment, TwitchClip, BlogPost, JudgeResult, ClipSection } from '../types/index.js';
+import type { Environment, TwitchClip, BlogPost, JudgeResult, ClipSection } from '../types/index.js';
 import { generateJWT } from '../utils/jwt.js';
 import { AIService } from '../utils/ai.js';
 
@@ -232,7 +232,7 @@ Format as JSON:
     }
   }
 
-  private async getGitHubToken(): Promise<string> {
+  public async getGitHubToken(): Promise<string> {
     // Check cache first
     const now = Date.now();
     if (this.cachedGitHubToken && this.cachedGitHubTokenExpiry && now < this.cachedGitHubTokenExpiry) {
@@ -370,7 +370,8 @@ Format as JSON:
           const t = await getResp.text().catch(() => '');
           throw new Error(`Failed to read existing file for update: ${getResp.status} ${getResp.statusText} - ${t}`);
         }
-        const { sha } = await getResp.json();
+        const responseData = await getResp.json() as { sha: string };
+        const { sha } = responseData;
         const upd = await fetch(
           `https://api.github.com/repos/${this.env.CONTENT_REPO_OWNER}/${this.env.CONTENT_REPO_NAME}/contents/${path}`,
           {
@@ -566,7 +567,7 @@ Format as JSON:
         overall,
         per_axis,
         reasons,
-        action: action as const
+        action: action
       };
     } catch (error) {
       console.error('AI response parsing failed:', error);
@@ -582,7 +583,7 @@ Format as JSON:
           safety: 6
         },
         reasons: ['AI parsing failed, using fallback'],
-        action: 'approve' as const
+        action: 'approve'
       };
     }
   }
