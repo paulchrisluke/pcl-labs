@@ -199,8 +199,8 @@ export default {
                 // Try to construct video URL using clip info
                 // This is a fallback approach - we'll use the known working URLs for now
                 const knownVideoUrls = {
-                  "GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0": "https://production.assets.clips.twitchcdn.net/v2/media/GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0/56cb2080-6d7e-4008-a1ca-e18f6b013017/video-1080.mp4?sig=f4e9665ed9da44b5e5584ac106dd4600ac08ba74&token=%7B%22authorization%22%3A%7B%22forbidden%22%3Afalse%2C%22reason%22%3A%22%22%7D%2C%22clip_uri%22%3A%22%22%2C%22clip_slug%22%3A%22GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0%22%2C%22device_id%22%3Anull%2C%22expires%22%3A1756176101%2C%22user_id%22%3A%22%22%2C%22version%22%3A3%7D",
-                  "KitschyHedonisticCakeDxAbomb-2nzcl2ieluou-Ub-": "https://production.assets.clips.twitchcdn.net/v2/media/KitschyHedonisticCakeDxAbomb-2nzcl2ieluou-Ub-/c24ea41e-0036-4c6b-82cf-06c18e100423/video-1080.mp4?sig=0992ac771e9d10b83ab35cc6e021d0bd681ec9de&token=%7B%22authorization%22%3A%7B%22forbidden%22%3Afalse%2C%22reason%22%3A%22%22%7D%2C%22clip_uri%22%3A%22%22%2C%22clip_slug%22%3A%22KitschyHedonisticCakeDxAbomb-2nzcl2ieluou-Ub-%22%2C%22device_id%22%3Anull%2C%22expires%22%3A1756176273%2C%22user_id%22%3A%22%22%2C%22version%22%3A3%7D"
+                  "GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0": "https://production.assets.clips.twitchcdn.net/v2/media/GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0/56cb2080-6d7e-4008-a1ca-e18f6b013017/video-1080.mp4?sig=d7582b8fea9f0fb8b7df804d9d6a3815610f1096&token=%7B%22authorization%22%3A%7B%22forbidden%22%3Afalse%2C%22reason%22%3A%22%22%7D%2C%22clip_uri%22%3A%22%22%2C%22clip_slug%22%3A%22GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0%22%2C%22device_id%22%3Anull%2C%22expires%22%3A1756255500%2C%22user_id%22%3A%22%22%2C%22version%22%3A3%7D",
+                  "KitschyHedonisticCakeDxAbomb-2nzcl2ieluou-Ub-": "https://production.assets.clips.twitchcdn.net/v2/media/KitschyHedonisticCakeDxAbomb-2nzcl2ieluou-Ub-/c24ea41e-0036-4c6b-82cf-06c18e100423/video-1080.mp4?sig=6f71dac3a8d46ce8fa28f76bd87d9ff705c80730&token=%7B%22authorization%22%3A%7B%22forbidden%22%3Afalse%2C%22reason%22%3A%22%22%7D%2C%22clip_uri%22%3A%22%22%2C%22clip_slug%22%3A%22KitschyHedonisticCakeDxAbomb-2nzcl2ieluou-Ub-%22%2C%22device_id%22%3Anull%2C%22expires%22%3A1756255505%2C%22user_id%22%3A%22%22%2C%22version%22%3A3%7D"
                 };
                 
                 const videoUrl = knownVideoUrls[clipId];
@@ -291,6 +291,251 @@ export default {
         
       } catch (error) {
         console.error('Audio download test failed:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Test retrieving stored videos from R2
+    if (url.pathname === '/test-stored-videos') {
+      try {
+        console.log('📹 Testing stored videos from R2...');
+        
+        // List all stored videos
+        const list = await env.R2_BUCKET.list({ prefix: 'videos/' });
+        
+        if (list.objects.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No videos found in R2 storage'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const results = [];
+        
+        for (const object of list.objects) {
+          try {
+            const videoObject = await env.R2_BUCKET.get(object.key);
+            
+            if (videoObject) {
+              const videoBuffer = await videoObject.arrayBuffer();
+              results.push({
+                video_key: object.key,
+                video_size: videoBuffer.byteLength,
+                content_type: videoObject.httpMetadata?.contentType || 'unknown',
+                uploaded: object.uploaded
+              });
+            }
+          } catch (error) {
+            results.push({
+              video_key: object.key,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Found ${list.objects.length} videos in R2`,
+          results: results
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Stored videos test failed:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Test Whisper with a simple audio sample first
+    if (url.pathname === '/test-whisper-simple') {
+      try {
+        console.log('🎤 Testing Whisper with simple audio...');
+        
+        // Create a simple test audio as base64 string
+        // This is a minimal valid WAV file with actual audio content (very small)
+        const base64Audio = "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT";
+        
+        console.log('Base64 audio length:', base64Audio.length);
+        
+        // Test Whisper with the base64 audio string
+        const transcription = await env.ai.run('@cf/openai/whisper', base64Audio);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          transcription: transcription,
+          message: 'Whisper test completed'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Whisper test failed:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Test audio extraction and Whisper transcription
+    if (url.pathname === '/test-transcription') {
+      try {
+        console.log('🎤 Testing audio extraction and Whisper transcription...');
+        
+        // List all stored videos
+        const list = await env.R2_BUCKET.list({ prefix: 'videos/' });
+        
+        if (list.objects.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No videos found in R2 storage'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const results = [];
+        
+        for (const object of list.objects) {
+          try {
+            console.log(`Processing video: ${object.key}`);
+            
+            // Get video from R2
+            const videoObject = await env.R2_BUCKET.get(object.key);
+            
+            if (!videoObject) {
+              results.push({
+                video_key: object.key,
+                success: false,
+                error: 'Video not found in R2'
+              });
+              continue;
+            }
+            
+            const videoBuffer = await videoObject.arrayBuffer();
+            
+            // Extract clip ID from video key
+            const clipIdMatch = object.key.match(/videos\/([^.]+)\.mp4/);
+            if (!clipIdMatch) {
+              results.push({
+                video_key: object.key,
+                success: false,
+                error: 'Could not extract clip ID from video key'
+              });
+              continue;
+            }
+            
+            const clipId = clipIdMatch[1];
+            
+            // For now, we'll use the video buffer directly with Whisper
+            // In a production system, you'd want to extract audio first
+            console.log(`Transcribing video for clip: ${clipId}`);
+            
+            // Extract audio from MP4 and convert to base64 string for Whisper
+            // We'll use a simple approach to extract audio data from the MP4 file
+            
+            const videoArray = new Uint8Array(videoBuffer);
+            
+            // For now, let's try using just the first 100KB of the video as base64
+            // This is a temporary approach to test Whisper functionality
+            const maxSize = 100 * 1024; // 100KB
+            const videoChunk = videoArray.slice(0, maxSize);
+            
+            // Convert to base64 using a more efficient method
+            let base64Video = '';
+            const chunkSize = 1024; // 1KB chunks for base64 conversion
+            for (let i = 0; i < videoChunk.length; i += chunkSize) {
+              const chunk = videoChunk.slice(i, i + chunkSize);
+              base64Video += btoa(String.fromCharCode(...chunk));
+            }
+            
+            console.log(`Converted ${videoChunk.length} bytes to base64 for ${clipId}`);
+            console.log(`Base64 result length: ${base64Video.length}`);
+            console.log(`Base64 result preview: ${base64Video.substring(0, 100)}...`);
+            
+            // Use Cloudflare AI Whisper with the base64 video data
+            const transcription = await env.ai.run('@cf/openai/whisper', base64Video);
+            
+            if (transcription && transcription.text) {
+              console.log(`Transcription successful for ${clipId}: ${transcription.text.substring(0, 100)}...`);
+              
+              // Store transcript in R2
+              const transcriptKey = `transcripts/${clipId}.json`;
+              const transcriptData = {
+                clip_id: clipId,
+                transcript: transcription.text,
+                language: 'en',
+                model: 'whisper',
+                created_at: new Date().toISOString(),
+                video_key: object.key,
+                video_size: videoBuffer.byteLength
+              };
+              
+              await env.R2_BUCKET.put(transcriptKey, JSON.stringify(transcriptData), {
+                httpMetadata: {
+                  contentType: 'application/json',
+                },
+              });
+              
+              results.push({
+                video_key: object.key,
+                clip_id: clipId,
+                success: true,
+                transcript_length: transcription.text.length,
+                transcript_preview: transcription.text.substring(0, 100) + '...',
+                transcript_key: transcriptKey
+              });
+            } else {
+              results.push({
+                video_key: object.key,
+                clip_id: clipId,
+                success: false,
+                error: 'No transcription text returned from Whisper'
+              });
+            }
+            
+          } catch (error) {
+            results.push({
+              video_key: object.key,
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Processed ${list.objects.length} videos for transcription`,
+          results: results
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Transcription test failed:', error);
         return new Response(JSON.stringify({
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -857,249 +1102,6 @@ export default {
         }
 
       } catch (error) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-    
-    // Test retrieving stored videos from R2
-    if (url.pathname === '/test-stored-videos') {
-      try {
-        console.log('📹 Testing stored videos from R2...');
-        
-        // List all stored videos
-        const list = await env.R2_BUCKET.list({ prefix: 'videos/' });
-        
-        if (list.objects.length === 0) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'No videos found in R2 storage'
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-        
-        const results = [];
-        
-        for (const object of list.objects) {
-          try {
-            const videoObject = await env.R2_BUCKET.get(object.key);
-            
-            if (videoObject) {
-              const videoBuffer = await videoObject.arrayBuffer();
-              results.push({
-                video_key: object.key,
-                video_size: videoBuffer.byteLength,
-                content_type: videoObject.httpMetadata?.contentType || 'unknown',
-                uploaded: object.uploaded
-              });
-            }
-          } catch (error) {
-            results.push({
-              video_key: object.key,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            });
-          }
-        }
-        
-        return new Response(JSON.stringify({
-          success: true,
-          message: `Found ${list.objects.length} videos in R2`,
-          results: results
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-      } catch (error) {
-        console.error('Stored videos test failed:', error);
-        return new Response(JSON.stringify({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-    
-    // Test Whisper with a simple audio sample first
-    if (url.pathname === '/test-whisper-simple') {
-      try {
-        console.log('🎤 Testing Whisper with simple audio...');
-        
-        // Create a simple test audio as base64 string
-        // This is a minimal valid WAV file with actual audio content (very small)
-        const base64Audio = "UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT";
-        
-        console.log('Base64 audio length:', base64Audio.length);
-        
-        // Test Whisper with the base64 audio string
-        const transcription = await env.ai.run('@cf/openai/whisper', base64Audio);
-        
-        return new Response(JSON.stringify({
-          success: true,
-          transcription: transcription,
-          message: 'Whisper test completed'
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-      } catch (error) {
-        console.error('Whisper test failed:', error);
-        return new Response(JSON.stringify({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-    
-    // Test audio extraction and Whisper transcription
-    if (url.pathname === '/test-transcription') {
-      try {
-        console.log('🎤 Testing audio extraction and Whisper transcription...');
-        
-        // List all stored videos
-        const list = await env.R2_BUCKET.list({ prefix: 'videos/' });
-        
-        if (list.objects.length === 0) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'No videos found in R2 storage'
-          }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-        
-        const results = [];
-        
-        for (const object of list.objects) {
-          try {
-            console.log(`Processing video: ${object.key}`);
-            
-            // Get video from R2
-            const videoObject = await env.R2_BUCKET.get(object.key);
-            
-            if (!videoObject) {
-              results.push({
-                video_key: object.key,
-                success: false,
-                error: 'Video not found in R2'
-              });
-              continue;
-            }
-            
-            const videoBuffer = await videoObject.arrayBuffer();
-            
-            // Extract clip ID from video key
-            const clipIdMatch = object.key.match(/videos\/([^.]+)\.mp4/);
-            if (!clipIdMatch) {
-              results.push({
-                video_key: object.key,
-                success: false,
-                error: 'Could not extract clip ID from video key'
-              });
-              continue;
-            }
-            
-            const clipId = clipIdMatch[1];
-            
-            // For now, we'll use the video buffer directly with Whisper
-            // In a production system, you'd want to extract audio first
-            console.log(`Transcribing video for clip: ${clipId}`);
-            
-            // Extract audio from MP4 and convert to base64 string for Whisper
-            // We'll use a simple approach to extract audio data from the MP4 file
-            
-            const videoArray = new Uint8Array(videoBuffer);
-            
-            // For now, let's try using just the first 100KB of the video as base64
-            // This is a temporary approach to test Whisper functionality
-            const maxSize = 100 * 1024; // 100KB
-            const videoChunk = videoArray.slice(0, maxSize);
-            
-            // Convert to base64 using a more efficient method
-            let base64Video = '';
-            const chunkSize = 1024; // 1KB chunks for base64 conversion
-            for (let i = 0; i < videoChunk.length; i += chunkSize) {
-              const chunk = videoChunk.slice(i, i + chunkSize);
-              base64Video += btoa(String.fromCharCode(...chunk));
-            }
-            
-            console.log(`Converted ${videoChunk.length} bytes to base64 for ${clipId}`);
-            
-            // Use Cloudflare AI Whisper with the base64 video data
-            const transcription = await env.ai.run('@cf/openai/whisper', base64Video);
-            
-            if (transcription && transcription.text) {
-              console.log(`Transcription successful for ${clipId}: ${transcription.text.substring(0, 100)}...`);
-              
-              // Store transcript in R2
-              const transcriptKey = `transcripts/${clipId}.json`;
-              const transcriptData = {
-                clip_id: clipId,
-                transcript: transcription.text,
-                language: 'en',
-                model: 'whisper',
-                created_at: new Date().toISOString(),
-                video_key: object.key,
-                video_size: videoBuffer.byteLength
-              };
-              
-              await env.R2_BUCKET.put(transcriptKey, JSON.stringify(transcriptData), {
-                httpMetadata: {
-                  contentType: 'application/json',
-                },
-              });
-              
-              results.push({
-                video_key: object.key,
-                clip_id: clipId,
-                success: true,
-                transcript_length: transcription.text.length,
-                transcript_preview: transcription.text.substring(0, 100) + '...',
-                transcript_key: transcriptKey
-              });
-            } else {
-              results.push({
-                video_key: object.key,
-                clip_id: clipId,
-                success: false,
-                error: 'No transcription text returned from Whisper'
-              });
-            }
-            
-          } catch (error) {
-            results.push({
-              video_key: object.key,
-              success: false,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            });
-          }
-        }
-        
-        return new Response(JSON.stringify({
-          success: true,
-          message: `Processed ${list.objects.length} videos for transcription`,
-          results: results
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-      } catch (error) {
-        console.error('Transcription test failed:', error);
         return new Response(JSON.stringify({
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
