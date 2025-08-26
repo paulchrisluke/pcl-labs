@@ -57,12 +57,19 @@ class R2Storage:
         self.api_token = self._validate_required_env('CLOUDFLARE_API_TOKEN')
         self.bucket = self._validate_required_env('R2_BUCKET')
         
+        # Debug logging
+        logger.info(f"R2 Configuration - Account ID: {'SET' if self.account_id else 'MISSING'}")
+        logger.info(f"R2 Configuration - API Token: {'SET' if self.api_token else 'MISSING'}")
+        logger.info(f"R2 Configuration - Bucket: {'SET' if self.bucket else 'MISSING'}")
+        
         if not all([self.account_id, self.api_token, self.bucket]):
             logger.warning("Missing required Cloudflare environment variables - R2 uploads will be disabled")
             self.enabled = False
         else:
+            logger.info("All R2 environment variables are set - R2 storage is enabled")
             self.enabled = True
-            self.base_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/storage/buckets/{self.bucket}"
+            # Use the correct R2 REST API endpoint
+            self.base_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/r2/buckets/{self.bucket}/objects"
             self.headers = {
                 'Authorization': f'Bearer {self.api_token}',
                 'Content-Type': 'application/json'
@@ -96,7 +103,7 @@ class R2Storage:
             return False
             
         try:
-            url = f"{self.base_url}/objects/{key}"
+            url = f"{self.base_url}/{key}"
             headers = {
                 'Authorization': f'Bearer {self.api_token}',
                 'Content-Type': content_type
@@ -106,7 +113,7 @@ class R2Storage:
             if metadata:
                 for k, v in metadata.items():
                     if isinstance(v, str) and len(v) <= 1024:  # R2 metadata value limit
-                        headers[f'X-Meta-{k}'] = v
+                        headers[f'x-amz-meta-{k}'] = v
             
             response = requests.put(url, data=data, headers=headers)
             response.raise_for_status()
@@ -129,7 +136,7 @@ class R2Storage:
             return []
             
         try:
-            url = f"{self.base_url}/objects"
+            url = self.base_url
             params = {
                 'prefix': prefix,
                 'limit': limit
@@ -139,7 +146,12 @@ class R2Storage:
             response.raise_for_status()
             
             data = response.json()
-            objects = data.get('result', {}).get('objects', [])
+            if data.get('success'):
+                result = data.get('result', {})
+                objects = result.get('objects', []) if isinstance(result, dict) else []
+            else:
+                logger.error(f"API error listing objects: {data.get('errors', [])}")
+                objects = []
             
             # Extract clip IDs from object keys
             clips = []

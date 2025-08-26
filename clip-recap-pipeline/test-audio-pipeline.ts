@@ -9,7 +9,7 @@ import { config } from 'dotenv';
 config();
 
 const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
-const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor';
+const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-no52x5jv0-pcl-labs.vercel.app/api/audio_processor';
 
 interface TestResult {
   name: string;
