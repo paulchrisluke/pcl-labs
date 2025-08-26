@@ -9,7 +9,7 @@ import { config } from 'dotenv';
 config();
 
 const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
-const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'http://localhost:8000';
+const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor';
 
 interface TestResult {
   name: string;
@@ -268,9 +268,8 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main().catch(error => {
-    console.error('Test failed with error:', error);
-    process.exit(1);
-  });
-}
+// Run the main function
+main().catch(error => {
+  console.error('Test failed with error:', error);
+  process.exit(1);
+});

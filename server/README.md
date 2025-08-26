@@ -32,12 +32,26 @@ cp env.example .env
 # Edit .env with your Cloudflare credentials
 ```
 
+### Getting Cloudflare Credentials
+
+1. **Account ID**: Go to your Cloudflare dashboard and copy your Account ID from the right sidebar
+2. **API Token**: Create a new API token with the following permissions:
+   - Account > Cloudflare R2 Storage > Edit
+   - Account > Account Settings > Read
+   
+   The token should be ~50+ characters long and start with a format like `oa-...`
+
+### API Endpoints
+
+The service uses the correct Cloudflare R2 API endpoints:
+- **Bucket Management**: `https://api.cloudflare.com/client/v4/accounts/{account_id}/r2/buckets`
+- **Object Operations**: `https://api.cloudflare.com/client/v4/accounts/{account_id}/r2/buckets/{bucket}/objects`
+
 ### Environment Variables
 
 Required environment variables:
-- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
-- `CLOUDFLARE_ZONE_ID` - Cloudflare zone ID
-- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with R2 permissions
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (32 character hex string)
+- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with R2 permissions (should be ~50+ characters)
 - `R2_BUCKET` - R2 bucket name (default: clip-recap-assets)
 
 Optional:
