@@ -1,53 +1,53 @@
+# Wrangler Configuration for Twitch Clip Recap Pipeline
+# 
+# This is a single-environment configuration that works for both local dev and production.
+# All sensitive data is stored as secrets using 'wrangler secret put'.
+# 
+# Local Development:
+# - Run: npm run dev (uses random port - check terminal output)
+# - Secrets are NOT available in local dev
+# - Use production worker for testing integrations
+#
+# Production:
+# - Run: npm run deploy
+# - All secrets and bindings available
+# - Cron triggers active
+
 name = "clip-recap-pipeline"
 main = "src/index.ts"
-compatibility_date = "2024-01-15"
+compatibility_date = "2024-12-19"
+compatibility_flags = ["nodejs_compat"]
 
-# Default environment bindings (for local development)
-[ai]
-binding = "ai"
-
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "clip-recap-embeddings"
-
-[[r2_buckets]]
-binding = "R2_BUCKET"
-bucket_name = "clip-recap-assets"
-
-# Cron triggers (production only). All times are UTC.
+# Cron triggers. All times are UTC.
 # 0 2 * * *  -> Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
 # 0 * * * *  -> Every hour - token validation
-[env.production.triggers]
+[triggers]
 crons = [
   "0 2 * * *",
   "0 * * * *"
 ]
 
-[env.production]
-name = "clip-recap-pipeline"
-
-[env.production.ai]
+# AI binding for AI model access
+[ai]
 binding = "ai"
 
-[[env.production.vectorize]]
+# Vectorize index for embeddings storage
+[[vectorize]]
 binding = "VECTORIZE"
 index_name = "clip-recap-embeddings"
 
-[[env.production.r2_buckets]]
+# R2 bucket for clip storage
+[[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 
-# Environment variables (set via wrangler secret put)
+# All sensitive data is stored as secrets using wrangler secret put
+# Run 'npx wrangler secret list' to see current secrets
+# 
+# Current secrets (set via wrangler secret put):
 # TWITCH_CLIENT_ID
 # TWITCH_CLIENT_SECRET  
 # TWITCH_BROADCASTER_ID
-# TWITCH_BROADCASTER_LOGIN
-# GITHUB_APP_ID
-# GITHUB_INSTALLATION_ID
-# GITHUB_PRIVATE_KEY  # PEM-encoded private key for the GitHub App
-# GITHUB_WEBHOOK_SECRET
-# DISCORD_BOT_TOKEN
-# DISCORD_REVIEW_CHANNEL_ID
-# CONTENT_REPO_OWNER
-# CONTENT_REPO_NAME
-# CONTENT_REPO_MAIN_BRANCH
+# GITHUB_TOKEN
+# GITHUB_TOKEN_BLAWBY
+# GITHUB_TOKEN_PAULCHRISLUKE
