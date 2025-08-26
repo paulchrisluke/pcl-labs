@@ -1,4 +1,4 @@
-import { Environment, JudgeResult } from '../types/index.js';
+import type { Environment, JudgeResult } from '../types/index.js';
 
 interface DiscordEmbed {
   title: string;

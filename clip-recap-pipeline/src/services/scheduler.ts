@@ -109,15 +109,55 @@ async function handleDailyPipeline(env: Environment): Promise<void> {
     
     // Step 1.5: Store clips to R2
     console.log(`Storing ${clips.length} clips to R2...`);
-    for (const clip of clips) {
+    
+    const uploadPromises = clips.map(async (clip) => {
       const key = `clips/${clip.id}.json`;
-      await env.R2_BUCKET.put(key, JSON.stringify(clip), {
-        httpMetadata: {
-          contentType: 'application/json',
-        },
-      });
+      try {
+        await env.R2_BUCKET.put(key, JSON.stringify(clip), {
+          httpMetadata: {
+            contentType: 'application/json',
+          },
+        });
+        return { status: 'fulfilled' as const, clipId: clip.id, key };
+      } catch (error) {
+        return { 
+          status: 'rejected' as const, 
+          clipId: clip.id, 
+          key, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        };
+      }
+    });
+    
+    const uploadResults = await Promise.allSettled(uploadPromises);
+    
+    // Process results and log outcomes
+    let successCount = 0;
+    let failureCount = 0;
+    
+    for (const result of uploadResults) {
+      if (result.status === 'fulfilled') {
+        const uploadResult = result.value;
+        if (uploadResult.status === 'fulfilled') {
+          successCount++;
+          console.log(`✅ Successfully uploaded clip ${uploadResult.clipId} to ${uploadResult.key}`);
+        } else {
+          failureCount++;
+          console.error(`❌ Failed to upload clip ${uploadResult.clipId} to ${uploadResult.key}: ${uploadResult.error}`);
+        }
+      } else {
+        failureCount++;
+        console.error(`❌ Upload promise rejected for unknown clip: ${result.reason}`);
+      }
     }
-    console.log('✅ Clips stored to R2');
+    
+    console.log(`📊 R2 upload summary: ${successCount} successful, ${failureCount} failed`);
+    
+    if (failureCount > 0) {
+      console.warn(`⚠️ ${failureCount} clip uploads failed, but pipeline will continue`);
+    } else {
+      console.log('✅ All clips stored to R2 successfully');
+    }
     
     // Step 2: Score and select best clips
     console.log('Scoring and selecting clips...');

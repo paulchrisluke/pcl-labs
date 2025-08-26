@@ -39,9 +39,9 @@ export async function generateJWT(
   };
 
   // Header (kid optional for GitHub App key id)
-  const header = (options.keyId
+  const header = options.keyId
     ? { alg: 'RS256', typ: 'JWT', kid: options.keyId }
-    : { alg: 'RS256', typ: 'JWT' }) as const;
+    : { alg: 'RS256', typ: 'JWT' };
 
   // Backdate iat to avoid clock skew; ensure exp - iat ≤ 600s and exp > now
   const now = Math.floor(Date.now() / 1000);

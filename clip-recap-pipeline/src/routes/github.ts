@@ -57,7 +57,7 @@ export async function handleGitHubRequest(request: Request, env: any): Promise<R
       const allowedMethods = endpointMethods[path] || ['GET', 'POST'];
       
       // Build dynamic CORS headers
-      const dynamicCorsHeaders = {
+      const dynamicCorsHeaders: Record<string, string> = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Max-Age': '86400',
         'Vary': 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',

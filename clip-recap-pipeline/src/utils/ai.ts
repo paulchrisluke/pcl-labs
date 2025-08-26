@@ -1,4 +1,4 @@
-import { Environment } from '../types/index.js';
+import type { Environment } from '../types/index.js';
 
 export interface AIRetryOptions {
   timeout?: number;

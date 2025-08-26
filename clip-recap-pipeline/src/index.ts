@@ -1,4 +1,4 @@
-import { Environment, TwitchTokenResponse, HealthResponse } from './types/index.js';
+import type { Environment, TwitchTokenResponse, HealthResponse } from './types/index.js';
 import { validateClipId, validateClipData, validateClipObject } from './utils/validation.js';
 import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
@@ -611,7 +611,7 @@ export default {
     }
     
     // Default response - API Status Page
-    const html = await generateStatusPage(env);
+    const html = await generateStatusPage(env, url.origin);
     
     return new Response(html, { 
       status: 200,
