@@ -74,6 +74,8 @@ export class TwitchService {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
+    console.log(`🔍 Fetching clips from ${yesterday.toISOString()} to ${now.toISOString()}`);
+    
     const response = await fetch(
       `https://api.twitch.tv/helix/clips?broadcaster_id=${broadcasterId}&started_at=${yesterday.toISOString()}&ended_at=${now.toISOString()}&first=100`,
       {
@@ -89,6 +91,7 @@ export class TwitchService {
     }
 
     const data = await response.json() as { data: TwitchClip[] };
+    console.log(`📊 Found ${data.data?.length || 0} clips from Twitch API`);
     return data.data || [];
   }
 

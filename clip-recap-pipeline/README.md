@@ -165,7 +165,27 @@ npm run test:local
 
 # Test with custom worker URL
 WORKER_URL=http://localhost:54987 npm run test:all
+
+# Individual test files
+npx tsx test-health.ts      # Health check endpoint
+npx tsx test-twitch.ts      # Twitch credentials and API
+npx tsx test-github.ts      # GitHub credentials and API
+npx tsx test-pipeline.ts    # Daily pipeline functionality
 ```
+
+**Test Coverage:**
+- **Health Check** (`test-health.ts`): Worker status and uptime
+- **Twitch Integration** (`test-twitch.ts`): Credentials, token validation, clip fetching
+- **GitHub Integration** (`test-github.ts`): Credentials, repository access, API connectivity
+- **Pipeline Functionality** (`test-pipeline.ts`): Clip storage, retrieval, validation, and database operations
+
+**Test Results:**
+All tests validate the complete pipeline workflow:
+1. ✅ Health endpoint responds correctly
+2. ✅ Twitch API credentials and clip fetching work
+3. ✅ GitHub API credentials and repository access work
+4. ✅ Clip storage and retrieval from R2 database work
+5. ✅ Data validation and sanitization work
 
 ### Token Configuration
 
