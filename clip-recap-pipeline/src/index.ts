@@ -600,6 +600,221 @@ export default {
       }
     }
 
+    // Audio processing test endpoint
+    if (url.pathname === '/api/test-audio-processing' && request.method === 'POST') {
+      try {
+        console.log('🧪 Testing audio processing...');
+        
+        // Get stored clips
+        const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
+        const clipIds = clipsList.objects.slice(0, 2).map(obj => obj.key.replace('clips/', '').replace('.json', ''));
+        
+        console.log(`📥 Processing ${clipIds.length} clips: ${clipIds.join(', ')}`);
+        
+        // Call audio processor
+        const audioProcessorUrl = 'https://pcl-labs.vercel.app/api/audio-processor';
+        const audioResponse = await fetch(audioProcessorUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clip_ids: clipIds,
+            background: false
+          })
+        });
+        
+        if (!audioResponse.ok) {
+          const errorText = await audioResponse.text();
+          throw new Error(`Audio processing failed: ${audioResponse.status} - ${errorText}`);
+        }
+        
+        const audioResult = await audioResponse.json();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Audio processing test completed',
+          audio_result: audioResult,
+          processed_clips: clipIds
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Test transcription endpoint
+    if (url.pathname === '/api/test-transcription' && request.method === 'POST') {
+      try {
+        console.log('🧪 Testing transcription with mock audio...');
+
+        // Create a simple test audio file (just text for now)
+        const testAudioContent = "This is a test audio file for transcription testing. Hello world!";
+        const testClipId = "ArbitraryObeseChickpeaWTRuck-twH8glxAKErBTfNv"; // Using an existing clip ID for consistency
+
+        // Store test audio in R2
+        await env.R2_BUCKET.put(`audio/${testClipId}.wav`, testAudioContent, {
+          httpMetadata: {
+            contentType: 'audio/wav'
+          }
+        });
+
+        console.log(`📁 Stored test audio: audio/${testClipId}.wav`);
+
+        // Transcribe the test audio
+        const { TranscriptionService } = await import('./services/transcribe.js');
+        const transcriptionService = new TranscriptionService(env);
+
+        const transcript = await transcriptionService.transcribeClip(testClipId);
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Transcription test completed',
+          clip_id: testClipId,
+          transcript: transcript
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Transcription endpoints
+    if (url.pathname.startsWith('/api/transcribe/')) {
+      try {
+        const { TranscriptionService } = await import('./services/transcribe.js');
+        const transcriptionService = new TranscriptionService(env);
+        
+        if (url.pathname === '/api/transcribe/clip' && request.method === 'POST') {
+          // Transcribe a single clip
+          const body = await request.json() as { clipId?: string };
+          const { clipId } = body;
+          
+          if (!clipId) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'clipId is required'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          console.log(`🎤 Transcribing clip ${clipId}...`);
+          const transcript = await transcriptionService.transcribeClip(clipId);
+          
+          if (transcript) {
+            return new Response(JSON.stringify({
+              success: true,
+              message: `Transcription completed for ${clipId}`,
+              transcript: transcript
+            }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          } else {
+            return new Response(JSON.stringify({
+              success: false,
+              error: `Transcription failed for ${clipId}`
+            }), {
+              status: 500,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        }
+        
+        if (url.pathname === '/api/transcribe/batch' && request.method === 'POST') {
+          // Transcribe multiple clips
+          const body = await request.json() as { clipIds?: string[] };
+          const { clipIds } = body;
+          
+          if (!clipIds || !Array.isArray(clipIds)) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'clipIds array is required'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          console.log(`🎤 Batch transcribing ${clipIds.length} clips...`);
+          const results = await transcriptionService.transcribeClips(clipIds);
+          
+          return new Response(JSON.stringify({
+            success: results.failed === 0,
+            message: `Batch transcription completed: ${results.successful}/${results.total} successful`,
+            results: results
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (url.pathname.startsWith('/api/transcribe/status/') && request.method === 'GET') {
+          // Check transcription status
+          const clipId = url.pathname.split('/').pop();
+          if (!clipId) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'clipId is required'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          const hasTranscript = await transcriptionService.hasTranscript(clipId);
+          const transcript = hasTranscript ? await transcriptionService.getTranscript(clipId) : null;
+          
+          return new Response(JSON.stringify({
+            success: true,
+            clip_id: clipId,
+            has_transcript: hasTranscript,
+            transcript: transcript
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid transcription endpoint'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // GitHub endpoints
     if (url.pathname.startsWith('/api/github/')) {
       return handleGitHubRequest(request, env);

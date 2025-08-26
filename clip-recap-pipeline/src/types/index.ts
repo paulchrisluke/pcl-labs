@@ -19,6 +19,7 @@ export interface Environment {
   CONTENT_REPO_OWNER: string;
   CONTENT_REPO_NAME: string;
   CONTENT_REPO_MAIN_BRANCH: string;
+  AUDIO_PROCESSOR_URL?: string;
 }
 
 // Health endpoint response interface

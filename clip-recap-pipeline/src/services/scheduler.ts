@@ -3,6 +3,7 @@ import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types
 import { TwitchService } from './twitch.js';
 import { ContentService } from './content.js';
 import { DiscordService } from './discord.js';
+import { TranscriptionService } from './transcribe.js';
 
 export async function handleScheduled(
   event: ScheduledEvent,
@@ -90,6 +91,70 @@ async function handleTokenValidation(env: Environment): Promise<void> {
   }
 }
 
+/**
+ * Process audio for clips: download, extract, and transcribe
+ */
+async function processAudioForClips(clipIds: string[], env: Environment): Promise<void> {
+  console.log(`🎵 Processing audio for ${clipIds.length} clips...`);
+  
+  try {
+    // Step 1: Call audio processor service to download and extract audio
+    console.log('📥 Downloading and extracting audio...');
+    const audioProcessorUrl = 'https://pcl-labs.vercel.app/api/audio-processor';
+    
+    const audioResponse = await fetch(`${audioProcessorUrl}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        clip_ids: clipIds,
+        background: false
+      })
+    });
+    
+    if (!audioResponse.ok) {
+      const errorText = await audioResponse.text();
+      throw new Error(`Audio processing failed: ${audioResponse.status} - ${errorText}`);
+    }
+    
+    const audioResult = await audioResponse.json();
+    console.log(`✅ Audio processing result: ${audioResult.message}`);
+    
+    // Step 2: Wait a bit for audio processing to complete
+    console.log('⏳ Waiting for audio processing to complete...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    
+    // Step 3: Transcribe audio files using Workers AI
+    console.log('🎤 Transcribing audio files...');
+    const transcriptionService = new TranscriptionService(env);
+    
+    // Get clips that have audio but no transcript
+    const clipsToTranscribe = [];
+    for (const clipId of clipIds) {
+      const hasAudio = await env.R2_BUCKET.head(`audio/${clipId}.wav`);
+      const hasTranscript = await transcriptionService.hasTranscript(clipId);
+      
+      if (hasAudio && !hasTranscript) {
+        clipsToTranscribe.push(clipId);
+      }
+    }
+    
+    if (clipsToTranscribe.length > 0) {
+      console.log(`🎤 Transcribing ${clipsToTranscribe.length} clips...`);
+      const transcriptionResults = await transcriptionService.transcribeClips(clipsToTranscribe);
+      console.log(`✅ Transcription completed: ${transcriptionResults.successful}/${transcriptionResults.total} successful`);
+    } else {
+      console.log('✅ All clips already transcribed or no audio available');
+    }
+    
+  } catch (error) {
+    console.error('❌ Audio processing failed:', error);
+    // Don't throw - allow pipeline to continue without audio processing
+    console.log('⚠️ Continuing pipeline without audio processing...');
+  }
+}
+
 async function handleDailyPipeline(env: Environment): Promise<void> {
   console.log('Starting daily clip recap pipeline...');
   
@@ -158,6 +223,11 @@ async function handleDailyPipeline(env: Environment): Promise<void> {
     } else {
       console.log('✅ All clips stored to R2 successfully');
     }
+    
+    // Step 1.75: Process audio for clips (download, extract, upload to R2)
+    console.log('Processing audio for clips...');
+    const clipIds = clips.map(clip => clip.id);
+    await processAudioForClips(clipIds, env);
     
     // Step 2: Score and select best clips
     console.log('Scoring and selecting clips...');
