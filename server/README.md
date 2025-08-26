@@ -23,35 +23,45 @@ This service handles downloading Twitch clips, extracting audio, and uploading t
 
 1. Install dependencies:
 ```bash
-pip install -r requirements.txt
+# Install pip-tools for dependency management
+pip install pip-tools
+
+# Install dependencies with reproducible hashes
+pip-sync requirements.txt
 ```
 
-2. Set up environment variables:
+### Dependency Management
+
+This project uses a two-file workflow with pip-tools for reproducible builds:
+
+- **`requirements.in`** - Top-level dependencies with version constraints
+- **`requirements.txt`** - Fully pinned dependencies with hashes (auto-generated)
+
+#### Updating Dependencies
+
+1. Edit `requirements.in` with desired version constraints
+2. Regenerate `requirements.txt`:
 ```bash
-cp env.example .env
-# Edit .env with your Cloudflare credentials
+pip-compile --generate-hashes requirements.in
 ```
 
-### Getting Cloudflare Credentials
+3. Install updated dependencies:
+```bash
+pip-sync requirements.txt
+```
 
-1. **Account ID**: Go to your Cloudflare dashboard and copy your Account ID from the right sidebar
-2. **API Token**: Create a new API token with the following permissions:
-   - Account > Cloudflare R2 Storage > Edit
-   - Account > Account Settings > Read
-   
-   The token should be ~50+ characters long and start with a format like `oa-...`
+#### Security Benefits
 
-### API Endpoints
-
-The service uses the correct Cloudflare R2 API endpoints:
-- **Bucket Management**: `https://api.cloudflare.com/client/v4/accounts/{account_id}/r2/buckets`
-- **Object Operations**: `https://api.cloudflare.com/client/v4/accounts/{account_id}/r2/buckets/{bucket}/objects`
+- **Reproducible builds** - Exact same versions across environments
+- **Hash verification** - Prevents supply chain attacks
+- **Security updates** - Easy to update vulnerable packages
+- **CI/CD friendly** - Use `pip-sync` in deployment scripts
 
 ### Environment Variables
 
 Required environment variables:
-- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID (32 character hex string)
-- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with R2 permissions (should be ~50+ characters)
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
+- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with R2 permissions
 - `R2_BUCKET` - R2 bucket name (default: clip-recap-assets)
 
 Optional:
@@ -91,6 +101,18 @@ uvicorn src.api:app --host 0.0.0.0 --port 8000
 - `GET /list-processed-clips` - List processed clips
 - `DELETE /cleanup/{clip_id}` - Clean up clip files
 
+### Input Validation
+
+The API validates clip IDs using a conservative regex pattern `^[A-Za-z0-9_-]+$`:
+- **Allowed characters**: Alphanumeric (A-Z, a-z, 0-9), hyphens (-), underscores (_)
+- **Maximum clips per request**: 10
+- **Validation errors**: Returns HTTP 400 with detailed error messages naming offending IDs
+
+**Example validation errors:**
+- Empty list: `"No clip IDs provided"`
+- Too many clips: `"Maximum 10 clips per request"`
+- Invalid characters: `"Invalid clip ID(s): clip@123 (contains invalid characters)"`
+
 ### Example API Usage
 
 ```bash
@@ -111,6 +133,16 @@ curl "http://localhost:8000/list-processed-clips?limit=10"
 Run the test suite:
 ```bash
 python test_audio_processor.py
+```
+
+Run validation tests:
+```bash
+python -m pytest test_api_validation.py -v
+```
+
+Run validation demo:
+```bash
+python test_validation_demo.py
 ```
 
 ## Deployment
@@ -152,9 +184,12 @@ server/
 │   ├── download_extract.py # Main audio processor
 │   └── api.py             # FastAPI endpoints
 ├── main.py                # Server entry point
-├── requirements.txt       # Python dependencies
+├── requirements.in        # Top-level dependencies
+├── requirements.txt       # Pinned dependencies with hashes
 ├── vercel.json           # Vercel configuration
-├── test_audio_processor.py # Test suite
+├── test_audio_processor.py # Integration test suite
+├── test_api_validation.py # Unit tests for clip ID validation
+├── test_validation_demo.py # Validation demonstration script
 └── README.md             # This file
 ```
 

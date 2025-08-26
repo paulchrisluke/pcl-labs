@@ -444,13 +444,13 @@ class AudioProcessor:
                                 "expected_chunks": expected_chunks
                             }
                     else:
-                        # No chunks found, check if this is a short clip that doesn't need chunking
-                        # We'll need to determine this during processing, but for now assume it's complete
-                        logger.info(f"Clip {clip_id} has main files but no chunks - assuming complete (short clip)")
+                        # No chunks found, don't assume clip is complete just because main files exist
+                        # Force re-processing so pipeline can decide chunking based on duration
+                        logger.info(f"Clip {clip_id} has main files but no chunks - marking incomplete for re-processing")
                         return {
-                            "is_complete": True,
+                            "is_complete": False,
                             "has_partial_files": False,
-                            "needs_chunking": False,
+                            "needs_chunking": False,  # Will be determined during processing
                             "existing_files": existing_files,
                             "expected_chunks": 0
                         }
@@ -676,11 +676,13 @@ class AudioProcessor:
                     return result
                 
                 # Get duration
+                duration = None
                 try:
                     duration = get_audio_duration(mp4_path)
                     result["duration"] = duration
                 except (FileNotFoundError, ValueError) as e:
                     logger.error(f"Error getting duration for {clip_id}: {e}")
+                    duration = None
                     result["duration"] = None
                 
                 # Validate duration
@@ -794,6 +796,12 @@ class AudioProcessor:
                         else:
                             result["error"] = f"Chunking failed: {str(e)}"
                             return result
+                
+                # Check if any audio assets were uploaded before marking as successful
+                if not result["files_uploaded"]:
+                    result["error"] = "No audio assets uploaded"
+                    logger.error(f"No audio assets uploaded for {clip_id}")
+                    return result
                 
                 result["success"] = True
                 print(f"Successfully processed clip {clip_id}")

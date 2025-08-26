@@ -100,7 +100,8 @@ async function processAudioForClips(clipIds: string[], env: Environment): Promis
   try {
     // Step 1: Call audio processor service to download and extract audio
     console.log('📥 Downloading and extracting audio...');
-    const audioProcessorUrl = 'https://pcl-labs.vercel.app/api/audio-processor';
+    const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
+    const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
     
     const audioResponse = await fetch(`${audioProcessorUrl}`, {
       method: 'POST',

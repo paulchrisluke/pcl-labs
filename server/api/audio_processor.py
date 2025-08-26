@@ -115,7 +115,7 @@ class R2Storage:
                     if isinstance(v, str) and len(v) <= 1024:  # R2 metadata value limit
                         headers[f'x-amz-meta-{k}'] = v
             
-            response = requests.put(url, data=data, headers=headers)
+            response = requests.put(url, data=data, headers=headers, timeout=30)
             response.raise_for_status()
             logger.info(f"Successfully uploaded {key}")
             return True
@@ -142,7 +142,7 @@ class R2Storage:
                 'limit': limit
             }
             
-            response = requests.get(url, headers=self.headers, params=params)
+            response = requests.get(url, headers=self.headers, params=params, timeout=30)
             response.raise_for_status()
             
             data = response.json()
@@ -199,13 +199,6 @@ class R2Storage:
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-        
         # Parse the path to determine the endpoint
         path = self.path.rstrip('/')
         
@@ -233,18 +226,14 @@ class handler(BaseHTTPRequestHandler):
             "note": "R2 upload requires API token with R2 Storage:Edit permissions" if not r2_configured else "R2 storage is configured and ready"
         }
         
-        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+        self.send_success_response(response_data)
     
     def handle_get_latest_clip(self):
         """Handle getting the latest clip from R2 storage"""
         r2_storage = R2Storage()
         
         if not r2_storage.enabled:
-            response_data = {
-                "error": "R2 storage not configured",
-                "message": "Cannot retrieve latest clip - R2 storage is disabled"
-            }
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.send_error_response(503, "R2 storage not configured - Cannot retrieve latest clip")
             return
         
         latest_clip = r2_storage.get_latest_clip()
@@ -255,24 +244,16 @@ class handler(BaseHTTPRequestHandler):
                 "latest_clip": latest_clip,
                 "message": f"Found latest clip: {latest_clip['clip_id']}"
             }
+            self.send_success_response(response_data)
         else:
-            response_data = {
-                "success": False,
-                "message": "No clips found in R2 storage"
-            }
-        
-        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.send_error_response(404, "No clips found in R2 storage")
     
     def handle_list_clips(self):
         """Handle listing all clips from R2 storage"""
         r2_storage = R2Storage()
         
         if not r2_storage.enabled:
-            response_data = {
-                "error": "R2 storage not configured",
-                "message": "Cannot list clips - R2 storage is disabled"
-            }
-            self.wfile.write(json.dumps(response_data).encode('utf-8'))
+            self.send_error_response(503, "R2 storage not configured - Cannot list clips")
             return
         
         clips = r2_storage.list_objects(prefix="clips/", limit=100)
@@ -284,7 +265,7 @@ class handler(BaseHTTPRequestHandler):
             "message": f"Found {len(clips)} clips in R2 storage"
         }
         
-        self.wfile.write(json.dumps(response_data).encode('utf-8'))
+        self.send_success_response(response_data)
     
     def _validate_content_length(self) -> int:
         """Safely validate and parse Content-Length header"""
@@ -325,6 +306,11 @@ class handler(BaseHTTPRequestHandler):
         return content_length
 
     def do_POST(self):
+        # Restrict to expected endpoint
+        if self.path != '/process_clips':
+            self.send_error_response(404, 'Not found')
+            return
+            
         try:
             # Safely validate and read request body
             content_length = self._validate_content_length()
@@ -332,10 +318,14 @@ class handler(BaseHTTPRequestHandler):
                 return  # Error response already sent
                 
             body = self.rfile.read(content_length)
-            data = json.loads(body.decode('utf-8'))
+            
+            try:
+                data = json.loads(body.decode('utf-8'))
+            except json.JSONDecodeError as e:
+                self.send_error_response(400, 'Invalid JSON')
+                return
             
             clip_ids = data.get('clip_ids', [])
-            background = data.get('background', False)
             
             if not clip_ids or not isinstance(clip_ids, list):
                 self.send_error_response(400, 'clip_ids array is required')
@@ -345,7 +335,7 @@ class handler(BaseHTTPRequestHandler):
                 self.send_error_response(400, 'Maximum 10 clips per request')
                 return
             
-            print(f"🎵 Processing {len(clip_ids)} clips...")
+            logger.info(f"Processing {len(clip_ids)} clips...")
             
             # Process clips
             results = self.process_clips(clip_ids)
@@ -358,7 +348,7 @@ class handler(BaseHTTPRequestHandler):
             })
             
         except Exception as e:
-            print(f"Error processing clips: {e}")
+            logger.error(f"Error processing clips: {e}")
             self.send_error_response(500, str(e))
     
     def do_OPTIONS(self):

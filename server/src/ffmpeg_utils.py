@@ -1,9 +1,10 @@
+from __future__ import annotations
 import subprocess
 import shutil
 import re
 import logging
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -234,6 +235,7 @@ def chunk_audio(input_wav: Path, output_dir: Path, chunk_duration: int = 90) -> 
             return []
         
         # Get total duration
+        total_duration = None
         try:
             total_duration = get_audio_duration(input_wav)
             if not total_duration or total_duration <= 0:
@@ -241,6 +243,7 @@ def chunk_audio(input_wav: Path, output_dir: Path, chunk_duration: int = 90) -> 
                 return []
         except (FileNotFoundError, ValueError) as e:
             logger.error(f"Error getting duration for {input_wav}: {e}")
+            total_duration = None
             return []
         
         # Calculate number of chunks

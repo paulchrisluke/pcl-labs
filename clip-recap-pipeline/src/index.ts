@@ -652,41 +652,119 @@ export default {
       }
     }
 
-    // Test transcription endpoint
+    // Test transcription endpoint - Real pipeline test
     if (url.pathname === '/api/test-transcription' && request.method === 'POST') {
       try {
-        console.log('🧪 Testing transcription with mock audio...');
+        console.log('🧪 Testing real transcription pipeline...');
 
-        // Create a simple test audio file (just text for now)
-        const testAudioContent = "This is a test audio file for transcription testing. Hello world!";
-        const testClipId = "ArbitraryObeseChickpeaWTRuck-twH8glxAKErBTfNv"; // Using an existing clip ID for consistency
+        // Step 1: Get a real clip ID from stored clips
+        const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
+        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
+        
+        if (jsonFiles.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No stored clips available for testing'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
 
-        // Store test audio in R2
-        await env.R2_BUCKET.put(`audio/${testClipId}.wav`, testAudioContent, {
-          httpMetadata: {
-            contentType: 'audio/wav'
-          }
+        // Use the first available clip
+        const testClipId = jsonFiles[0].key.replace('clips/', '').replace('.json', '');
+        console.log(`📋 Using stored clip ID: ${testClipId}`);
+
+        // Step 2: Call audio processor to download and extract audio
+        console.log('🎵 Processing audio for transcription test...');
+        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-no52x5jv0-pcl-labs.vercel.app/api/audio_processor';
+        
+        const audioResponse = await fetch(`${audioProcessorUrl}/process-clips`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clip_ids: [testClipId],
+            background: false
+          })
         });
 
-        console.log(`📁 Stored test audio: audio/${testClipId}.wav`);
+        if (!audioResponse.ok) {
+          const errorText = await audioResponse.text();
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Audio processing failed: ${audioResponse.status} - ${errorText}`
+          }), {
+            status: audioResponse.status,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
 
-        // Transcribe the test audio
+        const audioResult = await audioResponse.json();
+        console.log(`✅ Audio processing result: ${audioResult.message}`);
+
+        // Step 3: Poll R2 for audio file availability
+        console.log('⏳ Waiting for audio file to be available...');
+        let audioAvailable = false;
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max wait
+
+        while (!audioAvailable && attempts < maxAttempts) {
+          const audioFile = await env.R2_BUCKET.head(`audio/${testClipId}.wav`);
+          if (audioFile) {
+            audioAvailable = true;
+            console.log(`✅ Audio file available: audio/${testClipId}.wav`);
+          } else {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          }
+        }
+
+        if (!audioAvailable) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Audio file not available after ${maxAttempts} seconds`
+          }), {
+            status: 408, // Request Timeout
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Step 4: Transcribe the real audio
+        console.log('🎤 Transcribing real audio...');
         const { TranscriptionService } = await import('./services/transcribe.js');
         const transcriptionService = new TranscriptionService(env);
 
         const transcript = await transcriptionService.transcribeClip(testClipId);
 
-        return new Response(JSON.stringify({
-          success: true,
-          message: 'Transcription test completed',
-          clip_id: testClipId,
-          transcript: transcript
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        if (transcript && transcript.segments && transcript.segments.length > 0) {
+          return new Response(JSON.stringify({
+            success: true,
+            message: 'Real transcription pipeline test completed successfully',
+            clip_id: testClipId,
+            audio_processed: true,
+            audio_file_size: audioResult.results?.results?.[0]?.clip_info?.file_size || 'unknown',
+            transcript: transcript
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } else {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Transcription completed but no transcript segments found',
+            clip_id: testClipId,
+            audio_processed: true,
+            transcript: transcript
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
 
       } catch (error) {
+        console.error('❌ Transcription pipeline test failed:', error);
         return new Response(JSON.stringify({
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -704,10 +782,11 @@ export default {
         const transcriptionService = new TranscriptionService(env);
         
         if (url.pathname === '/api/transcribe/clip' && request.method === 'POST') {
-          // Transcribe a single clip
+          // Transcribe a single clip with validation
           const body = await request.json() as { clipId?: string };
           const { clipId } = body;
           
+          // Step 1: Basic input validation
           if (!clipId) {
             return new Response(JSON.stringify({
               success: false,
@@ -718,7 +797,19 @@ export default {
             });
           }
           
-          console.log(`🎤 Transcribing clip ${clipId}...`);
+          // Step 2: Validate clip ID format
+          const validation = validateClipId(clipId);
+          if (!validation.isValid) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: validation.error || 'Invalid clip ID format'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          console.log(`🎤 Transcribing validated clip ${clipId}...`);
           const transcript = await transcriptionService.transcribeClip(clipId);
           
           if (transcript) {
@@ -742,10 +833,11 @@ export default {
         }
         
         if (url.pathname === '/api/transcribe/batch' && request.method === 'POST') {
-          // Transcribe multiple clips
+          // Transcribe multiple clips with comprehensive validation
           const body = await request.json() as { clipIds?: string[] };
           const { clipIds } = body;
           
+          // Step 1: Basic input validation
           if (!clipIds || !Array.isArray(clipIds)) {
             return new Response(JSON.stringify({
               success: false,
@@ -756,12 +848,82 @@ export default {
             });
           }
           
-          console.log(`🎤 Batch transcribing ${clipIds.length} clips...`);
-          const results = await transcriptionService.transcribeClips(clipIds);
+          // Step 2: Validate and filter clip IDs
+          const MAX_BATCH_SIZE = 50;
+          const validClipIds: string[] = [];
+          const invalidClipIds: string[] = [];
+          
+          for (const clipId of clipIds) {
+            // Check if it's a non-empty string
+            if (!clipId || typeof clipId !== 'string' || clipId.trim() === '') {
+              invalidClipIds.push(clipId);
+              continue;
+            }
+            
+            // Validate using the existing validation function
+            const validation = validateClipId(clipId);
+            if (!validation.isValid) {
+              invalidClipIds.push(clipId);
+              continue;
+            }
+            
+            // Add to valid list if we haven't hit the limit
+            if (validClipIds.length < MAX_BATCH_SIZE) {
+              validClipIds.push(clipId);
+            }
+          }
+          
+          // Step 3: Handle validation results
+          if (validClipIds.length === 0) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'No valid clip IDs provided',
+              details: {
+                total_requested: clipIds.length,
+                valid_count: 0,
+                invalid_count: invalidClipIds.length,
+                max_batch_size: MAX_BATCH_SIZE,
+                invalid_ids: invalidClipIds.slice(0, 10) // Show first 10 invalid IDs
+              }
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          // Step 4: Check if batch size was exceeded
+          if (clipIds.length > MAX_BATCH_SIZE) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: `Batch size exceeded. Maximum allowed: ${MAX_BATCH_SIZE}`,
+              details: {
+                total_requested: clipIds.length,
+                valid_count: validClipIds.length,
+                invalid_count: invalidClipIds.length,
+                max_batch_size: MAX_BATCH_SIZE,
+                accepted_ids: validClipIds
+              }
+            }), {
+              status: 413, // Payload Too Large
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          // Step 5: Proceed with transcription using validated IDs
+          console.log(`🎤 Batch transcribing ${validClipIds.length} validated clips...`);
+          const results = await transcriptionService.transcribeClips(validClipIds);
           
           return new Response(JSON.stringify({
             success: results.failed === 0,
             message: `Batch transcription completed: ${results.successful}/${results.total} successful`,
+            details: {
+              total_requested: clipIds.length,
+              valid_count: validClipIds.length,
+              invalid_count: invalidClipIds.length,
+              max_batch_size: MAX_BATCH_SIZE,
+              accepted_ids: validClipIds,
+              invalid_ids: invalidClipIds.slice(0, 10) // Show first 10 invalid IDs
+            },
             results: results
           }), {
             status: 200,
@@ -770,12 +932,24 @@ export default {
         }
         
         if (url.pathname.startsWith('/api/transcribe/status/') && request.method === 'GET') {
-          // Check transcription status
+          // Check transcription status with validation
           const clipId = url.pathname.split('/').pop();
           if (!clipId) {
             return new Response(JSON.stringify({
               success: false,
               error: 'clipId is required'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          // Validate clip ID format
+          const validation = validateClipId(clipId);
+          if (!validation.isValid) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: validation.error || 'Invalid clip ID format'
             }), {
               status: 400,
               headers: { 'Content-Type': 'application/json' }

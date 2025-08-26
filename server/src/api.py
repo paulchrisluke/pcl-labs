@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 import time
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .download_extract import AudioProcessor
 from .task_manager import task_manager, TaskStatus
@@ -11,6 +12,40 @@ from .ffmpeg_utils import ensure_ffmpeg
 import logging
 
 logger = logging.getLogger(__name__)
+
+def validate_clip_ids(clip_ids: List[str]) -> None:
+    """
+    Validate a list of clip IDs against the conservative regex pattern.
+    
+    Args:
+        clip_ids: List of clip IDs to validate
+        
+    Raises:
+        HTTPException: If any clip ID fails validation with status_code=400
+    """
+    if not clip_ids:
+        raise HTTPException(status_code=400, detail="No clip IDs provided")
+    
+    if len(clip_ids) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 clips per request")
+    
+    # Conservative regex pattern: alphanumeric characters, hyphens, and underscores only
+    CLIP_ID_PATTERN = r'^[A-Za-z0-9_-]+$'
+    
+    invalid_ids = []
+    for clip_id in clip_ids:
+        if not isinstance(clip_id, str):
+            invalid_ids.append(f"{clip_id} (not a string)")
+        elif not clip_id.strip():
+            invalid_ids.append(f"{clip_id} (empty or whitespace only)")
+        elif not re.match(CLIP_ID_PATTERN, clip_id.strip()):
+            invalid_ids.append(f"{clip_id} (contains invalid characters)")
+    
+    if invalid_ids:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid clip ID(s): {', '.join(invalid_ids)}. Clip IDs must contain only alphanumeric characters, hyphens, and underscores."
+        )
 
 app = FastAPI(
     title="Audio Processor API",
@@ -68,11 +103,8 @@ async def health_check():
 async def process_clips(request: ProcessClipRequest, background_tasks: BackgroundTasks):
     """Process Twitch clips: download, extract audio, upload to R2"""
     
-    if not request.clip_ids:
-        raise HTTPException(status_code=400, detail="No clip IDs provided")
-    
-    if len(request.clip_ids) > 10:
-        raise HTTPException(status_code=400, detail="Maximum 10 clips per request")
+    # Validate clip IDs at the API boundary
+    validate_clip_ids(request.clip_ids)
     
     if request.background:
         # Create task record and get task_id
@@ -162,10 +194,11 @@ async def list_processed_clips(limit: int = 50, cursor: Optional[str] = None):
         result = processor.r2.list_files("audio/", limit=limit, cursor=cursor)
         audio_files = result['objects']
         
-        # Extract clip IDs from file paths
+        # Extract clip IDs from file paths - only accept top-level WAVs under audio/
         clip_ids = []
         for file_path in audio_files:
-            if file_path.endswith('.wav'):
+            # Only accept files that match pattern: audio/filename.wav (no extra slashes)
+            if file_path.startswith('audio/') and file_path.count('/') == 1 and file_path.endswith('.wav'):
                 clip_id = file_path.replace('audio/', '').replace('.wav', '')
                 clip_ids.append(clip_id)
         
@@ -182,20 +215,9 @@ async def list_processed_clips(limit: int = 50, cursor: Optional[str] = None):
 async def cleanup_clip(
     clip_id: str, 
     dry_run: bool = True, 
-    confirm: bool = False, 
-    authorization: Optional[str] = Header(None, alias="Authorization")
+    confirm: bool = False
 ):
     """Remove all files for a specific clip (for testing/cleanup)"""
-    
-    # Validate authorization if provided
-    if authorization:
-        # Remove 'Bearer ' prefix if present
-        if authorization.startswith('Bearer '):
-            authorization = authorization[7:]
-        
-        expected_auth = os.getenv('CLEANUP_AUTHORIZATION')
-        if not expected_auth or authorization != expected_auth:
-            raise HTTPException(status_code=401, detail="Invalid authorization")
     
     # Require confirmation for actual deletion
     if not dry_run and not confirm:
