@@ -1,85 +1,94 @@
 import { Environment } from './types/index.js';
+import { calculateUptime } from './utils/uptime.js';
 
 // Declare fetch as available globally (Cloudflare Workers environment)
 declare const fetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
-// Helper function to get real service status from Cloudflare workers
-async function getServiceStatus(env: Environment) {
-  const now = new Date();
-  const formatDate = (date: Date) => date.toLocaleString('en-US', { 
+type ServiceStatus = {
+  status: 'online' | 'offline';
+  lastTested: string;
+  error: string;
+};
+
+/**
+ * Format date for display
+ */
+function formatDate(date: Date): string {
+  return date.toLocaleString('en-US', { 
     month: 'short', 
     day: 'numeric', 
     hour: '2-digit', 
     minute: '2-digit',
     timeZoneName: 'short'
   });
+}
 
-  type ServiceStatus = {
-    status: 'online' | 'offline';
-    lastTested: string;
-    error: string;
-  };
+/**
+ * Helper function to validate service endpoints
+ */
+async function validateServiceEndpoint(endpoint: string, serviceName: string, now: Date): Promise<ServiceStatus> {
+  let status: ServiceStatus = { status: 'offline', lastTested: formatDate(now), error: 'Test failed' };
+  
+  try {
+    const response = await fetch(endpoint);
+    if (response.ok) {
+      const result = await response.json() as { success?: boolean; error?: string };
+      if (result.success) {
+        status = { status: 'online', lastTested: formatDate(now), error: '' };
+      } else {
+        status = { status: 'offline', lastTested: formatDate(now), error: result.error || 'Validation failed' };
+      }
+    } else {
+      status = { status: 'offline', lastTested: formatDate(now), error: `HTTP ${response.status}` };
+    }
+  } catch (error) {
+    status = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
+  }
+  
+  return status;
+}
+
+/**
+ * Helper function to check binding availability
+ */
+function checkBindingStatus(binding: any, now: Date, bindingName: string): ServiceStatus {
+  try {
+    if (binding) {
+      return { status: 'online', lastTested: formatDate(now), error: '' };
+    } else {
+      return { status: 'offline', lastTested: formatDate(now), error: 'Not available' };
+    }
+  } catch (error) {
+    return { status: 'offline', lastTested: formatDate(now), error: 'Binding not available' };
+  }
+}
+
+// Helper function to get real service status from Cloudflare workers
+async function getServiceStatus(env: Environment) {
+  const now = new Date();
 
   // Production worker URL
   const productionUrl = 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
 
   // Test Twitch integration against production worker
-  let twitchStatus: ServiceStatus = { status: 'offline', lastTested: formatDate(now), error: 'Test failed' };
-  try {
-    const response = await fetch(`${productionUrl}/validate-twitch`);
-    if (response.ok) {
-      const result = await response.json() as { success?: boolean; error?: string };
-      if (result.success) {
-        twitchStatus = { status: 'online', lastTested: formatDate(now), error: '' };
-      } else {
-        twitchStatus = { status: 'offline', lastTested: formatDate(now), error: result.error || 'Validation failed' };
-      }
-    } else {
-      twitchStatus = { status: 'offline', lastTested: formatDate(now), error: `HTTP ${response.status}` };
-    }
-  } catch (error) {
-    twitchStatus = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
-  }
+  const twitchStatus = await validateServiceEndpoint(
+    `${productionUrl}/validate-twitch`,
+    'Twitch',
+    now
+  );
 
   // Test GitHub integration against production worker
-  let githubStatus: ServiceStatus = { status: 'offline', lastTested: formatDate(now), error: 'Test failed' };
-  try {
-    const response = await fetch(`${productionUrl}/validate-github`);
-    if (response.ok) {
-      const result = await response.json() as { success?: boolean; error?: string };
-      if (result.success) {
-        githubStatus = { status: 'online', lastTested: formatDate(now), error: '' };
-      } else {
-        githubStatus = { status: 'offline', lastTested: formatDate(now), error: result.error || 'Validation failed' };
-      }
-    } else {
-      githubStatus = { status: 'offline', lastTested: formatDate(now), error: `HTTP ${response.status}` };
-    }
-  } catch (error) {
-    githubStatus = { status: 'offline', lastTested: formatDate(now), error: 'Connection failed' };
-  }
+  const githubStatus = await validateServiceEndpoint(
+    `${productionUrl}/validate-github`,
+    'GitHub',
+    now
+  );
 
   // Test AI processing (Workers AI binding)
-  let aiStatus: ServiceStatus = { status: 'offline', lastTested: formatDate(now), error: 'Not available' };
-  try {
-    // Simple test to check if AI binding is available
-    if (env.ai) {
-      aiStatus = { status: 'online', lastTested: formatDate(now), error: '' };
-    }
-  } catch (error) {
-    aiStatus = { status: 'offline', lastTested: formatDate(now), error: 'Binding not available' };
-  }
+  const aiStatus = checkBindingStatus(env.ai, now, 'AI');
 
   // Test Cloud Storage (R2 binding)
-  let storageStatus: ServiceStatus = { status: 'offline', lastTested: formatDate(now), error: 'Not available' };
-  try {
-    // Simple test to check if R2 binding is available
-    if (env.R2_BUCKET) {
-      storageStatus = { status: 'online', lastTested: formatDate(now), error: '' };
-    }
-  } catch (error) {
-    storageStatus = { status: 'offline', lastTested: formatDate(now), error: 'Binding not available' };
-  }
+  const storageStatus = checkBindingStatus(env.R2_BUCKET, now, 'R2');
 
   return {
     twitch: twitchStatus,
@@ -289,7 +298,7 @@ export async function generateStatusPage(env: Environment): Promise<string> {
                 <div class="stat-label">API Endpoints</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number">24/7</div>
+                <div class="stat-number">${calculateUptime()}</div>
                 <div class="stat-label">Uptime</div>
             </div>
             <div class="stat-card">
@@ -317,7 +326,7 @@ export async function generateStatusPage(env: Environment): Promise<string> {
             </div>
             <div class="status-card">
                 <h3><span class="status-indicator ${statusData.ai.status === 'online' ? 'status-online' : 'status-offline'}"></span>AI Processing</h3>
-                <p>Workers AI for transcription and content generation</p>
+                <p>Workers AI for content generation</p>
                 <div class="status-details">
                     <span class="last-tested">Last tested: ${statusData.ai.lastTested}</span>
                     ${statusData.ai.status === 'offline' ? `<span class="error-message">${statusData.ai.error}</span>` : ''}
@@ -325,7 +334,7 @@ export async function generateStatusPage(env: Environment): Promise<string> {
             </div>
             <div class="status-card">
                 <h3><span class="status-indicator ${statusData.storage.status === 'online' ? 'status-online' : 'status-offline'}"></span>Cloud Storage</h3>
-                <p>R2 storage for clips and transcripts</p>
+                <p>R2 storage for clips</p>
                 <div class="status-details">
                     <span class="last-tested">Last tested: ${statusData.storage.lastTested}</span>
                     ${statusData.storage.status === 'offline' ? `<span class="error-message">${statusData.storage.error}</span>` : ''}

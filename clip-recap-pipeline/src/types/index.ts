@@ -21,6 +21,15 @@ export interface Environment {
   CONTENT_REPO_MAIN_BRANCH: string;
 }
 
+// Health endpoint response interface
+export interface HealthResponse {
+  status: 'healthy';
+  timestamp: string;
+  service: string;
+  version: string;
+  uptime: string;
+}
+
 // ISO DateTime string type for consistent date handling
 export type ISODateTimeString = string;
 
@@ -50,18 +59,7 @@ export interface TwitchTokenResponse {
   token_type: string;
 }
 
-// Transcript types
-export interface TranscriptSegment {
-  start_s: number;
-  end_s: number;
-  text: string;
-}
 
-export interface Transcript {
-  clip_id: string;
-  lang: string;
-  segments: TranscriptSegment[];
-}
 
 // Content generation types
 export interface ClipSection {
