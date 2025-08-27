@@ -1000,6 +1000,7 @@ export default {
     if (url.pathname === '/api/deduplication/check') {
       try {
         const { DeduplicationService } = await import('./services/deduplication.js');
+        const { validateClipId } = await import('./utils/validation.js');
         const deduplicationService = new DeduplicationService(env);
         
         switch (request.method) {
@@ -1027,7 +1028,31 @@ export default {
               });
             }
             
-            const result = await deduplicationService.checkClipsForDeduplication(clipIds);
+            // Validate each clip ID
+            const validationErrors: string[] = [];
+            const validClipIds: string[] = [];
+            
+            for (const clipId of clipIds) {
+              const validation = validateClipId(clipId);
+              if (!validation.isValid) {
+                validationErrors.push(`Clip ID "${clipId}": ${validation.error}`);
+              } else {
+                validClipIds.push(clipId);
+              }
+            }
+            
+            if (validationErrors.length > 0) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid clip IDs provided',
+                details: validationErrors
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            const result = await deduplicationService.checkClipsForDeduplication(validClipIds);
             
             return new Response(JSON.stringify({
               success: true,
@@ -1062,13 +1087,29 @@ export default {
     if (url.pathname.startsWith('/api/deduplication/file-info/')) {
       try {
         const { DeduplicationService } = await import('./services/deduplication.js');
+        const { validateClipId } = await import('./utils/validation.js');
         const deduplicationService = new DeduplicationService(env);
         
-        const clipId = url.pathname.split('/').pop();
+        // Extract clip ID from the URL path properly
+        const pathParts = url.pathname.split('/');
+        const clipId = pathParts[pathParts.length - 1]; // Get the last part after the last slash
+        
         if (!clipId) {
           return new Response(JSON.stringify({
             success: false,
             error: 'Clip ID not provided'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Validate the clip ID
+        const validation = validateClipId(clipId);
+        if (!validation.isValid) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Invalid clip ID: ${validation.error}`
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
