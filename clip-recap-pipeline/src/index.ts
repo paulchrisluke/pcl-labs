@@ -996,6 +996,183 @@ export default {
       }
     }
 
+    // Deduplication endpoints
+    if (url.pathname === '/api/deduplication/check') {
+      try {
+        const { DeduplicationService } = await import('./services/deduplication.js');
+        const { validateClipId } = await import('./utils/validation.js');
+        const deduplicationService = new DeduplicationService(env);
+        
+        switch (request.method) {
+          case 'POST': {
+            const body = await request.json() as { clip_ids?: string[] };
+            const clipIds = body.clip_ids || [];
+            
+            if (clipIds.length === 0) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'No clip IDs provided'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            if (clipIds.length > 50) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Maximum 50 clip IDs per request'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            // Validate each clip ID
+            const validationErrors: string[] = [];
+            const validClipIds: string[] = [];
+            
+            for (const clipId of clipIds) {
+              const validation = validateClipId(clipId);
+              if (!validation.isValid) {
+                validationErrors.push(`Clip ID "${clipId}": ${validation.error}`);
+              } else {
+                validClipIds.push(clipId);
+              }
+            }
+            
+            if (validationErrors.length > 0) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid clip IDs provided',
+                details: validationErrors
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            const result = await deduplicationService.checkClipsForDeduplication(validClipIds);
+            
+            return new Response(JSON.stringify({
+              success: true,
+              ...result
+            }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          default:
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Method not allowed'
+            }), {
+              status: 405,
+              headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/deduplication/file-info/')) {
+      try {
+        const { DeduplicationService } = await import('./services/deduplication.js');
+        const { validateClipId } = await import('./utils/validation.js');
+        const deduplicationService = new DeduplicationService(env);
+        
+        // Extract clip ID from the URL path properly
+        const pathParts = url.pathname.split('/');
+        const clipId = pathParts[pathParts.length - 1]; // Get the last part after the last slash
+        
+        if (!clipId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Clip ID not provided'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Validate the clip ID
+        const validation = validateClipId(clipId);
+        if (!validation.isValid) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Invalid clip ID: ${validation.error}`
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const fileInfo = await deduplicationService.getClipFileInfo(clipId);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          ...fileInfo
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (url.pathname === '/api/deduplication/cleanup') {
+      try {
+        const { DeduplicationService } = await import('./services/deduplication.js');
+        const deduplicationService = new DeduplicationService(env);
+        
+        if (request.method !== 'POST') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const cleanupResult = await deduplicationService.cleanupOrphanedFiles();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          ...cleanupResult
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // GitHub endpoints
     if (url.pathname.startsWith('/api/github/')) {
       return handleGitHubRequest(request, env);
@@ -1005,8 +1182,94 @@ export default {
     if (url.pathname === '/webhook/github') {
       return handleWebhook(request, env, ctx);
     }
-    
 
+    // Manual pipeline trigger endpoint
+    if (url.pathname === '/api/trigger-pipeline' && request.method === 'POST') {
+      try {
+        console.log('🚀 Manual pipeline trigger activated...');
+        
+        // Import the scheduler function
+        const { handleDailyPipeline } = await import('./services/scheduler.js');
+        
+        // Run the full daily pipeline
+        await handleDailyPipeline(env);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Pipeline triggered successfully',
+          timestamp: new Date().toISOString(),
+          note: 'Check logs for detailed progress'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Manual pipeline trigger failed:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Manual audio processing endpoint (processes all stored clips)
+    if (url.pathname === '/api/process-all-clips' && request.method === 'POST') {
+      try {
+        console.log('🎵 Manual audio processing for all stored clips...');
+        
+        // Get all stored clips
+        const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
+        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
+        const clipIds = jsonFiles.map(obj => obj.key.replace('clips/', '').replace('.json', ''));
+        
+        console.log(`📥 Found ${clipIds.length} stored clips to process: ${clipIds.join(', ')}`);
+        
+        if (clipIds.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No stored clips found to process'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Import the audio processing function
+        const { processAudioForClips } = await import('./services/scheduler.js');
+        
+        // Process all clips with deduplication
+        await processAudioForClips(clipIds, env);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Audio processing completed for ${clipIds.length} clips`,
+          processed_clips: clipIds,
+          timestamp: new Date().toISOString(),
+          note: 'Check R2 storage for processed files'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Manual audio processing failed:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     // Default response - API Status Page
     const html = await generateStatusPage(env, url.origin);
