@@ -4,6 +4,7 @@ import { TwitchService } from './twitch.js';
 import { ContentService } from './content.js';
 import { DiscordService } from './discord.js';
 import { TranscriptionService } from './transcribe.js';
+import { DeduplicationService } from './deduplication.js';
 
 export async function handleScheduled(
   event: ScheduledEvent,
@@ -92,43 +93,52 @@ async function handleTokenValidation(env: Environment): Promise<void> {
 }
 
 /**
- * Process audio for clips: download, extract, and transcribe
+ * Process audio for clips: download, extract, and transcribe with deduplication
  */
 async function processAudioForClips(clipIds: string[], env: Environment): Promise<void> {
   console.log(`🎵 Processing audio for ${clipIds.length} clips...`);
   
   try {
-    // Step 1: Call audio processor service to download and extract audio
-    console.log('📥 Downloading and extracting audio...');
-    const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
-    const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
+    // Step 0: Check for existing video files to avoid duplicate downloads
+    console.log('🔍 Checking for existing video files...');
+    const deduplicationService = new DeduplicationService(env);
+    const deduplicationResult = await deduplicationService.checkClipsForDeduplication(clipIds);
     
-    // Use security service for authenticated requests
-    const { SecurityService } = await import('./security.js');
-    const securityService = new SecurityService(env);
-    
-    const audioResponse = await securityService.securePost(`${audioProcessorUrl}`, {
-      clip_ids: clipIds,
-      background: false
-    });
-    
-    if (!audioResponse.ok) {
-      const errorText = await audioResponse.text();
-      throw new Error(`Audio processing failed: ${audioResponse.status} - ${errorText}`);
+    if (deduplicationResult.clipsToDownload.length === 0) {
+      console.log('✅ All clips already have video files, skipping download phase');
+    } else {
+      // Step 1: Call audio processor service to download and extract audio (only for clips that need it)
+      console.log(`📥 Downloading and extracting audio for ${deduplicationResult.clipsToDownload.length} clips...`);
+      const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
+      const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
+      
+      // Use security service for authenticated requests
+      const { SecurityService } = await import('./security.js');
+      const securityService = new SecurityService(env);
+      
+      const audioResponse = await securityService.securePost(`${audioProcessorUrl}`, {
+        clip_ids: deduplicationResult.clipsToDownload,
+        background: false
+      });
+      
+      if (!audioResponse.ok) {
+        const errorText = await audioResponse.text();
+        throw new Error(`Audio processing failed: ${audioResponse.status} - ${errorText}`);
+      }
+      
+      const audioResult = await audioResponse.json();
+      console.log(`✅ Audio processing result: ${audioResult.message}`);
+      
+      // Step 2: Wait a bit for audio processing to complete
+      console.log('⏳ Waiting for audio processing to complete...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
     
-    const audioResult = await audioResponse.json();
-    console.log(`✅ Audio processing result: ${audioResult.message}`);
-    
-    // Step 2: Wait a bit for audio processing to complete
-    console.log('⏳ Waiting for audio processing to complete...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    // Step 3: Transcribe audio files using Workers AI
+    // Step 3: Transcribe audio files using Workers AI (for all clips that have audio)
     console.log('🎤 Transcribing audio files...');
     const transcriptionService = new TranscriptionService(env);
     
-    // Get clips that have audio but no transcript
+    // Get clips that have audio but no transcript (including clips that were skipped for download)
     const clipsToTranscribe = [];
     for (const clipId of clipIds) {
       const hasAudio = await env.R2_BUCKET.head(`audio/${clipId}.wav`);

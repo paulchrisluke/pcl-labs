@@ -996,6 +996,142 @@ export default {
       }
     }
 
+    // Deduplication endpoints
+    if (url.pathname === '/api/deduplication/check') {
+      try {
+        const { DeduplicationService } = await import('./services/deduplication.js');
+        const deduplicationService = new DeduplicationService(env);
+        
+        switch (request.method) {
+          case 'POST': {
+            const body = await request.json() as { clip_ids?: string[] };
+            const clipIds = body.clip_ids || [];
+            
+            if (clipIds.length === 0) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'No clip IDs provided'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            if (clipIds.length > 50) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Maximum 50 clip IDs per request'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
+            const result = await deduplicationService.checkClipsForDeduplication(clipIds);
+            
+            return new Response(JSON.stringify({
+              success: true,
+              ...result
+            }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          default:
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Method not allowed'
+            }), {
+              status: 405,
+              headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (url.pathname.startsWith('/api/deduplication/file-info/')) {
+      try {
+        const { DeduplicationService } = await import('./services/deduplication.js');
+        const deduplicationService = new DeduplicationService(env);
+        
+        const clipId = url.pathname.split('/').pop();
+        if (!clipId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Clip ID not provided'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const fileInfo = await deduplicationService.getClipFileInfo(clipId);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          ...fileInfo
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (url.pathname === '/api/deduplication/cleanup') {
+      try {
+        const { DeduplicationService } = await import('./services/deduplication.js');
+        const deduplicationService = new DeduplicationService(env);
+        
+        if (request.method !== 'POST') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const cleanupResult = await deduplicationService.cleanupOrphanedFiles();
+        
+        return new Response(JSON.stringify({
+          success: true,
+          ...cleanupResult
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // GitHub endpoints
     if (url.pathname.startsWith('/api/github/')) {
       return handleGitHubRequest(request, env);
