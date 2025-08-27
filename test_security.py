@@ -220,20 +220,17 @@ def test_clip_processing():
             return False
             
     except Exception as e:
-    # Make requests in bursts to ensure we hit the rate limit
-    burst_size = 20  # Exceed the 15 request limit
-    for i in range(burst_size):
-        try:
-            # Generate fresh security headers for each request
-            headers = create_security_headers()
-            response = requests.get(f"{API_BASE_URL}", headers=headers, timeout=10)
-            # Only add delay after hitting rate limit to test recovery
-            if response.status_code == 429:
-                time.sleep(1.0)  # Wait for rate limit window to reset partially
+        print(f"❌ Clip processing error: {e}")
+        return False
+
+def test_rate_limiting():
+    """Test rate limiting functionality."""
+    print("\n🔍 Testing rate limiting...")
+    
     success_count = 0
     rate_limited_count = 0
     
-    for i in range(25):  # Make 25 requests rapidly to test the new 15 request limit
+    for i in range(25):  # Make 25 requests rapidly to test the 15 request limit
         try:
             # Generate fresh security headers for each request
             headers = create_security_headers()
