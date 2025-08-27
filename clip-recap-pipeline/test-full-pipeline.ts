@@ -23,6 +23,11 @@ async function testFullPipeline() {
     const clipsData = await clipsResponse.json();
     console.log(`✅ Found ${clipsData.clips.length} stored clips`);
     
+    // Defensive check for clips data
+    if (!clipsData || !Array.isArray(clipsData.clips) || clipsData.clips.length === 0) {
+      throw new Error('No clips available for test');
+    }
+    
     // Step 2: Check a specific clip's status
     const testClip = clipsData.clips[0];
     console.log(`\n🔍 Step 2: Checking status for clip: ${testClip.id}`);
@@ -112,18 +117,8 @@ async function testFullPipeline() {
     // Step 6: Summary
     console.log('\n📊 Step 6: Pipeline Summary');
     console.log('=' .repeat(50));
-    console.log('✅ Cloudflare Worker: Working');
-    console.log('✅ Transcription Service: Working');
-    console.log('❌ Python Audio Processor: Needs deployment');
-    console.log('❌ Audio Files: Not properly processed');
-    console.log('❌ Transcripts: Empty due to missing audio');
-    
-    console.log('\n🔧 Next Steps:');
-    console.log('1. Deploy Python server to Vercel');
-    console.log('2. Fix HMAC authentication');
-    console.log('3. Test audio processing');
-    console.log('4. Verify transcription pipeline');
-    
+    // Generate summary based on actual test results
+    // This would require collecting status throughout the test execution
   } catch (error) {
     console.error('❌ Test failed:', error);
   }

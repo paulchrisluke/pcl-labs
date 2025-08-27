@@ -128,7 +128,7 @@ export class TranscriptionService {
       }
 
       // Get WAV audio file from R2 (16-bit PCM, mono, 16kHz)
-      const audioObj = await this.env.R2_BUCKET.get(`audio/${clipId}_8bit.wav`);
+      const audioObj = await this.env.R2_BUCKET.get(`audio/${clipId}.wav`);
       
       if (!audioObj || !('body' in audioObj)) {
         console.error(`❌ Audio file not found for clip ${clipId}`);
@@ -151,8 +151,12 @@ export class TranscriptionService {
 
       // Debug: check first few bytes to ensure we have a proper WAV file
       const firstBytes = Array.from(new Uint8Array(audioBuffer.slice(0, 4)));
-      console.log(`🎵 First 4 bytes: ${firstBytes} (should be [82, 73, 70, 70] for 'RIFF')`);
-
+      const isRIFF = firstBytes[0] === 82 && firstBytes[1] === 73 && firstBytes[2] === 70 && firstBytes[3] === 70;
+      console.log(`🎵 First 4 bytes: ${firstBytes} (expected 'RIFF': ${isRIFF})`);
+      if (!isRIFF) {
+        console.error('❌ Invalid WAV header (missing RIFF). Aborting transcription.');
+        return null;
+      }
       // Call Whisper API with base64-encoded audio
       const whisperResponse = await this.env.ai.run('@cf/openai/whisper-large-v3-turbo', {
         audio: base64Audio

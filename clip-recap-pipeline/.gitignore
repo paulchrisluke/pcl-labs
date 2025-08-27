@@ -1,2 +1,4 @@
 .wrangler/
 .vercel
+.dev.vars
+.env*.local

@@ -624,7 +624,7 @@ export default {
           const clips = [];
           
           // Filter for only JSON files to avoid parsing binary data
-          const jsonFiles = list.objects.filter(obj => obj.key.endsWith('.json'));
+          const jsonFiles = list.objects.filter((obj: any) => obj.key.endsWith('.json'));
           
           // Limit the number of clips to prevent performance issues
           const MAX_CLIPS = 100;
@@ -748,8 +748,8 @@ export default {
         
         // Get stored clips
         const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
-        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
-        const clipIds = jsonFiles.slice(0, 2).map(obj => obj.key.replace('clips/', '').replace('.json', ''));
+        const jsonFiles = clipsList.objects.filter((obj: any) => obj.key.endsWith('.json'));
+        const clipIds = jsonFiles.slice(0, 2).map((obj: any) => obj.key.replace('clips/', '').replace('.json', ''));
         
         console.log(`📥 Processing ${clipIds.length} clips: ${clipIds.join(', ')}`);
         
@@ -800,7 +800,7 @@ export default {
 
         // Step 1: Get a real clip ID from stored clips
         const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
-        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
+        const jsonFiles = clipsList.objects.filter((obj: any) => obj.key.endsWith('.json'));
         
         if (jsonFiles.length === 0) {
           return new Response(JSON.stringify({
@@ -841,7 +841,7 @@ export default {
         }
 
         const audioResult = await audioResponse.json();
-        console.log(`✅ Audio processing result: ${audioResult.message}`);
+        console.log(`✅ Audio processing result: ${(audioResult as any).message}`);
 
         // Step 3: Poll R2 for audio file availability
         console.log('⏳ Waiting for audio file to be available...');
@@ -883,7 +883,7 @@ export default {
             message: 'Real transcription pipeline test completed successfully',
             clip_id: testClipId,
             audio_processed: true,
-            audio_file_size: audioResult.results?.results?.[0]?.clip_info?.file_size || 'unknown',
+            audio_file_size: (audioResult as any).results?.results?.[0]?.clip_info?.file_size || 'unknown',
             transcript: transcript
           }), {
             status: 200,
@@ -918,6 +918,22 @@ export default {
     if (url.pathname.startsWith('/api/transcribe/force/') && request.method === 'POST') {
       try {
         const clipId = url.pathname.replace('/api/transcribe/force/', '');
+        
+        // Validate clipId to prevent security issues
+        const { validateClipId } = await import('./utils/validation.js');
+        const validation = validateClipId(clipId);
+        
+        if (!validation.isValid) {
+          console.warn(`🚨 Invalid clipId attempted in force transcribe: ${clipId} - ${validation.error}`);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid clip ID'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
         console.log(`🔄 Force re-transcribing clip: ${clipId}`);
         
         // Delete existing transcript files
@@ -1188,15 +1204,13 @@ export default {
         switch (request.method) {
           case 'GET': {
             // Get overall audio processing status
-            const { DeduplicationService } = await import('./services/deduplication.js');
             const { TranscriptionService } = await import('./services/transcribe.js');
-            
-            const deduplicationService = new DeduplicationService(env);
             const transcriptionService = new TranscriptionService(env);
             
-            // Get all stored clips
-            const storedClips = await deduplicationService.getAllStoredClips();
-            const clipIds = storedClips.map(clip => clip.clip_id);
+            // Get all stored clips by listing R2 bucket
+            const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
+            const jsonFiles = clipsList.objects.filter((obj: any) => obj.key.endsWith('.json'));
+            const clipIds = jsonFiles.map((obj: any) => obj.key.replace('clips/', '').replace('.json', ''));
             
             // Check status for each clip
             const statusResults = [];
@@ -1246,7 +1260,6 @@ export default {
     // Individual clip audio status endpoint
     if (url.pathname.startsWith('/api/audio/status/') && request.method === 'GET') {
       try {
-        const { validateClipId } = await import('./utils/validation.js');
         const clipId = url.pathname.split('/').pop();
         
         if (!clipId) {
@@ -1521,8 +1534,8 @@ export default {
         
         // Get all stored clips
         const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
-        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
-        const clipIds = jsonFiles.map(obj => obj.key.replace('clips/', '').replace('.json', ''));
+        const jsonFiles = clipsList.objects.filter((obj: any) => obj.key.endsWith('.json'));
+        const clipIds = jsonFiles.map((obj: any) => obj.key.replace('clips/', '').replace('.json', ''));
         
         console.log(`📥 Found ${clipIds.length} stored clips to process: ${clipIds.join(', ')}`);
         
@@ -1582,23 +1595,20 @@ export default {
           throw new Error('Audio file not found');
         }
         
-        // Use existing WAV and convert properly
+        // Use base64 encoding of the full WAV file bytes
         const audioBuffer = await new Response(audioObj.body).arrayBuffer();
-        const headerSize = 44; // Standard WAV header size
-        const audioData = new Int16Array(audioBuffer, headerSize);
         
-        // Convert 16-bit signed integers to 8-bit unsigned integers
-        const whisperAudio: number[] = [];
-        for (let i = 0; i < audioData.length; i++) {
-          const normalized = (audioData[i] + 32768) / 65536;
-          const eightBit = Math.round(normalized * 255);
-          whisperAudio.push(Math.max(0, Math.min(255, eightBit)));
-        }
+        // Convert to base64 string (Whisper expects base64 of the full file bytes)
+        let binary = "";
+        const bytes = new Uint8Array(audioBuffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+        const base64Audio = btoa(binary);
         
-        console.log(`🎵 Converted audio: ${whisperAudio.length} samples`);
+        console.log(`🎵 Base64 encoded audio length: ${base64Audio.length} characters`);
         
-        const whisperResponse = await env.ai.run('@cf/openai/whisper', {
-          audio: whisperAudio
+        const whisperResponse = await env.ai.run('@cf/openai/whisper-large-v3-turbo', {
+          audio: base64Audio
         });
         
         return new Response(JSON.stringify({
@@ -1627,6 +1637,22 @@ export default {
     if (url.pathname.startsWith('/api/audio/file/') && request.method === 'GET') {
       try {
         const clipId = url.pathname.replace('/api/audio/file/', '');
+        
+        // Validate clipId to prevent security issues
+        const { validateClipId } = await import('./utils/validation.js');
+        const validation = validateClipId(clipId);
+        
+        if (!validation.isValid) {
+          console.warn(`🚨 Invalid clipId attempted: ${clipId} - ${validation.error}`);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid clip ID'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
         console.log(`🎵 Serving audio file for clip: ${clipId}`);
         
         const audioObj = await env.R2_BUCKET.get(`audio/${clipId}.wav`);

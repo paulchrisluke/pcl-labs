@@ -124,13 +124,13 @@ def mp4_to_whisper_wav(src_mp4: Path, dst_audio: Path, sample_rate: int = 16000,
         logger.error(f"Error converting {src_mp4}: {e}")
         return False
 
-def mp4_to_8bit_audio(src_mp4: Path, dst_audio: Path, sample_rate: int = 16000, channels: int = 1, timeout: int = 300) -> bool:
+def mp4_to_whisper_audio(src_mp4: Path, dst_audio: Path, sample_rate: int = 16000, channels: int = 1, timeout: int = 300) -> bool:
     """
     Convert MP4 to Whisper-compatible WAV (16-bit PCM, mono, 16kHz)
     
-    Note: This function was originally intended for 8-bit audio but has been updated
-    to use 16-bit PCM as 8-bit audio causes "Invalid audio input" errors with Whisper.
-    The function name is kept for backward compatibility.
+    Creates audio files in the format that Whisper expects: 16-bit signed PCM,
+    mono channel, 16kHz sample rate. This format works reliably with the
+    Workers AI Whisper API when base64-encoded.
     """
     try:
         # Validate input file

@@ -151,7 +151,7 @@ async function processAudioWithRetry(clipIds: string[], env: Environment, maxRet
       }
       
       const audioResult = await audioResponse.json();
-      console.log(`✅ Audio processing result: ${audioResult.message}`);
+      console.log(`✅ Audio processing result: ${(audioResult as any).message}`);
       
       // Wait for audio processing to complete
       console.log('⏳ Waiting for audio processing to complete...');

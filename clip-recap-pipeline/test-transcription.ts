@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Test script for Cloudflare Whisper transcription functionality
@@ -8,6 +8,32 @@
  */
 
 import { TranscriptionService } from './src/services/transcribe.js';
+
+// In-memory R2 store for testing
+const r2Store = new Map<string, { data: Uint8Array; size: number; uploaded: string }>();
+
+// Initialize with test audio files
+const mockAudioData = new Uint8Array(1024); // 1KB mock audio
+r2Store.set('audio/test-clip-123.wav', {
+  data: mockAudioData,
+  size: mockAudioData.length,
+  uploaded: new Date().toISOString()
+});
+r2Store.set('audio/test-clip-1.wav', {
+  data: mockAudioData,
+  size: mockAudioData.length,
+  uploaded: new Date().toISOString()
+});
+r2Store.set('audio/test-clip-2.wav', {
+  data: mockAudioData,
+  size: mockAudioData.length,
+  uploaded: new Date().toISOString()
+});
+r2Store.set('audio/test-clip-3.wav', {
+  data: mockAudioData,
+  size: mockAudioData.length,
+  uploaded: new Date().toISOString()
+});
 
 // Mock environment for testing
 const mockEnv = {
@@ -44,42 +70,66 @@ const mockEnv = {
     get: async (key: string) => {
       console.log(`📥 Mock R2 get: ${key}`);
       
-      // Simulate audio file for testing
-      if (key.includes('audio/') && key.endsWith('.wav')) {
-        const mockAudioData = new Uint8Array(1024); // 1KB mock audio
-        return {
-          body: mockAudioData,
-          size: mockAudioData.length
-        };
-      }
-      
-      // Simulate no existing transcript
-      if (key.includes('transcripts/') && key.endsWith('.json')) {
+      const stored = r2Store.get(key);
+      if (!stored) {
         return null;
       }
       
-      return null;
+      // Return object with body that exposes arrayBuffer() method and json() method
+      return {
+        body: {
+          arrayBuffer: async () => stored.data.buffer.slice(
+            stored.data.byteOffset,
+            stored.data.byteOffset + stored.data.byteLength
+          )
+        },
+        size: stored.size,
+        json: async () => {
+          // Try to parse as JSON if it's a string, otherwise return the data
+          const text = new TextDecoder().decode(stored.data);
+          try {
+            return JSON.parse(text);
+          } catch {
+            return text;
+          }
+        }
+      };
     },
-    put: async (key: string, data: any, options?: any) => {
+    put: async (key: string, data: string | Uint8Array, options?: any) => {
       console.log(`📤 Mock R2 put: ${key}`);
       console.log(`📄 Data type: ${typeof data}`);
-      console.log(`📏 Data size: ${typeof data === 'string' ? data.length : 'binary'}`);
+      
+      let uint8Data: Uint8Array;
+      if (typeof data === 'string') {
+        uint8Data = new TextEncoder().encode(data);
+      } else {
+        uint8Data = data;
+      }
+      
+      console.log(`📏 Data size: ${uint8Data.length} bytes`);
+      
+      // Store the data in our in-memory Map
+      r2Store.set(key, {
+        data: uint8Data,
+        size: uint8Data.length,
+        uploaded: new Date().toISOString()
+      });
+      
       return { ok: true };
     },
     head: async (key: string) => {
       console.log(`🔍 Mock R2 head: ${key}`);
       
-      // Simulate audio file exists
-      if (key.includes('audio/') && key.endsWith('.wav')) {
-        return { size: 1024, uploaded: new Date().toISOString() };
-      }
-      
-      // Simulate no transcript exists
-      if (key.includes('transcripts/') && key.endsWith('.ok')) {
+      const stored = r2Store.get(key);
+      if (!stored) {
         return null;
       }
       
-      return null;
+      return {
+        size: stored.size,
+        uploaded: stored.uploaded,
+        ok: true
+      };
     }
   }
 } as any;

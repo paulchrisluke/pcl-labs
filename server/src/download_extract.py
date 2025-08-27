@@ -11,7 +11,7 @@ from typing import Dict, Optional, Tuple, Any, List
 from dotenv import load_dotenv
 from yt_dlp import YoutubeDL
 from .storage.r2 import R2Storage
-from .ffmpeg_utils import ensure_ffmpeg, mp4_to_wav16k, mp4_to_8bit_audio, get_audio_duration, chunk_audio
+from .ffmpeg_utils import ensure_ffmpeg, mp4_to_wav16k, mp4_to_whisper_audio, get_audio_duration, chunk_audio
 
 # Load environment variables
 load_dotenv()
@@ -677,13 +677,13 @@ class AudioProcessor:
                         result["needs_chunking"] = False
                         print(f"Clip {clip_id} is {duration:.1f}s long, no chunking needed")
                 
-                # Extract 8-bit audio (for Whisper)
-                print(f"Extracting 8-bit audio from {clip_id}...")
-                audio_8bit_path = tmp_path / f"{clip_id}_8bit.wav"
+                # Extract audio for Whisper (16-bit PCM, mono, 16kHz)
+                print(f"Extracting audio from {clip_id}...")
+                audio_path = tmp_path / f"{clip_id}.wav"
                 
-                # Extract 8-bit audio (for Whisper)
-                if not mp4_to_8bit_audio(mp4_path, audio_8bit_path, self.sample_rate, self.channels):
-                    result["error"] = "Failed to extract 8-bit audio"
+                # Extract audio for Whisper
+                if not mp4_to_whisper_audio(mp4_path, audio_path, self.sample_rate, self.channels):
+                    result["error"] = "Failed to extract audio"
                     return result
                 
                 # Upload files to R2
@@ -695,10 +695,10 @@ class AudioProcessor:
                 if self.r2.put_file(mp4_key, str(mp4_path), "video/mp4", metadata):
                     result["files_uploaded"].append(mp4_key)
                 
-                # Upload 8-bit audio (for Whisper)
-                audio_8bit_key = f"audio/{clip_id}_8bit.wav"
-                if self.r2.put_file(audio_8bit_key, str(audio_8bit_path), "audio/wav", metadata):
-                    result["files_uploaded"].append(audio_8bit_key)
+                # Upload audio (for Whisper)
+                audio_key = f"audio/{clip_id}.wav"
+                if self.r2.put_file(audio_key, str(audio_path), "audio/wav", metadata):
+                    result["files_uploaded"].append(audio_key)
                 
                 # If chunking is needed, create WAV and chunks
                 if result["needs_chunking"]:

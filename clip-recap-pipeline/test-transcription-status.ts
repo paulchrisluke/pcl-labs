@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S tsx
 
 /**
  * Test script to check transcription status of existing clips
