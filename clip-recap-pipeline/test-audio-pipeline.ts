@@ -12,6 +12,12 @@ config()
  * Validate required environment variables at startup
  */
 function validateEnvironment(): void {
+  // Skip validation when testing against production worker
+  if (process.env.WORKER_URL && process.env.WORKER_URL.includes('workers.dev')) {
+    console.log('🔧 Testing against production worker - skipping local environment validation');
+    return;
+  }
+  
   const requiredEnvVars = {
     HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET,
   }
@@ -41,13 +47,33 @@ let securityService: any = null
 
 async function initializeSecurityService(): Promise<any> {
   if (!securityService) {
-    const { SecurityService } = await import('./src/services/security.js')
-    securityService = new SecurityService({
-      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET!,
-      WORKER_ORIGIN:
-        process.env.WORKER_ORIGIN ||
-        'https://clip-recap-pipeline.paulchrisluke.workers.dev',
-    } as any)
+    // For production testing, we don't need the SecurityService since we're testing worker endpoints directly
+    if (process.env.WORKER_URL && process.env.WORKER_URL.includes('workers.dev')) {
+      console.log('🔧 Using direct fetch for production worker testing');
+      securityService = {
+        securePost: async (url: string, data: any) => {
+          return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+        },
+        secureGet: async (url: string) => {
+          return fetch(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      };
+    } else {
+      const { SecurityService } = await import('./src/services/security.js')
+      securityService = new SecurityService({
+        HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET!,
+        WORKER_ORIGIN:
+          process.env.WORKER_ORIGIN ||
+          'https://clip-recap-pipeline.paulchrisluke.workers.dev',
+      } as any)
+    }
   }
   return securityService
 }
