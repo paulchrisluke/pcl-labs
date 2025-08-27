@@ -109,15 +109,39 @@ export async function processAudioForClips(clipIds: string[], env: Environment):
     } else {
       // Step 1: Call audio processor service to download and extract audio (only for clips that need it)
       console.log(`📥 Downloading and extracting audio for ${deduplicationResult.clipsToDownload.length} clips...`);
-      const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
-      const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
-      
-      // Use security service for authenticated requests
-      const { SecurityService } = await import('./security.js');
-      const securityService = new SecurityService(env);
+      await processAudioWithRetry(deduplicationResult.clipsToDownload, env);
+    }
+    
+    // Step 2: Transcribe audio files using Workers AI (for all clips that have audio)
+    console.log('🎤 Transcribing audio files...');
+    await processTranscriptionWithRetry(clipIds, env);
+    
+  } catch (error) {
+    console.error('❌ Audio processing failed:', error);
+    // Don't throw - allow pipeline to continue without audio processing
+    console.log('⚠️ Continuing pipeline without audio processing...');
+  }
+}
+
+/**
+ * Process audio with retry logic and error handling
+ */
+async function processAudioWithRetry(clipIds: string[], env: Environment, maxRetries: number = 3): Promise<void> {
+  const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
+  const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
+  
+  // Use security service for authenticated requests
+  const { SecurityService } = await import('./security.js');
+  const securityService = new SecurityService(env);
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📥 Audio processing attempt ${attempt}/${maxRetries}...`);
       
       const audioResponse = await securityService.securePost(`${audioProcessorUrl}`, {
-        clip_ids: deduplicationResult.clipsToDownload,
+        clip_ids: clipIds,
         background: false
       });
       
@@ -129,39 +153,130 @@ export async function processAudioForClips(clipIds: string[], env: Environment):
       const audioResult = await audioResponse.json();
       console.log(`✅ Audio processing result: ${audioResult.message}`);
       
-      // Step 2: Wait a bit for audio processing to complete
+      // Wait for audio processing to complete
       console.log('⏳ Waiting for audio processing to complete...');
       await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Verify audio files were created
+      const verificationResults = await verifyAudioProcessing(clipIds, env);
+      const successCount = verificationResults.filter(r => r.success).length;
+      
+      if (successCount > 0) {
+        console.log(`✅ Audio processing successful for ${successCount}/${clipIds.length} clips`);
+        return; // Success, exit retry loop
+      } else {
+        throw new Error('No audio files were created successfully');
+      }
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`❌ Audio processing attempt ${attempt} failed:`, lastError.message);
+      
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Exponential backoff, max 10s
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-    
-    // Step 3: Transcribe audio files using Workers AI (for all clips that have audio)
-    console.log('🎤 Transcribing audio files...');
-    const transcriptionService = new TranscriptionService(env);
-    
-    // Get clips that have audio but no transcript (including clips that were skipped for download)
-    const clipsToTranscribe = [];
-    for (const clipId of clipIds) {
-      const hasAudio = await env.R2_BUCKET.head(`audio/${clipId}.wav`);
+  }
+  
+  // All retries failed
+  throw new Error(`Audio processing failed after ${maxRetries} attempts. Last error: ${lastError?.message}`);
+}
+
+/**
+ * Process transcription with retry logic and error handling
+ */
+async function processTranscriptionWithRetry(clipIds: string[], env: Environment, maxRetries: number = 3): Promise<void> {
+  const transcriptionService = new TranscriptionService(env);
+  
+  // Get clips that have audio but no transcript
+  // Get clips that have audio but no transcript
+  const clipsToTranscribe = [];
+  for (const clipId of clipIds) {
+    try {
+      // Check for audio, but handle R2 errors gracefully
+      let hasAudio = false;
+      try {
+        hasAudio = !!(await env.R2_BUCKET.head(`audio/${clipId}.wav`));
+      } catch (r2Error) {
+        console.warn(`Failed to check audio file for ${clipId}:`, r2Error);
+        continue; // Skip this clip if we can't check R2
+      }
+
       const hasTranscript = await transcriptionService.hasTranscript(clipId);
       
       if (hasAudio && !hasTranscript) {
         clipsToTranscribe.push(clipId);
       }
+    } catch (error) {
+      console.error(`Error checking transcription status for ${clipId}:`, error);
     }
-    
-    if (clipsToTranscribe.length > 0) {
-      console.log(`🎤 Transcribing ${clipsToTranscribe.length} clips...`);
+  }
+  
+  if (clipsToTranscribe.length === 0) {
+    console.log('✅ All clips already transcribed or no audio available');
+    return;
+  }
+  
+  console.log(`🎤 Transcribing ${clipsToTranscribe.length} clips...`);
+  
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🎤 Transcription attempt ${attempt}/${maxRetries}...`);
+      
       const transcriptionResults = await transcriptionService.transcribeClips(clipsToTranscribe);
       console.log(`✅ Transcription completed: ${transcriptionResults.successful}/${transcriptionResults.total} successful`);
-    } else {
-      console.log('✅ All clips already transcribed or no audio available');
+      
+      if (transcriptionResults.successful > 0) {
+        return; // Success, exit retry loop
+      } else {
+        throw new Error('No transcriptions were completed successfully');
+      }
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.error(`❌ Transcription attempt ${attempt} failed:`, lastError.message);
+      
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Exponential backoff, max 10s
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-    
-  } catch (error) {
-    console.error('❌ Audio processing failed:', error);
-    // Don't throw - allow pipeline to continue without audio processing
-    console.log('⚠️ Continuing pipeline without audio processing...');
   }
+  
+  // All retries failed
+  console.error(`❌ Transcription failed after ${maxRetries} attempts. Last error: ${lastError?.message}`);
+  // Don't throw - allow pipeline to continue without transcription
+}
+
+/**
+ * Verify that audio processing was successful
+ */
+async function verifyAudioProcessing(clipIds: string[], env: Environment): Promise<Array<{clipId: string, success: boolean, error?: string}>> {
+  const results = [];
+  
+  for (const clipId of clipIds) {
+    try {
+      const hasAudio = await env.R2_BUCKET.head(`audio/${clipId}.wav`);
+      results.push({
+        clipId,
+        success: !!hasAudio,
+        error: hasAudio ? undefined : 'Audio file not found'
+      });
+    } catch (error) {
+      results.push({
+        clipId,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+  
+  return results;
 }
 
 export async function handleDailyPipeline(env: Environment): Promise<void> {

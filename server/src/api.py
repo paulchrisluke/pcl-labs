@@ -6,6 +6,7 @@ import os
 import time
 import re
 import asyncio
+import hmac
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .download_extract import AudioProcessor
 from .task_manager import task_manager, TaskStatus
@@ -90,12 +91,8 @@ async def health_check():
     """Health check endpoint"""
     
     ffmpeg_available = ensure_ffmpeg()
-    r2_configured = all([
-        os.getenv('CLOUDFLARE_ACCOUNT_ID'),
-        os.getenv('CLOUDFLARE_ZONE_ID'),
-        os.getenv('CLOUDFLARE_API_TOKEN'),
-        os.getenv('R2_BUCKET')
-    ])
+    # Check if R2 storage is actually enabled and working
+    r2_configured = processor.r2.enabled if hasattr(processor, 'r2') else False
     
     # Check cache health - make it non-blocking and resilient
     try:
@@ -412,6 +409,54 @@ async def cleanup_old_tasks(max_age_hours: int = 24):
 async def get_task_stats():
     """Get statistics about tasks"""
     return task_manager.get_task_stats()
+
+@app.get("/debug/list-all-files")
+async def list_all_files_in_r2(
+    limit: int = 100,
+    cursor: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token")
+):
+    """Debug endpoint to list all files in R2 bucket (Admin only)"""
+    
+    # Admin token validation
+    admin_token = os.getenv('ADMIN_TOKEN')
+    if not admin_token:
+        logger.error("ADMIN_TOKEN environment variable not set")
+        raise HTTPException(status_code=500, detail="Admin authentication not configured")
+    
+    # Check for admin token in headers
+    provided_token = x_admin_token or authorization
+    if not provided_token:
+        raise HTTPException(status_code=401, detail="Admin token required")
+    
+    # Remove 'Bearer ' prefix if present
+    if provided_token.startswith('Bearer '):
+        provided_token = provided_token[7:]
+    
+    # Validate admin token
+    if not hmac.compare_digest(provided_token, admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Validate and clamp limit parameter
+    if limit < 1:
+        limit = 1
+    elif limit > 1000:
+        limit = 1000
+    
+    try:
+        result = processor.r2.list_files('', limit=limit, cursor=cursor)
+        
+        return {
+            "objects": result['objects'],
+            "cursor": result['cursor'],
+            "has_more": result['truncated']
+        }
+    except Exception as e:
+        # Log the full error server-side
+        logger.error(f"Failed to list files in R2: {e}")
+        # Return generic error message
+        raise HTTPException(status_code=500, detail="Failed to list files")
 
 if __name__ == "__main__":
     import uvicorn
