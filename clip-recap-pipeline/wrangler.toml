@@ -21,10 +21,12 @@ compatibility_flags = ["nodejs_compat"]
 # Cron triggers. All times are UTC.
 # 0 2 * * *  -> Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
 # 0 * * * *  -> Every hour - token validation
+# 0 */6 * * * -> Every 6 hours - transcription pipeline
 [triggers]
 crons = [
   "0 2 * * *",
-  "0 * * * *"
+  "0 * * * *",
+  "0 */6 * * *"
 ]
 
 # AI binding for AI model access

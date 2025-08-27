@@ -25,6 +25,12 @@ export async function handleScheduled(
     return;
   }
   
+  // Handle transcription pipeline (every 6 hours)
+  if (event.cron === "0 */6 * * *") {
+    await handleTranscriptionPipeline(env);
+    return;
+  }
+  
   console.log(`Unknown cron pattern: ${event.cron}`);
 }
 
@@ -384,6 +390,48 @@ export async function handleDailyPipeline(env: Environment): Promise<void> {
     
   } catch (error) {
     console.error('Pipeline failed:', error);
+    
+    // Send error notification to Discord
+    try {
+      const discordService = new DiscordService(env);
+      await discordService.notifyError(error);
+    } catch (discordError) {
+      console.error('Failed to send error notification:', discordError);
+    }
+  }
+}
+
+/**
+ * Handle transcription-only pipeline for existing clips
+ * This runs more frequently to catch any clips that need transcription
+ */
+export async function handleTranscriptionPipeline(env: Environment): Promise<void> {
+  console.log('Starting transcription-only pipeline...');
+  
+  try {
+    // Get all stored clips
+    console.log('📋 Getting all stored clips...');
+    const list = await env.R2_BUCKET.list({ prefix: 'clips/' });
+    const jsonFiles = list.objects.filter((obj: any) => obj.key.endsWith('.json'));
+    
+    if (jsonFiles.length === 0) {
+      console.log('No stored clips found');
+      return;
+    }
+    
+    console.log(`📊 Found ${jsonFiles.length} stored clips`);
+    
+    // Get clip IDs
+    const clipIds = jsonFiles.map((obj: any) => obj.key.replace('clips/', '').replace('.json', ''));
+    
+    // Process transcription for all clips
+    console.log('🎤 Processing transcription for all clips...');
+    await processTranscriptionWithRetry(clipIds, env);
+    
+    console.log('✅ Transcription pipeline completed successfully!');
+    
+  } catch (error) {
+    console.error('❌ Transcription pipeline failed:', error);
     
     // Send error notification to Discord
     try {

@@ -224,7 +224,7 @@ export default {
         };
 
         const availableTokens = Object.entries(tokens)
-          .filter(([key, token]) => !!token)
+          .filter(([, token]) => !!token)
           .map(([key]) => key);
 
         if (availableTokens.length === 0) {
@@ -305,7 +305,7 @@ export default {
               } else {
                 console.log('⚠️ Repository access failed (this might be expected)');
               }
-            } catch (error) {
+            } catch {
               console.log('⚠️ Repository access test failed (this might be expected)');
             }
           }
@@ -754,13 +754,15 @@ export default {
         console.log(`📥 Processing ${clipIds.length} clips: ${clipIds.join(', ')}`);
         
         // Call audio processor
-        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app/api/process-clips';
+        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app/api';
         
         // Use security service for authenticated requests
         const { SecurityService } = await import('./services/security.js');
         const securityService = new SecurityService(env);
         
-        const audioResponse = await securityService.securePost(`${audioProcessorUrl}/process-clips`, {
+        // Ensure no duplicate slashes by trimming trailing slash before concatenation
+        const baseUrl = audioProcessorUrl.replace(/\/$/, '');
+        const audioResponse = await securityService.securePost(`${baseUrl}/process-clips`, {
           clip_ids: clipIds,
           background: false
         });
@@ -818,13 +820,15 @@ export default {
 
         // Step 2: Call audio processor to download and extract audio
         console.log('🎵 Processing audio for transcription test...');
-        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app/api/process-clips';
+        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app/api';
         
         // Use security service for authenticated requests
         const { SecurityService } = await import('./services/security.js');
         const securityService = new SecurityService(env);
         
-        const audioResponse = await securityService.securePost(`${audioProcessorUrl}/process-clips`, {
+        // Ensure no duplicate slashes by trimming trailing slash before concatenation
+        const baseUrl = audioProcessorUrl.replace(/\/$/, '');
+        const audioResponse = await securityService.securePost(`${baseUrl}/process-clips`, {
           clip_ids: [testClipId],
           background: false
         });
@@ -1199,13 +1203,9 @@ export default {
     // Audio processing status endpoints
     if (url.pathname === '/api/audio/status') {
       try {
-        const { validateClipId } = await import('./utils/validation.js');
-        
         switch (request.method) {
           case 'GET': {
             // Get overall audio processing status
-            const { TranscriptionService } = await import('./services/transcribe.js');
-            const transcriptionService = new TranscriptionService(env);
             
             // Get all stored clips by listing R2 bucket
             const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
@@ -1580,33 +1580,175 @@ export default {
       }
     }
 
-
+    // Manual transcription pipeline endpoint
+    if (url.pathname === '/api/transcription-pipeline' && request.method === 'POST') {
+      try {
+        console.log('🎤 Manual transcription pipeline for all stored clips...');
+        
+        // Import the transcription pipeline function
+        const { handleTranscriptionPipeline } = await import('./services/scheduler.js');
+        
+        // Run transcription pipeline
+        await handleTranscriptionPipeline(env);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Transcription pipeline completed successfully',
+          timestamp: new Date().toISOString(),
+          note: 'Check R2 storage for transcript files'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Manual transcription pipeline failed:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     // Test Whisper API endpoint with real audio
     if (url.pathname === '/api/test-whisper' && request.method === 'POST') {
       try {
         console.log('🧪 Testing Whisper API with real audio...');
         
-        // Get the existing WAV file from R2
-        const clipId = 'GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0';
-        const audioObj = await env.R2_BUCKET.get(`audio/${clipId}.wav`);
+        // Step 1: Validate request body
+        const body = await request.json() as { clipId?: string };
+        const { clipId } = body;
         
-        if (!audioObj || !('body' in audioObj)) {
-          throw new Error('Audio file not found');
+        if (!clipId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'clipId is required in request body'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
         }
         
-        // Use base64 encoding of the full WAV file bytes
-        const audioBuffer = await new Response(audioObj.body).arrayBuffer();
+        // Step 2: Validate clipId format and length
+        const { validateClipId } = await import('./utils/validation.js');
+        const validation = validateClipId(clipId);
         
-        // Convert to base64 string (Whisper expects base64 of the full file bytes)
-        let binary = "";
+        if (!validation.isValid) {
+          console.warn(`🚨 Invalid clipId attempted in Whisper test: ${clipId} - ${validation.error}`);
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Invalid clip ID: ${validation.error}`
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Step 3: Authorization check - require HMAC secret or Bearer token
+        const authHeader = request.headers.get('authorization');
+        const apiKey = request.headers.get('x-api-key');
+        
+        // Check for valid authorization (HMAC secret or Bearer token)
+        const isAuthorized = (
+          (apiKey && apiKey === env.HMAC_SHARED_SECRET) ||
+          (authHeader && authHeader.startsWith('Bearer '))
+        );
+        
+        if (!isAuthorized) {
+          console.warn(`🚨 Unauthorized Whisper API access attempt for clip: ${clipId}`);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Unauthorized access'
+          }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Step 4: Rate limiting check (simple logging for now)
+        const clientId = apiKey || authHeader || 'unknown';
+        
+        // For now, just log the request for monitoring
+        // In production, you'd want to use a proper rate limiting service
+        console.log(`📊 Whisper API request from client: ${clientId} at ${Date.now()}`);
+        
+        // Step 5: Get audio file from R2 with defensive checks
+        const audioObj = await env.R2_BUCKET.get(`audio/${clipId}.wav`);
+        
+        if (!audioObj) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Audio file not found'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        if (!('body' in audioObj)) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Audio file has no body content'
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Step 6: Check file size limit before processing
+        const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB limit
+        if (audioObj.size > MAX_FILE_SIZE) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Audio file too large (${audioObj.size} bytes). Maximum allowed: ${MAX_FILE_SIZE} bytes`
+          }), {
+            status: 413, // Payload Too Large
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Step 7: Safe binary-to-base64 conversion with chunking
+        const audioBuffer = await new Response(audioObj.body).arrayBuffer();
         const bytes = new Uint8Array(audioBuffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
-        const base64Audio = btoa(binary);
+        
+        // Use safe base64 conversion with chunking for large files
+        let base64Audio: string;
+        try {
+          // For smaller files, use direct conversion
+          if (bytes.length <= 1024 * 1024) { // 1MB
+            base64Audio = btoa(String.fromCharCode.apply(null, Array.from(bytes)));
+          } else {
+            // For larger files, use chunked conversion to avoid stack overflow
+            const chunks: string[] = [];
+            const chunkSize = 1024 * 1024; // 1MB chunks
+            
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              const chunk = bytes.slice(i, i + chunkSize);
+              const chunkString = String.fromCharCode.apply(null, Array.from(chunk));
+              chunks.push(btoa(chunkString));
+            }
+            
+            base64Audio = chunks.join('');
+          }
+        } catch (error) {
+          console.error('Base64 conversion failed:', error);
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Failed to encode audio file to base64'
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
         
         console.log(`🎵 Base64 encoded audio length: ${base64Audio.length} characters`);
         
+        // Step 8: Call Whisper API
         const whisperResponse = await env.ai.run('@cf/openai/whisper-large-v3-turbo', {
           audio: base64Audio
         });
@@ -1614,6 +1756,9 @@ export default {
         return new Response(JSON.stringify({
           success: true,
           message: 'Whisper API test successful',
+          clip_id: clipId,
+          file_size: audioObj.size,
+          base64_length: base64Audio.length,
           response: whisperResponse
         }), {
           status: 200,
@@ -1622,6 +1767,17 @@ export default {
         
       } catch (error) {
         console.error('Error testing Whisper API:', error);
+        
+        // Handle specific error types
+        if (error instanceof SyntaxError) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid JSON in request body'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
         
         return new Response(JSON.stringify({
           success: false,

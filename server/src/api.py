@@ -78,10 +78,16 @@ async def verify_security(request: Request):
         )
         
         if not is_valid:
-            raise HTTPException(status_code=401, detail=f"Security validation failed: {error_message}")
+            if error_message == "Rate limit exceeded":
+                raise HTTPException(status_code=429, detail=error_message)
+            else:
+                raise HTTPException(status_code=401, detail=f"Security validation failed: {error_message}")
             
+    except HTTPException:
+        # Re-raise HTTPException with exception chaining
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Security validation failed: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Security validation failed: {str(e)}") from e
 
 class ProcessClipRequest(BaseModel):
     clip_ids: List[str]

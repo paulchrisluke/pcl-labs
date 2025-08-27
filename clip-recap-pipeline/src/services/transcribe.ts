@@ -41,13 +41,29 @@ export class TranscriptionService {
 
   /**
    * Convert ArrayBuffer to base64 string
+   * Workers-compatible implementation using chunked conversion
    */
   private base64Encode(arrayBuffer: ArrayBuffer): string {
-    let binary = "";
+    // Workers/browser environment: convert in chunks to avoid memory issues
     const bytes = new Uint8Array(arrayBuffer);
     const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
-    return btoa(binary);
+    const CHUNK_SIZE = 32 * 1024; // 32KB chunks
+    let result = '';
+    
+    for (let i = 0; i < len; i += CHUNK_SIZE) {
+      const chunk = bytes.slice(i, Math.min(i + CHUNK_SIZE, len));
+      let binary = '';
+      
+      // Build binary string for this chunk
+      for (let j = 0; j < chunk.length; j++) {
+        binary += String.fromCharCode(chunk[j]);
+      }
+      
+      // Convert chunk to base64 and append to result
+      result += btoa(binary);
+    }
+    
+    return result;
   }
 
   /**
@@ -172,7 +188,7 @@ export class TranscriptionService {
       const segments: TranscriptSegment[] = [];
       if (whisperResponse.segments && Array.isArray(whisperResponse.segments)) {
         for (const segment of whisperResponse.segments) {
-          if (segment.text) {
+          if (segment.text && segment.text.trim().length > 0) {
             segments.push({
               start: segment.start || 0,
               end: segment.end || (segment.start + 1),
@@ -180,6 +196,16 @@ export class TranscriptionService {
             });
           }
         }
+      }
+
+      // Validate transcript content before storing
+      const validationResult = this.validateTranscriptContent(redactedText, segments);
+      if (!validationResult.isValid) {
+        console.warn(`⚠️ Transcript validation failed for ${clipId}: ${validationResult.reason}`);
+        console.warn(`⚠️ Raw text: "${rawText}"`);
+        console.warn(`⚠️ Redacted text: "${redactedText}"`);
+        console.warn(`⚠️ Segments count: ${segments.length}`);
+        return null;
       }
 
       // Create transcript result
@@ -316,6 +342,62 @@ export class TranscriptionService {
       console.error(`Error getting transcript for ${clipId}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Validate transcript content to ensure it has meaningful content
+   */
+  private validateTranscriptContent(text: string, segments: TranscriptSegment[]): { isValid: boolean; reason?: string } {
+    // Check if text is empty or too short
+    if (!text || text.trim().length === 0) {
+      return { isValid: false, reason: 'Empty transcript text' };
+    }
+
+    if (text.trim().length < 10) {
+      return { isValid: false, reason: 'Transcript text too short (less than 10 characters)' };
+    }
+
+    // Check if we have meaningful segments
+    if (segments.length === 0) {
+      return { isValid: false, reason: 'No transcript segments found' };
+    }
+
+    // Check if segments have meaningful content
+    const meaningfulSegments = segments.filter(segment => 
+      segment.text && segment.text.trim().length > 0
+    );
+
+    if (meaningfulSegments.length === 0) {
+      return { isValid: false, reason: 'No meaningful segments found' };
+    }
+
+    // Check for common empty/error patterns
+    const lowerText = text.toLowerCase();
+    const emptyPatterns = [
+      'no speech detected',
+      'silence',
+      'no audio',
+      'error',
+      'failed',
+      'null',
+      'undefined'
+    ];
+
+    for (const pattern of emptyPatterns) {
+      if (lowerText.includes(pattern)) {
+        return { isValid: false, reason: `Transcript contains error pattern: "${pattern}"` };
+      }
+    }
+
+    // Check if text is mostly punctuation or whitespace
+    const alphanumericChars = text.replace(/[^a-zA-Z0-9]/g, '').length;
+    const totalChars = text.replace(/\s/g, '').length;
+    
+    if (totalChars > 0 && alphanumericChars / totalChars < 0.3) {
+      return { isValid: false, reason: 'Transcript contains mostly non-alphanumeric characters' };
+    }
+
+    return { isValid: true };
   }
 
   /**

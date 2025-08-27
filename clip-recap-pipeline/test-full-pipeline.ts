@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Comprehensive test script for the entire pipeline
@@ -7,6 +7,55 @@
  */
 
 const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
+
+/**
+ * Create HMAC signature for request authentication
+ */
+async function createSignature(body: string, timestamp: string, nonce: string): Promise<string> {
+  const hmacSecret = process.env.HMAC_SHARED_SECRET;
+  if (!hmacSecret) {
+    throw new Error('HMAC_SHARED_SECRET not configured');
+  }
+
+  // Create signature payload: body + timestamp + nonce
+  const payload = `${body}${timestamp}${nonce}`;
+  
+  // Create HMAC signature using Web Crypto API
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(hmacSecret);
+  const messageData = encoder.encode(payload);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  
+  // Convert to hex string
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Create security headers for API requests
+ */
+async function createSecurityHeaders(body: string = ''): Promise<Record<string, string>> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = Math.random().toString(36).substring(2, 15);
+  const signature = await createSignature(body, timestamp, nonce);
+  
+  return {
+    'X-Request-Signature': signature,
+    'X-Request-Timestamp': timestamp,
+    'X-Request-Nonce': nonce,
+    'Content-Type': 'application/json',
+  };
+}
 
 async function testFullPipeline() {
   console.log('🧪 Testing Full Pipeline...\n');
@@ -21,12 +70,13 @@ async function testFullPipeline() {
     }
     
     const clipsData = await clipsResponse.json();
-    console.log(`✅ Found ${clipsData.clips.length} stored clips`);
     
-    // Defensive check for clips data
+    // Defensive check for clips data - validate before logging
     if (!clipsData || !Array.isArray(clipsData.clips) || clipsData.clips.length === 0) {
       throw new Error('No clips available for test');
     }
+    
+    console.log(`✅ Found ${clipsData.clips.length} stored clips`);
     
     // Step 2: Check a specific clip's status
     const testClip = clipsData.clips[0];
@@ -44,28 +94,46 @@ async function testFullPipeline() {
       console.log(`  ❌ Status check failed: ${statusResponse.status}`);
     }
     
-    // Step 3: Test Python server endpoint
+    // Step 3: Test Python server endpoint with HMAC authentication
     console.log('\n🔧 Step 3: Testing Python server endpoint...');
-    const pythonUrl = 'https://pcl-labs.vercel.app/api/process-clips';
-    console.log(`Testing: ${pythonUrl}`);
+    const pythonUrls = [
+      'https://pcl-labs.vercel.app/api/process-clips',
+      'https://pcl-labs.vercel.app/api/process_clips'
+    ];
     
-    try {
-      const pythonResponse = await fetch(pythonUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clip_ids: [testClip.id], background: false })
-      });
+    const requestBody = JSON.stringify({ clip_ids: [testClip.id], background: false });
+    const securityHeaders = await createSecurityHeaders(requestBody);
+    
+    let pythonSuccess = false;
+    
+    for (const pythonUrl of pythonUrls) {
+      console.log(`Testing: ${pythonUrl}`);
       
-      if (pythonResponse.ok) {
-        const pythonResult = await pythonResponse.json();
-        console.log('✅ Python server working!');
-        console.log(`📊 Result: ${JSON.stringify(pythonResult, null, 2)}`);
-      } else {
-        const errorText = await pythonResponse.text();
-        console.log(`❌ Python server error: ${pythonResponse.status} - ${errorText}`);
+      try {
+        const pythonResponse = await fetch(pythonUrl, {
+          method: 'POST',
+          headers: securityHeaders,
+          body: requestBody
+        });
+        
+        if (pythonResponse.ok) {
+          const pythonResult = await pythonResponse.json();
+          console.log('✅ Python server working!');
+          console.log(`📊 Result: ${JSON.stringify(pythonResult, null, 2)}`);
+          pythonSuccess = true;
+          break;
+        } else {
+          const errorText = await pythonResponse.text();
+          console.log(`❌ Python server error: ${pythonResponse.status} - ${errorText}`);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`❌ Python server connection failed: ${errorMessage}`);
       }
-    } catch (error) {
-      console.log(`❌ Python server connection failed: ${error.message}`);
+    }
+    
+    if (!pythonSuccess) {
+      console.log('❌ All Python server endpoints failed');
     }
     
     // Step 4: Test transcription directly
@@ -110,7 +178,8 @@ async function testFullPipeline() {
           console.log(`  ❌ ${filePath}: ${fileResponse.status}`);
         }
       } catch (error) {
-        console.log(`  ❌ ${filePath}: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`  ❌ ${filePath}: ${errorMessage}`);
       }
     }
     
@@ -121,6 +190,7 @@ async function testFullPipeline() {
     // This would require collecting status throughout the test execution
   } catch (error) {
     console.error('❌ Test failed:', error);
+    throw error; // Re-throw to ensure process exits with failure
   }
 }
 

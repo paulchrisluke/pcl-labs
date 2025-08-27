@@ -9,11 +9,61 @@
 
 import { TranscriptionService } from './src/services/transcribe.js';
 
+// Helper function to create a minimal valid 16-bit PCM WAV file
+function createMinimalWAV(): Uint8Array {
+  // WAV file structure:
+  // RIFF header (12 bytes) + fmt chunk (24 bytes) + data chunk (8 + data bytes)
+  const sampleRate = 16000;
+  const channels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * channels * bitsPerSample / 8;
+  const blockAlign = channels * bitsPerSample / 8;
+  
+  // Create a short silence frame (0.1 seconds of silence)
+  const durationSeconds = 0.1;
+  const numSamples = Math.floor(sampleRate * durationSeconds);
+  const dataSize = numSamples * channels * (bitsPerSample / 8);
+  
+  // Total file size: 12 (RIFF) + 24 (fmt) + 8 (data header) + dataSize
+  const fileSize = 12 + 24 + 8 + dataSize;
+  
+  // Create the WAV file buffer
+  const buffer = new ArrayBuffer(44 + dataSize); // 44 bytes header + data
+  const view = new DataView(buffer);
+  
+  // RIFF header (12 bytes)
+  view.setUint32(0, 0x52494646, false); // "RIFF" (big-endian)
+  view.setUint32(4, fileSize - 8, true); // File size - 8 (little-endian)
+  view.setUint32(8, 0x57415645, false); // "WAVE" (big-endian)
+  
+  // fmt chunk (24 bytes)
+  view.setUint32(12, 0x666D7420, false); // "fmt " (big-endian)
+  view.setUint32(16, 16, true); // fmt chunk size (16 for PCM)
+  view.setUint16(20, 1, true); // Audio format (1 = PCM)
+  view.setUint16(22, channels, true); // Number of channels
+  view.setUint32(24, sampleRate, true); // Sample rate
+  view.setUint32(28, byteRate, true); // Byte rate
+  view.setUint16(32, blockAlign, true); // Block align
+  view.setUint16(34, bitsPerSample, true); // Bits per sample
+  
+  // data chunk (8 + data bytes)
+  view.setUint32(36, 0x64617461, false); // "data" (big-endian)
+  view.setUint32(40, dataSize, true); // Data size
+  
+  // Fill data section with silence (16-bit samples = 0)
+  // Data starts at byte 44
+  for (let i = 44; i < 44 + dataSize; i += 2) {
+    view.setInt16(i, 0, true); // 16-bit signed integer, little-endian
+  }
+  
+  return new Uint8Array(buffer);
+}
+
 // In-memory R2 store for testing
 const r2Store = new Map<string, { data: Uint8Array; size: number; uploaded: string }>();
 
-// Initialize with test audio files
-const mockAudioData = new Uint8Array(1024); // 1KB mock audio
+// Initialize with test audio files using valid WAV data
+const mockAudioData = createMinimalWAV();
 r2Store.set('audio/test-clip-123.wav', {
   data: mockAudioData,
   size: mockAudioData.length,
@@ -75,14 +125,9 @@ const mockEnv = {
         return null;
       }
       
-      // Return object with body that exposes arrayBuffer() method and json() method
+      // Return object with proper body that works with new Response(body).arrayBuffer()
       return {
-        body: {
-          arrayBuffer: async () => stored.data.buffer.slice(
-            stored.data.byteOffset,
-            stored.data.byteOffset + stored.data.byteLength
-          )
-        },
+        body: new Blob([stored.data], { type: 'audio/wav' }),
         size: stored.size,
         json: async () => {
           // Try to parse as JSON if it's a string, otherwise return the data
