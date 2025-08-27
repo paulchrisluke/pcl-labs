@@ -3,21 +3,25 @@
 
 set -e
 
-echo "🔄 Updating Python dependencies..."
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." >/dev/null 2>&1 && pwd -P)"
+REQ_IN="$PROJECT_DIR/requirements.in"
+REQ_TXT="$PROJECT_DIR/requirements.txt"
+# Ensure commands run in the project dir
+cd "$PROJECT_DIR"
 
+echo "🔄 Updating Python dependencies..."
 # Check if pip-tools is installed
 if ! command -v pip-compile &> /dev/null; then
     echo "❌ pip-tools not found. Installing..."
     pip install pip-tools
 fi
 
-# Regenerate requirements.txt with hashes
-echo "📦 Regenerating requirements.txt with hashes..."
-pip-compile --generate-hashes requirements.in
+echo "📦 Regenerating $REQ_TXT with hashes..."
+"$PYTHON" -m piptools compile --generate-hashes "$REQ_IN" -o "$REQ_TXT"
 
-# Install updated dependencies
-echo "⬇️ Installing updated dependencies..."
-pip-sync requirements.txt
+echo "⬇️ Installing updated dependencies from $REQ_TXT..."
+"$PYTHON" -m piptools sync "$REQ_TXT"
 
 echo "✅ Dependencies updated successfully!"
 echo "📋 Summary:"

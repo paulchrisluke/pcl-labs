@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple, Any, List
 from dotenv import load_dotenv
 from yt_dlp import YoutubeDL
-from .r2 import R2Storage
+from .storage.r2 import R2Storage
 from .ffmpeg_utils import ensure_ffmpeg, mp4_to_wav16k, get_audio_duration, chunk_audio
 
 # Load environment variables
@@ -174,6 +174,62 @@ class AudioProcessor:
         # Default: enable SSL verification
         return False
 
+    def _encode_metadata_item(self, key: str, value: str, max_key_len: int = 128, max_value_len: int = 256) -> Optional[Tuple[str, str]]:
+        """
+        Encode and validate a metadata key-value pair.
+        
+        Args:
+            key: Metadata key
+            value: Metadata value
+            max_key_len: Maximum allowed key length in bytes
+            max_value_len: Maximum allowed value length in bytes
+        
+        Returns:
+            Tuple of (encoded_key, encoded_value) or None if validation fails
+        """
+        # Ensure value is string
+        if not isinstance(value, str):
+            try:
+                value = str(value)
+            except Exception as e:
+                logger.warning(f"Could not convert metadata value to string for {key}: {e}")
+                return None
+        
+        # Validate key length
+        if len(key.encode('utf-8')) > max_key_len:
+            logger.warning(f"Metadata key too long, skipping: {key}")
+            return None
+        
+        # Validate and truncate value if needed
+        if len(value.encode('utf-8')) > max_value_len:
+            logger.warning(f"Metadata value too long, truncating: {key}")
+            value_bytes = value.encode('utf-8')
+            truncated_bytes = value_bytes[:max_value_len]
+            value = truncated_bytes.decode('utf-8', errors='ignore')
+        
+        # Encode non-ASCII characters to preserve data while ensuring compatibility
+        try:
+            # Try ASCII encoding first
+            key.encode('ascii')
+            value.encode('ascii')
+            return (key, value)
+        except UnicodeEncodeError:
+            # If non-ASCII characters exist, encode them as URL-safe strings
+            try:
+                safe_key = urllib.parse.quote(key, safe='/-_.~')
+                safe_value = urllib.parse.quote(value, safe='/-_.~')
+                
+                # Check if encoded values are still within limits
+                if len(safe_key.encode('utf-8')) <= max_key_len and len(safe_value.encode('utf-8')) <= max_value_len:
+                    logger.info(f"Encoded non-ASCII metadata: {key} -> {safe_key}")
+                    return (safe_key, safe_value)
+                else:
+                    logger.warning(f"Encoded metadata too long, skipping: {key}")
+                    return None
+            except Exception as encode_error:
+                logger.warning(f"Failed to encode non-ASCII metadata, skipping: {key} - {encode_error}")
+                return None
+
     def _create_validated_metadata(self, clip_id: str, duration: Optional[float], created_at: str) -> Dict[str, str]:
         """
         Create and validate metadata for file uploads.
@@ -215,49 +271,10 @@ class AudioProcessor:
             # Validate all metadata values
             validated_metadata = {}
             for key, value in metadata.items():
-                # Ensure value is string
-                if not isinstance(value, str):
-                    try:
-                        value = str(value)
-                    except Exception as e:
-                        logger.warning(f"Could not convert metadata value to string for {key}: {e}")
-                        continue
-                
-                # Validate key and value lengths
-                if len(key.encode('utf-8')) > 128:
-                    logger.warning(f"Metadata key too long, skipping: {key}")
-                    continue
-                
-                if len(value.encode('utf-8')) > 256:
-                    logger.warning(f"Metadata value too long, truncating: {key}")
-                    value_bytes = value.encode('utf-8')
-                    truncated_bytes = value_bytes[:256]
-                    value = truncated_bytes.decode('utf-8', errors='ignore')
-                
-                # Encode non-ASCII characters to preserve data while ensuring compatibility
-                try:
-                    # Try ASCII encoding first
-                    key.encode('ascii')
-                    value.encode('ascii')
-                except UnicodeEncodeError:
-                    # If non-ASCII characters exist, encode them as URL-safe strings
-                    try:
-                        safe_key = urllib.parse.quote(key, safe='')
-                        safe_value = urllib.parse.quote(value, safe='')
-                        
-                        # Check if encoded values are still within limits
-                        if len(safe_key.encode('utf-8')) <= 128 and len(safe_value.encode('utf-8')) <= 256:
-                            key = safe_key
-                            value = safe_value
-                            logger.info(f"Encoded non-ASCII metadata: {key} -> {safe_key}")
-                        else:
-                            logger.warning(f"Encoded metadata too long, skipping: {key}")
-                            continue
-                    except Exception as encode_error:
-                        logger.warning(f"Failed to encode non-ASCII metadata, skipping: {key} - {encode_error}")
-                        continue
-                
-                validated_metadata[key] = value
+                result = self._encode_metadata_item(key, value)
+                if result is not None:
+                    encoded_key, encoded_value = result
+                    validated_metadata[encoded_key] = encoded_value
             
             logger.info(f"Created validated metadata for {clip_id} with {len(validated_metadata)} entries")
             return validated_metadata
@@ -295,49 +312,10 @@ class AudioProcessor:
             # Validate the extended metadata
             validated_metadata = {}
             for key, value in chunk_metadata.items():
-                # Ensure value is string
-                if not isinstance(value, str):
-                    try:
-                        value = str(value)
-                    except Exception as e:
-                        logger.warning(f"Could not convert chunk metadata value to string for {key}: {e}")
-                        continue
-                
-                # Validate key and value lengths
-                if len(key.encode('utf-8')) > 128:
-                    logger.warning(f"Chunk metadata key too long, skipping: {key}")
-                    continue
-                
-                if len(value.encode('utf-8')) > 256:
-                    logger.warning(f"Chunk metadata value too long, truncating: {key}")
-                    value_bytes = value.encode('utf-8')
-                    truncated_bytes = value_bytes[:256]
-                    value = truncated_bytes.decode('utf-8', errors='ignore')
-                
-                # Encode non-ASCII characters to preserve data while ensuring compatibility
-                try:
-                    # Try ASCII encoding first
-                    key.encode('ascii')
-                    value.encode('ascii')
-                except UnicodeEncodeError:
-                    # If non-ASCII characters exist, encode them as URL-safe strings
-                    try:
-                        safe_key = urllib.parse.quote(key, safe='')
-                        safe_value = urllib.parse.quote(value, safe='')
-                        
-                        # Check if encoded values are still within limits
-                        if len(safe_key.encode('utf-8')) <= 128 and len(safe_value.encode('utf-8')) <= 256:
-                            key = safe_key
-                            value = safe_value
-                            logger.info(f"Encoded non-ASCII chunk metadata: {key} -> {safe_key}")
-                        else:
-                            logger.warning(f"Encoded chunk metadata too long, skipping: {key}")
-                            continue
-                    except Exception as encode_error:
-                        logger.warning(f"Failed to encode non-ASCII chunk metadata, skipping: {key} - {encode_error}")
-                        continue
-                
-                validated_metadata[key] = value
+                result = self._encode_metadata_item(key, value)
+                if result is not None:
+                    encoded_key, encoded_value = result
+                    validated_metadata[encoded_key] = encoded_value
             
             logger.info(f"Created validated chunk metadata for chunk {chunk_index}/{total_chunks} with {len(validated_metadata)} entries")
             return validated_metadata

@@ -8,6 +8,10 @@ import requests
 import re
 from pathlib import Path
 from yt_dlp import YoutubeDL
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from src.storage.r2 import R2Storage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -48,164 +52,18 @@ def validate_clip_id(clip_id: str) -> str:
     
     return trimmed_clip_id
 
-class R2Storage:
-    """Simple R2 storage client for uploading files"""
-    
-    def __init__(self):
-        # Validate required environment variables
-        self.account_id = self._validate_required_env('CLOUDFLARE_ACCOUNT_ID')
-        self.api_token = self._validate_required_env('CLOUDFLARE_API_TOKEN')
-        self.bucket = self._validate_required_env('R2_BUCKET')
-        
-        # Debug logging
-        logger.info(f"R2 Configuration - Account ID: {'SET' if self.account_id else 'MISSING'}")
-        logger.info(f"R2 Configuration - API Token: {'SET' if self.api_token else 'MISSING'}")
-        logger.info(f"R2 Configuration - Bucket: {'SET' if self.bucket else 'MISSING'}")
-        
-        if not all([self.account_id, self.api_token, self.bucket]):
-            logger.warning("Missing required Cloudflare environment variables - R2 uploads will be disabled")
-            self.enabled = False
-        else:
-            logger.info("All R2 environment variables are set - R2 storage is enabled")
-            self.enabled = True
-            # Use the correct R2 REST API endpoint
-            self.base_url = f"https://api.cloudflare.com/client/v4/accounts/{self.account_id}/r2/buckets/{self.bucket}/objects"
-            self.headers = {
-                'Authorization': f'Bearer {self.api_token}',
-                'Content-Type': 'application/json'
-            }
-    
-    def _validate_required_env(self, env_name: str) -> str:
-        """Validate and return environment variable value"""
-        value = os.getenv(env_name)
-        if not value:
-            logger.warning(f"Missing environment variable: {env_name}")
-        return value or ""
-    
-    def put_file(self, key: str, file_path: str, content_type: str, metadata: dict = None) -> bool:
-        """Upload a file to R2 storage using Cloudflare API"""
-        if not self.enabled:
-            logger.warning(f"R2 storage disabled - skipping upload of {key}")
-            return False
-            
-        try:
-            with open(file_path, 'rb') as f:
-                data = f.read()
-            return self.put_data(key, data, content_type, metadata)
-        except Exception as e:
-            logger.error(f"Error uploading file {key}: {e}")
-            return False
 
-    def put_data(self, key: str, data: bytes, content_type: str, metadata: dict = None) -> bool:
-        """Upload data directly to R2 storage using Cloudflare API"""
-        if not self.enabled:
-            logger.warning(f"R2 storage disabled - skipping upload of {key}")
-            return False
-            
-        try:
-            url = f"{self.base_url}/{key}"
-            headers = {
-                'Authorization': f'Bearer {self.api_token}',
-                'Content-Type': content_type
-            }
-            
-            # Add metadata as custom headers if provided
-            if metadata:
-                for k, v in metadata.items():
-                    if isinstance(v, str) and len(v) <= 1024:  # R2 metadata value limit
-                        headers[f'x-amz-meta-{k}'] = v
-            
-            response = requests.put(url, data=data, headers=headers, timeout=30)
-            response.raise_for_status()
-            logger.info(f"Successfully uploaded {key}")
-            return True
-        except Exception as e:
-            logger.error(f"Error uploading data {key}: {e}")
-            return False
-
-    def get_file_url(self, key: str) -> str:
-        """Generate public URL for uploaded file"""
-        if not self.enabled:
-            return f"r2://{self.bucket}/{key}" if self.bucket else f"r2://bucket/{key}"
-        return f"https://{self.bucket}.r2.cloudflarestorage.com/{key}"
-
-    def list_objects(self, prefix: str = "clips/", limit: int = 100) -> list:
-        """List objects in R2 storage with optional prefix filter"""
-        if not self.enabled:
-            logger.warning("R2 storage disabled - cannot list objects")
-            return []
-            
-        try:
-            url = self.base_url
-            params = {
-                'prefix': prefix,
-                'limit': limit
-            }
-            
-            response = requests.get(url, headers=self.headers, params=params, timeout=30)
-            response.raise_for_status()
-            
-            data = response.json()
-            if data.get('success'):
-                result = data.get('result', {})
-                objects = result.get('objects', []) if isinstance(result, dict) else []
-            else:
-                logger.error(f"API error listing objects: {data.get('errors', [])}")
-                objects = []
-            
-            # Extract clip IDs from object keys
-            clips = []
-            for obj in objects:
-                key = obj.get('key', '')
-                if key.startswith('clips/') and key.endswith(('.mp4', '.mkv', '.webm')):
-                    # Extract clip ID from key (e.g., "clips/abc123.mp4" -> "abc123")
-                    clip_id = key.replace('clips/', '').split('.')[0]
-                    clips.append({
-                        'clip_id': clip_id,
-                        'key': key,
-                        'size': obj.get('size', 0),
-                        'uploaded': obj.get('uploaded', ''),
-                        'metadata': obj.get('metadata', {})
-                    })
-            
-            return clips
-        except Exception as e:
-            logger.error(f"Error listing objects: {e}")
-            return []
-
-    def get_latest_clip(self) -> dict:
-        """Get the most recently uploaded clip from R2 storage"""
-        if not self.enabled:
-            logger.warning("R2 storage disabled - cannot get latest clip")
-            return None
-            
-        try:
-            clips = self.list_objects(prefix="clips/", limit=100)
-            
-            if not clips:
-                logger.info("No clips found in R2 storage")
-                return None
-            
-            # Sort by upload time (newest first)
-            clips.sort(key=lambda x: x.get('uploaded', ''), reverse=True)
-            
-            latest_clip = clips[0]
-            logger.info(f"Found latest clip: {latest_clip['clip_id']}")
-            return latest_clip
-            
-        except Exception as e:
-            logger.error(f"Error getting latest clip: {e}")
-            return None
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Parse the path to determine the endpoint
         path = self.path.rstrip('/')
         
-        if path == '/api/audio_processor/latest':
+        # Accept both underscore and hyphenated base path variants
+        if path in ['/api/audio_processor/latest', '/api/audio-processor/latest']:
             # Get latest clip endpoint
             self.handle_get_latest_clip()
-        elif path == '/api/audio_processor/clips':
+        elif path in ['/api/audio_processor/clips', '/api/audio-processor/clips']:
             # List all clips endpoint
             self.handle_list_clips()
         else:
@@ -306,9 +164,18 @@ class handler(BaseHTTPRequestHandler):
         return content_length
 
     def do_POST(self):
-        # Restrict to expected endpoint
-        if self.path != '/process_clips':
-            self.send_error_response(404, 'Not found')
+        # Normalize and accept common variants
+        path = self.path.rstrip('/')
+        allowed = {
+            '/process_clips',
+            '/process-clips',
+            '/api/audio_processor/process_clips',
+            '/api/audio_processor/process-clips',
+            '/api/audio-processor/process_clips',
+            '/api/audio-processor/process-clips',
+        }
+        if path not in allowed:
+            self.send_error_response(404, f'Unknown endpoint: {path}')
             return
             
         try:

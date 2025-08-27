@@ -155,9 +155,12 @@ class TaskManager:
         
         with self._lock:
             for task_id, task in self._tasks.items():
-                if (task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED] and 
-                    task.created_at.timestamp() < cutoff_time):
-                    tasks_to_remove.append(task_id)
+                if task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+                    # Use completed_at timestamp when available, fall back to created_at
+                    task_timestamp = (task.completed_at.timestamp() if task.completed_at 
+                                    else task.created_at.timestamp())
+                    if task_timestamp < cutoff_time:
+                        tasks_to_remove.append(task_id)
             
             for task_id in tasks_to_remove:
                 del self._tasks[task_id]
