@@ -70,7 +70,17 @@ def test_environment_variables():
             print(f"❌ {var_name} is not set")
             return False
         else:
-            print(f"✅ {var_name}: {'SET' if var_name == 'HMAC_SHARED_SECRET' else value}")
+            # Don't log actual values for security
+            if var_name == 'HMAC_SHARED_SECRET':
+                print(f"✅ {var_name}: SET (length: {len(value)})")
+            else:
+                # Only show domain for URLs
+                if value.startswith('http'):
+                    from urllib.parse import urlparse
+                    parsed = urlparse(value)
+                    print(f"✅ {var_name}: {parsed.scheme}://{parsed.netloc}/...")
+                else:
+                    print(f"✅ {var_name}: SET")
     
     # No fallback validation needed - HMAC_SECRET must be set
     
@@ -160,8 +170,8 @@ def test_health_check_without_security():
         return False
 
 def test_invalid_origin():
-    """Test with invalid origin (CORS removed - should pass with HMAC)."""
-    print("\n🔍 Testing with invalid origin (CORS removed - should pass with HMAC)...")
+    """Test with invalid Origin header (CORS not implemented — HMAC authentication should allow request)."""
+    print("\n🔍 Testing with invalid Origin header (CORS not implemented — HMAC authentication should allow request)...")
     
     headers = create_security_headers()
     headers['Origin'] = 'https://malicious-site.com'
@@ -172,10 +182,10 @@ def test_invalid_origin():
         print(f"Response: {response.text[:200]}...")
         
         if response.status_code == 200:
-            print("✅ CORS validation removed - request passed with HMAC authentication")
+            print("✅ Request passed with HMAC authentication (Origin header not validated)")
             return True
         else:
-            print(f"❌ Request failed despite CORS being removed")
+            print(f"❌ Request failed despite valid HMAC authentication")
             return False
             
     except Exception as e:
@@ -210,13 +220,16 @@ def test_clip_processing():
             return False
             
     except Exception as e:
-        print(f"❌ Clip processing error: {e}")
-        return False
-
-def test_rate_limiting():
-    """Test rate limiting by making multiple rapid requests."""
-    print("\n🔍 Testing rate limiting...")
-    
+    # Make requests in bursts to ensure we hit the rate limit
+    burst_size = 20  # Exceed the 15 request limit
+    for i in range(burst_size):
+        try:
+            # Generate fresh security headers for each request
+            headers = create_security_headers()
+            response = requests.get(f"{API_BASE_URL}", headers=headers, timeout=10)
+            # Only add delay after hitting rate limit to test recovery
+            if response.status_code == 429:
+                time.sleep(1.0)  # Wait for rate limit window to reset partially
     success_count = 0
     rate_limited_count = 0
     

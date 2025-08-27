@@ -1006,43 +1006,7 @@ export default {
       return handleWebhook(request, env, ctx);
     }
     
-    // Debug endpoint to list all R2 objects
-    if (url.pathname === '/debug/r2-list') {
-      try {
-        const list = await env.R2_BUCKET.list();
-        const objects = list.objects.map(obj => ({
-          key: obj.key,
-          size: obj.size,
-          uploaded: obj.uploaded,
-          isJson: obj.key.endsWith('.json'),
-          isMp4: obj.key.endsWith('.mp4'),
-          isWav: obj.key.endsWith('.wav')
-        }));
-        
-        return new Response(JSON.stringify({
-          success: true,
-          total_objects: list.objects.length,
-          objects: objects,
-          summary: {
-            json_files: objects.filter(obj => obj.isJson).length,
-            mp4_files: objects.filter(obj => obj.isMp4).length,
-            wav_files: objects.filter(obj => obj.isWav).length,
-            other_files: objects.filter(obj => !obj.isJson && !obj.isMp4 && !obj.isWav).length
-          }
-        }, null, 2), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
+
 
     // Default response - API Status Page
     const html = await generateStatusPage(env, url.origin);

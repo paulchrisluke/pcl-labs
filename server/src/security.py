@@ -141,36 +141,42 @@ class SecurityMiddleware:
     
     def check_rate_limit(self, client_ip: str) -> bool:
         """
-        Check rate limiting for client IP using distributed cache.
+        Check rate limiting for client IP using distributed cache with atomic sorted set operations.
         """
         current_time = int(time.time())
         window_start = current_time - self.rate_limit_window
         cache_key = f"{self.rate_limit_prefix}{client_ip}"
         
         try:
-            # Get existing timestamps for this IP
-            timestamps = self.cache.list_get(cache_key)
-            timestamps = [int(ts) for ts in timestamps if ts.isdigit()]
+            # Use atomic pipeline operations for maximum efficiency and consistency
+            pipe = self.cache.pipeline()
+            if pipe is None:
+                # Fallback to non-pipeline operations if pipeline is not available
+                return self._check_rate_limit_fallback(client_ip, current_time, window_start, cache_key)
             
-            # Filter out old entries (outside the current window)
-            valid_timestamps = [ts for ts in timestamps if ts > window_start]
+            # Add current timestamp to sorted set
+            timestamp_str = str(current_time)
+            pipe.zadd(cache_key, {timestamp_str: current_time})
             
-            # Check if limit exceeded
-            if len(valid_timestamps) >= self.rate_limit_requests:
-                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-                return False
+            # Remove old entries outside the window
+            pipe.zremrangebyscore(cache_key, 0, window_start)
             
-            # Add current request timestamp
-            valid_timestamps.append(current_time)
-            
-            # Update cache with new timestamps and set TTL
-            # Use pipeline-like approach for better performance
-            self.cache.delete(cache_key)  # Clear existing list
-            for ts in valid_timestamps:
-                self.cache.list_append(cache_key, str(ts))
+            # Get current count of valid entries
+            pipe.zcard(cache_key)
             
             # Set TTL to ensure cleanup (window duration + buffer)
-            self.cache.set(f"{cache_key}:ttl", "1", ttl=self.rate_limit_window + 60)
+            pipe.set(f"{cache_key}:ttl", "1", ttl=self.rate_limit_window + 60)
+            
+            # Execute all operations atomically
+            results = pipe.execute()
+            
+            # Extract the count from results (third operation)
+            current_count = results[2] if len(results) > 2 else 0
+            
+            # Check if limit exceeded
+            if current_count > self.rate_limit_requests:
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                return False
             
             return True
             
@@ -179,6 +185,35 @@ class SecurityMiddleware:
             # On cache failure, allow the request but log the error
             # This prevents cache issues from breaking the application
             logger.warning(f"Rate limiting failed, allowing request for IP {client_ip} due to cache error")
+            return True
+    
+    def _check_rate_limit_fallback(self, client_ip: str, current_time: int, window_start: int, cache_key: str) -> bool:
+        """
+        Fallback rate limiting method when pipeline is not available.
+        """
+        try:
+            # Add current timestamp to sorted set
+            timestamp_str = str(current_time)
+            self.cache.zadd(cache_key, {timestamp_str: current_time})
+            
+            # Remove old entries outside the window
+            self.cache.zremrangebyscore(cache_key, 0, window_start)
+            
+            # Get current count of valid entries
+            current_count = self.cache.zcard(cache_key)
+            
+            # Check if limit exceeded
+            if current_count > self.rate_limit_requests:
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                return False
+            
+            # Set TTL to ensure cleanup (window duration + buffer)
+            self.cache.set(f"{cache_key}:ttl", "1", ttl=self.rate_limit_window + 60)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Fallback rate limiting cache error for IP {client_ip}: {e}")
             return True
     
     def get_client_ip(self, headers: Dict[str, str]) -> str:
@@ -204,31 +239,30 @@ class SecurityMiddleware:
         # Default fallback
         return 'unknown'
     
-    def validate_request(self, method: str, path: str, headers: Dict[str, str], body: str = '') -> Tuple[bool, str, Dict[str, str]]:
+    def validate_request(self, method: str, path: str, headers: Dict[str, str], body: str = '') -> Tuple[bool, str]:
         """
         Comprehensive request validation.
-        Returns: (is_valid, error_message, cors_headers)
+        Returns: (is_valid, error_message)
         """
         # Extract client IP
         client_ip = self.get_client_ip(headers)
         
         # Rate limiting
         if not self.check_rate_limit(client_ip):
-            return False, "Rate limit exceeded", {}
+            return False, "Rate limit exceeded"
         
         # HMAC validation (skip for OPTIONS requests)
         if method != 'OPTIONS':
             if not self.validate_hmac_signature(body, headers):
-                return False, "HMAC validation failed", {}
+                return False, "HMAC validation failed"
             
             # Idempotency validation for state-changing operations
             if method == 'POST':
                 idempotency_key = headers.get('X-Idempotency-Key') or headers.get('x-idempotency-key')
                 if not self.validate_idempotency(idempotency_key):
-                    return False, "Invalid idempotency key", {}
+                    return False, "Invalid idempotency key"
         
-        # No CORS headers needed - HMAC authentication is sufficient
-        return True, "", {}
+        return True, ""
     
     def create_signature_for_response(self, body: str, timestamp: str, nonce: str) -> str:
         """

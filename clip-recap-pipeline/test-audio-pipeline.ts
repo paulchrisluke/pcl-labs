@@ -3,391 +3,481 @@
  * Test script for audio processing pipeline integration
  */
 
-import { config } from 'dotenv';
+import { config } from 'dotenv'
 
 // Load environment variables
-config();
+config()
 
-const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
-const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-zseyqko2e-pcl-labs.vercel.app/api/audio_processor';
+/**
+ * Validate required environment variables at startup
+ */
+function validateEnvironment(): void {
+  const requiredEnvVars = {
+    HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET,
+  }
+
+  const missingVars: string[] = []
+
+  for (const [name, value] of Object.entries(requiredEnvVars)) {
+    if (!value || value.trim() === '') {
+      missingVars.push(name)
+    }
+  }
+
+  if (missingVars.length > 0) {
+    console.error('❌ Missing required environment variables:')
+    missingVars.forEach((varName) => {
+      console.error(`   - ${varName}`)
+    })
+    console.error(
+      '\nPlease set these environment variables before running the test.',
+    )
+    process.exit(1)
+  }
+}
+
+// Initialize SecurityService once at module level
+let securityService: any = null
+
+async function initializeSecurityService(): Promise<any> {
+  if (!securityService) {
+    const { SecurityService } = await import('./src/services/security.js')
+    securityService = new SecurityService({
+      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET!,
+      WORKER_ORIGIN:
+        process.env.WORKER_ORIGIN ||
+        'https://clip-recap-pipeline.paulchrisluke.workers.dev',
+    } as any)
+  }
+  return securityService
+}
+
+const WORKER_URL =
+  process.env.WORKER_URL ||
+  'https://clip-recap-pipeline.paulchrisluke.workers.dev'
+const AUDIO_PROCESSOR_URL =
+  process.env.AUDIO_PROCESSOR_URL ||
+  'https://pcl-labs-zseyqko2e-pcl-labs.vercel.app/api/audio_processor'
 
 interface TestResult {
-  name: string;
-  success: boolean;
-  error?: string;
-  data?: any;
+  name: string
+  success: boolean
+  error?: string
+  data?: any
 }
 
 interface FetchResult {
-  ok: boolean;
-  status: number;
-  body: any;
-  text?: string;
+  ok: boolean
+  status: number
+  body: any
+  text?: string
 }
 
 /**
  * Fetch with timeout and proper error handling
  */
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 30000): Promise<FetchResult> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = 30000,
+): Promise<FetchResult> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
     // Try to parse JSON, fall back to text if it fails
-    let body: any;
-    let text: string | undefined;
-    
+    let body: any
+    let text: string | undefined
+
     try {
-      body = await response.json();
+      body = await response.json()
     } catch (jsonError) {
       // If JSON parsing fails, get the text content
-      text = await response.text();
-      body = { error: 'Non-JSON response', text };
+      text = await response.text()
+      body = { error: 'Non-JSON response', text }
     }
-    
+
     return {
       ok: response.ok,
       status: response.status,
       body,
-      text
-    };
-  } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
+      text,
     }
-    
-    throw error;
+  } catch (error) {
+    clearTimeout(timeoutId)
+
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`)
+    }
+
+    throw error
   }
 }
 
 async function testHealthEndpoints(): Promise<TestResult[]> {
-  const results: TestResult[] = [];
-  
+  const results: TestResult[] = []
+
   // Test worker health
   try {
-    console.log('🔍 Testing worker health...');
-    const workerResult = await fetchWithTimeout(`${WORKER_URL}/health`);
-    
+    console.log('🔍 Testing worker health...')
+    const workerResult = await fetchWithTimeout(`${WORKER_URL}/health`)
+
     results.push({
       name: 'Worker Health',
       success: workerResult.ok && workerResult.body.status === 'healthy',
       data: {
         status: workerResult.status,
         body: workerResult.body,
-        text: workerResult.text
-      }
-    });
+        text: workerResult.text,
+      },
+    })
   } catch (error) {
     results.push({
       name: 'Worker Health',
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
   }
-  
+
   // Test audio processor health
   try {
-    console.log('🔍 Testing audio processor health...');
-    
+    console.log('🔍 Testing audio processor health...')
+
     // Use security service for authenticated request
-    const { SecurityService } = await import('./src/services/security.js');
-    const securityService = new SecurityService({
-      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || '',
-      WORKER_ORIGIN: process.env.WORKER_ORIGIN || 'https://clip-recap-pipeline.paulchrisluke.workers.dev'
-    });
+    const securityService = await initializeSecurityService()
+
+    const audioResponse = await securityService.secureGet(
+      `${AUDIO_PROCESSOR_URL}/health`,
+    )
     
-    const audioResponse = await securityService.secureGet(`${AUDIO_PROCESSOR_URL}/health`);
-    const audioResult = await audioResponse.json();
+    let audioResult: any = null
+    let parseError: string | null = null
+    let rawText: string | null = null
     
+    try {
+      audioResult = await audioResponse.json()
+    } catch (jsonError) {
+      parseError = jsonError instanceof Error ? jsonError.message : 'Unknown JSON parsing error'
+      // Fall back to reading raw text
+      try {
+        rawText = await audioResponse.text()
+      } catch (textError) {
+        rawText = null
+      }
+    }
+
     results.push({
       name: 'Audio Processor Health',
-      success: audioResponse.ok && audioResult.status === 'healthy',
+      success: audioResponse.ok && audioResult?.status === 'healthy' && !parseError,
       data: {
         status: audioResponse.status,
         body: audioResult,
-        text: JSON.stringify(audioResult)
-      }
-    });
+        text: rawText || JSON.stringify(audioResult),
+        parseError,
+      },
+    })
   } catch (error) {
     results.push({
       name: 'Audio Processor Health',
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
   }
-  
-  return results;
+
+  return results
 }
 
 async function testClipProcessing(): Promise<TestResult[]> {
-  const results: TestResult[] = [];
-  
+  const results: TestResult[] = []
+
   // Get a real clip ID from stored clips
-  let testClipId: string;
-  
+  let testClipId: string
+
   try {
-    console.log('🔍 Fetching stored clips to get a test clip ID...');
-    const clipsResult = await fetchWithTimeout(`${WORKER_URL}/api/twitch/clips/stored`, {}, 15000);
-    
+    console.log('🔍 Fetching stored clips to get a test clip ID...')
+    const clipsResult = await fetchWithTimeout(
+      `${WORKER_URL}/api/twitch/clips/stored`,
+      {},
+      15000,
+    )
+
     if (!clipsResult.ok) {
-      throw new Error(`HTTP ${clipsResult.status}: Failed to fetch stored clips`);
+      throw new Error(
+        `HTTP ${clipsResult.status}: Failed to fetch stored clips`,
+      )
     }
-    
-    let clipsData: any;
+
+    let clipsData: any
     try {
-      clipsData = clipsResult.body;
+      clipsData = clipsResult.body
     } catch (jsonError) {
-      throw new Error(`Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
+      throw new Error(
+        `Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`,
+      )
     }
-    
+
     // Strict validation of response shape
     if (!clipsData || typeof clipsData !== 'object') {
-      throw new Error('Response is not a valid object');
+      throw new Error('Response is not a valid object')
     }
-    
+
     if (!clipsData.success || clipsData.success !== true) {
-      throw new Error('Response success field is not true');
+      throw new Error('Response success field is not true')
     }
-    
+
     if (!Array.isArray(clipsData.clips) || clipsData.clips.length === 0) {
-      throw new Error('No stored clips available for testing');
+      throw new Error('No stored clips available for testing')
     }
-    
+
     if (!clipsData.clips[0] || !clipsData.clips[0].id) {
-      throw new Error('First clip does not have a valid ID');
+      throw new Error('First clip does not have a valid ID')
     }
-    
+
     // Use the first available clip
-    testClipId = clipsData.clips[0].id;
-    console.log(`📋 Using stored clip ID: ${testClipId}`);
+    testClipId = clipsData.clips[0].id
+    console.log(`📋 Using stored clip ID: ${testClipId}`)
   } catch (error) {
     results.push({
       name: 'Clip Processing',
       success: false,
-      error: `Failed to get stored clip: ${error instanceof Error ? error.message : 'Unknown error'}`
-    });
-    return results;
+      error: `Failed to get stored clip: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    })
+    return results
   }
-  
-      try {
-      console.log(`🎵 Testing clip processing for ${testClipId}...`);
-      
-      // Use security service for authenticated request
-      const { SecurityService } = await import('./src/services/security.js');
-      const securityService = new SecurityService({
-        HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || '',
-        WORKER_ORIGIN: process.env.WORKER_ORIGIN || 'https://clip-recap-pipeline.paulchrisluke.workers.dev'
-      });
-      
-      // Test audio processing with fallback endpoint
-      let audioResponse: Response;
-      let audioResult: any;
-      
-      try {
-        // Try hyphenated endpoint first
-        audioResponse = await securityService.securePost(`${AUDIO_PROCESSOR_URL}/process-clips`, {
+
+  try {
+    console.log(`🎵 Testing clip processing for ${testClipId}...`)
+
+    // Use security service for authenticated request
+    const securityService = await initializeSecurityService()
+
+    // Test audio processing with fallback endpoint
+    let audioResponse: Response
+    let audioResult: any
+
+    try {
+      // Try hyphenated endpoint first
+      audioResponse = await securityService.securePost(
+        `${AUDIO_PROCESSOR_URL}/process-clips`,
+        {
           clip_ids: [testClipId],
-          background: false
-        });
-        
-        if (!audioResponse.ok) {
-          console.log('⚠️ Hyphenated endpoint failed, trying underscore endpoint...');
-          // Fallback to underscore endpoint
-          audioResponse = await securityService.securePost(`${AUDIO_PROCESSOR_URL}/process_clips`, {
+          background: false,
+        },
+      )
+
+      if (!audioResponse.ok) {
+        console.log(
+          '⚠️ Hyphenated endpoint failed, trying underscore endpoint...',
+        )
+        // Fallback to underscore endpoint
+        audioResponse = await securityService.securePost(
+          `${AUDIO_PROCESSOR_URL}/process_clips`,
+          {
             clip_ids: [testClipId],
-            background: false
-          });
-        }
-        
-        audioResult = await audioResponse.json();
-      } catch (jsonError) {
-        results.push({
-          name: 'Audio Processing',
-          success: false,
-          error: `Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`
-        });
-        return results;
+            background: false,
+          },
+        )
       }
-    
+
+      audioResult = await audioResponse.json()
+    } catch (jsonError) {
+      results.push({
+        name: 'Audio Processing',
+        success: false,
+        error: `Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`,
+      })
+      return results
+    }
+
     results.push({
       name: 'Audio Processing',
       success: audioResponse.ok && audioResult.success,
-      data: audioResult
-    });
-    
+      data: audioResult,
+    })
+
     // Wait for processing to complete
     if (audioResponse.ok) {
-      console.log('⏳ Waiting for audio processing...');
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      
+      console.log('⏳ Waiting for audio processing...')
+      await new Promise((resolve) => setTimeout(resolve, 10000))
+
       // Test transcription
-      const transcribeResponse = await fetch(`${WORKER_URL}/api/transcribe/clip`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const transcribeResponse = await fetch(
+        `${WORKER_URL}/api/transcribe/clip`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clipId: testClipId,
+          }),
         },
-        body: JSON.stringify({
-          clipId: testClipId
-        })
-      });
-      
-      const transcribeResult = await transcribeResponse.json();
-      
+      )
+
+      const transcribeResult = await transcribeResponse.json()
+
       results.push({
         name: 'Transcription',
         success: transcribeResponse.ok && transcribeResult.success,
-        data: transcribeResult
-      });
-      
+        data: transcribeResult,
+      })
+
       // Test transcript status
-      const statusResponse = await fetch(`${WORKER_URL}/api/transcribe/status/${testClipId}`);
-      const statusResult = await statusResponse.json();
-      
+      const statusResponse = await fetch(
+        `${WORKER_URL}/api/transcribe/status/${testClipId}`,
+      )
+      const statusResult = await statusResponse.json()
+
       results.push({
         name: 'Transcript Status',
         success: statusResponse.ok && statusResult.has_transcript,
-        data: statusResult
-      });
+        data: statusResult,
+      })
     }
-    
   } catch (error) {
     results.push({
       name: 'Clip Processing',
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
   }
-  
-  return results;
+
+  return results
 }
 
 async function testStoredClips(): Promise<TestResult[]> {
-  const results: TestResult[] = [];
-  
+  const results: TestResult[] = []
+
   try {
-    console.log('📖 Testing stored clips...');
-    
+    console.log('📖 Testing stored clips...')
+
     // Get stored clips
-    const clipsResponse = await fetch(`${WORKER_URL}/api/twitch/clips/stored`);
-    const clipsResult = await clipsResponse.json();
-    
+    const clipsResponse = await fetch(`${WORKER_URL}/api/twitch/clips/stored`)
+    const clipsResult = await clipsResponse.json()
+
     results.push({
       name: 'Stored Clips',
       success: clipsResponse.ok && clipsResult.success,
       data: {
         total_clips: clipsResult.clips?.length || 0,
-        has_more: clipsResult.has_more
-      }
-    });
-    
+        has_more: clipsResult.has_more,
+      },
+    })
+
     // Test processed clips list using security service
-    const { SecurityService } = await import('./src/services/security.js');
-    const securityService = new SecurityService({
-      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || '',
-      WORKER_ORIGIN: process.env.WORKER_ORIGIN || 'https://clip-recap-pipeline.paulchrisluke.workers.dev'
-    });
-    
-    const processedResponse = await securityService.secureGet(`${AUDIO_PROCESSOR_URL}/list-processed-clips?limit=10`);
-    const processedResult = await processedResponse.json();
-    
+    const securityService = await initializeSecurityService()
+
+    const processedResponse = await securityService.secureGet(
+      `${AUDIO_PROCESSOR_URL}/list-processed-clips?limit=10`,
+    )
+    const processedResult = await processedResponse.json()
+
     results.push({
       name: 'Processed Clips',
       success: processedResponse.ok,
-      data: processedResult
-    });
-    
+      data: processedResult,
+    })
   } catch (error) {
     results.push({
       name: 'Stored Clips',
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
   }
-  
-  return results;
+
+  return results
 }
 
 async function main() {
-  console.log('🧪 Testing Audio Processing Pipeline Integration\n');
-  console.log(`Worker URL: ${WORKER_URL}`);
-  console.log(`Audio Processor URL: ${AUDIO_PROCESSOR_URL}\n`);
-  
-  const allResults: TestResult[] = [];
-  
+  validateEnvironment()
+  console.log('🧪 Testing Audio Processing Pipeline Integration\n')
+  console.log(`Worker URL: ${WORKER_URL}`)
+  console.log(`Audio Processor URL: ${AUDIO_PROCESSOR_URL}\n`)
+
+  const allResults: TestResult[] = []
+
   // Run health tests
-  console.log('=== Health Tests ===');
-  const healthResults = await testHealthEndpoints();
-  allResults.push(...healthResults);
-  
+  console.log('=== Health Tests ===')
+  const healthResults = await testHealthEndpoints()
+  allResults.push(...healthResults)
+
   for (const result of healthResults) {
-    const status = result.success ? '✅' : '❌';
-    console.log(`${status} ${result.name}: ${result.success ? 'PASS' : result.error}`);
+    const status = result.success ? '✅' : '❌'
+    console.log(
+      `${status} ${result.name}: ${result.success ? 'PASS' : result.error}`,
+    )
   }
-  
-  console.log();
-  
+
+  console.log()
+
   // Run stored clips tests
-  console.log('=== Stored Clips Tests ===');
-  const storedResults = await testStoredClips();
-  allResults.push(...storedResults);
-  
+  console.log('=== Stored Clips Tests ===')
+  const storedResults = await testStoredClips()
+  allResults.push(...storedResults)
+
   for (const result of storedResults) {
-    const status = result.success ? '✅' : '❌';
-    console.log(`${status} ${result.name}: ${result.success ? 'PASS' : result.error}`);
+    const status = result.success ? '✅' : '❌'
+    console.log(
+      `${status} ${result.name}: ${result.success ? 'PASS' : result.error}`,
+    )
     if (result.data) {
-      console.log(`   Data: ${JSON.stringify(result.data)}`);
+      console.log(`   Data: ${JSON.stringify(result.data)}`)
     }
   }
-  
-  console.log();
-  
+
+  console.log()
+
   // Run clip processing tests (only if health checks pass)
-  const healthPassed = healthResults.every(r => r.success);
+  const healthPassed = healthResults.every((r) => r.success)
   if (healthPassed) {
-    console.log('=== Clip Processing Tests ===');
-    const processingResults = await testClipProcessing();
-    allResults.push(...processingResults);
-    
+    console.log('=== Clip Processing Tests ===')
+    const processingResults = await testClipProcessing()
+    allResults.push(...processingResults)
+
     for (const result of processingResults) {
-      const status = result.success ? '✅' : '❌';
-      console.log(`${status} ${result.name}: ${result.success ? 'PASS' : result.error}`);
+      const status = result.success ? '✅' : '❌'
+      console.log(
+        `${status} ${result.name}: ${result.success ? 'PASS' : result.error}`,
+      )
       if (result.data) {
-        console.log(`   Data: ${JSON.stringify(result.data)}`);
+        console.log(`   Data: ${JSON.stringify(result.data)}`)
       }
     }
   } else {
-    console.log('⚠️ Skipping clip processing tests due to health check failures');
+    console.log(
+      '⚠️ Skipping clip processing tests due to health check failures',
+    )
   }
-  
-  console.log();
-  
+
+  console.log()
+
   // Summary
-  console.log('=== Test Summary ===');
-  const passed = allResults.filter(r => r.success).length;
-  const total = allResults.length;
-  
-  console.log(`Overall: ${passed}/${total} tests passed`);
-  
+  console.log('=== Test Summary ===')
+  const passed = allResults.filter((r) => r.success).length
+  const total = allResults.length
+
+  console.log(`Overall: ${passed}/${total} tests passed`)
+
   if (passed === total) {
-    console.log('🎉 All tests passed! Audio processing pipeline is working correctly.');
-    process.exit(0);
+    console.log(
+      '🎉 All tests passed! Audio processing pipeline is working correctly.',
+    )
+    process.exit(0)
   } else {
-    console.log('⚠️ Some tests failed. Please check the issues above.');
-    process.exit(1);
+    console.log('⚠️ Some tests failed. Please check the issues above.')
+    process.exit(1)
   }
 }
 
 // Run the main function
-main().catch(error => {
-  console.error('Test failed with error:', error);
-  process.exit(1);
-});
+main().catch((error) => {
+  console.error('Test failed with error:', error)
+  process.exit(1)
+})

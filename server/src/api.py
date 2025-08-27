@@ -5,6 +5,7 @@ from typing import List, Optional
 import os
 import time
 import re
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .download_extract import AudioProcessor
 from .task_manager import task_manager, TaskStatus
@@ -96,8 +97,13 @@ async def health_check():
         os.getenv('R2_BUCKET')
     ])
     
-    # Check cache health
-    cache_healthy = cache.health_check()
+    # Check cache health - make it non-blocking and resilient
+    try:
+        cache_healthy = await asyncio.to_thread(cache.health_check)
+    except Exception as e:
+        logger.warning(f"Cache health check failed: {e}")
+        cache_healthy = False
+    
     cache_type = type(cache).__name__
     
     # Overall health depends on all critical services

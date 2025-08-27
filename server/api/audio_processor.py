@@ -65,14 +65,15 @@ class handler(BaseHTTPRequestHandler):
         headers = dict(self.headers.items())
         
         # Debug logging
-        logger.info(f"Received headers: {headers}")
-        logger.info(f"Required headers check:")
-        logger.info(f"  X-Request-Signature: {headers.get('X-Request-Signature') or headers.get('x-request-signature', 'MISSING')}")
-        logger.info(f"  X-Request-Timestamp: {headers.get('X-Request-Timestamp') or headers.get('x-request-timestamp', 'MISSING')}")
-        logger.info(f"  X-Request-Nonce: {headers.get('X-Request-Nonce') or headers.get('x-request-nonce', 'MISSING')}")
+        # Debug logging (use debug level to avoid exposing sensitive data in production)
+        logger.debug(f"Received headers count: {len(headers)}")
+        logger.debug(f"Required headers check:")
+        logger.debug(f"  X-Request-Signature: {'PRESENT' if headers.get('X-Request-Signature') or headers.get('x-request-signature') else 'MISSING'}")
+        logger.debug(f"  X-Request-Timestamp: {'PRESENT' if headers.get('X-Request-Timestamp') or headers.get('x-request-timestamp') else 'MISSING'}")
+        logger.debug(f"  X-Request-Nonce: {'PRESENT' if headers.get('X-Request-Nonce') or headers.get('x-request-nonce') else 'MISSING'}")
         
         # Validate request
-        is_valid, error_message, _ = security_middleware.validate_request(
+        is_valid, error_message = security_middleware.validate_request(
             method=method,
             path=self.path,
             headers=headers,
@@ -266,10 +267,8 @@ class handler(BaseHTTPRequestHandler):
             self.send_error_response(500, str(e))
     
     def do_OPTIONS(self):
-        # Handle OPTIONS requests without CORS validation
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
+        # Return 405 Method Not Allowed for OPTIONS requests
+        self.send_error_response(405, "Method not allowed")
     
     def send_success_response(self, data):
         self.send_response(200)

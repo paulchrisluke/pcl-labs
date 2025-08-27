@@ -45,6 +45,26 @@ class CacheInterface(ABC):
         pass
     
     @abstractmethod
+    def zadd(self, key: str, mapping: Dict[str, float]) -> int:
+        """Add members to sorted set with scores."""
+        pass
+    
+    @abstractmethod
+    def zremrangebyscore(self, key: str, min_score: float, max_score: float) -> int:
+        """Remove members from sorted set by score range."""
+        pass
+    
+    @abstractmethod
+    def zcard(self, key: str) -> int:
+        """Get the number of members in a sorted set."""
+        pass
+    
+    @abstractmethod
+    def pipeline(self):
+        """Get a pipeline for atomic operations."""
+        pass
+    
+    @abstractmethod
     def health_check(self) -> bool:
         """Check if cache is healthy and accessible."""
         pass
@@ -67,16 +87,15 @@ class InMemoryCache(CacheInterface):
     
     def get(self, key: str) -> Optional[Any]:
         self._cleanup_expired()
-        if key in self._expiry and self._expiry[key] < time.time():
-            del self._store[key]
-            del self._expiry[key]
-            return None
         return self._store.get(key)
     
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
         self._store[key] = value
         if ttl:
             self._expiry[key] = time.time() + ttl
+        elif key in self._expiry:
+            # Remove expiry if setting without TTL
+            del self._expiry[key]
         return True
     
     def delete(self, key: str) -> bool:
@@ -96,8 +115,22 @@ class InMemoryCache(CacheInterface):
         return self._store.get(key, [])
     
     def list_append(self, key: str, value: Any) -> bool:
+        # Check for expired entries and clean them up
+        self._cleanup_expired()
+        
+        # Check if key exists and has expired
+        if key in self._expiry and self._expiry[key] < time.time():
+            # Remove expired entry and treat as new
+            del self._store[key]
+            del self._expiry[key]
+        
+        # If key doesn't exist, create new list (preserve any existing non-expired TTL)
         if key not in self._store:
             self._store[key] = []
+            # Note: We don't set TTL here - that should be done explicitly via set() method
+            # This preserves any existing non-expired TTL entry in _expiry
+        
+        # Append value to the list
         self._store[key].append(value)
         return True
     
@@ -112,8 +145,109 @@ class InMemoryCache(CacheInterface):
             return True
         return False
     
+    def zadd(self, key: str, mapping: Dict[str, float]) -> int:
+        """Add members to sorted set with scores."""
+        self._cleanup_expired()
+        
+        if key not in self._store:
+            self._store[key] = {}
+        
+        if not isinstance(self._store[key], dict):
+            # Convert existing data to sorted set format
+            self._store[key] = {}
+        
+        added_count = 0
+        for member, score in mapping.items():
+            if member not in self._store[key] or self._store[key][member] != score:
+                self._store[key][member] = score
+                added_count += 1
+        
+        return added_count
+    
+    def zremrangebyscore(self, key: str, min_score: float, max_score: float) -> int:
+        """Remove members from sorted set by score range."""
+        self._cleanup_expired()
+        
+        if key not in self._store or not isinstance(self._store[key], dict):
+            return 0
+        
+        removed_count = 0
+        members_to_remove = []
+        
+        for member, score in self._store[key].items():
+            if min_score <= score <= max_score:
+                members_to_remove.append(member)
+                removed_count += 1
+        
+        for member in members_to_remove:
+            del self._store[key][member]
+        
+        return removed_count
+    
+    def zcard(self, key: str) -> int:
+        """Get the number of members in a sorted set."""
+        self._cleanup_expired()
+        
+        if key not in self._store or not isinstance(self._store[key], dict):
+            return 0
+        
+        return len(self._store[key])
+    
+    def pipeline(self):
+        """Get a pipeline for atomic operations."""
+        # Simple in-memory pipeline implementation
+        return InMemoryPipeline(self)
+    
     def health_check(self) -> bool:
         return True
+
+class InMemoryPipeline:
+    """Simple in-memory pipeline implementation for atomic operations."""
+    
+    def __init__(self, cache: InMemoryCache):
+        self.cache = cache
+        self.operations = []
+    
+    def zadd(self, key: str, mapping: Dict[str, float]):
+        """Queue zadd operation."""
+        self.operations.append(('zadd', key, mapping))
+        return self
+    
+    def zremrangebyscore(self, key: str, min_score: float, max_score: float):
+        """Queue zremrangebyscore operation."""
+        self.operations.append(('zremrangebyscore', key, min_score, max_score))
+        return self
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None):
+        """Queue set operation."""
+        self.operations.append(('set', key, value, ttl))
+        return self
+    
+    def zcard(self, key: str):
+        """Queue zcard operation."""
+        self.operations.append(('zcard', key))
+        return self
+    
+    def execute(self):
+        """Execute all queued operations."""
+        results = []
+        for operation in self.operations:
+            op_type = operation[0]
+            if op_type == 'zadd':
+                key, mapping = operation[1], operation[2]
+                results.append(self.cache.zadd(key, mapping))
+            elif op_type == 'zremrangebyscore':
+                key, min_score, max_score = operation[1], operation[2], operation[3]
+                results.append(self.cache.zremrangebyscore(key, min_score, max_score))
+            elif op_type == 'set':
+                key, value, ttl = operation[1], operation[2], operation[3]
+                results.append(self.cache.set(key, value, ttl))
+            elif op_type == 'zcard':
+                key = operation[1]
+                results.append(self.cache.zcard(key))
+        
+        self.operations = []
+        return results
 
 class RedisCache(CacheInterface):
     """Redis cache implementation for production."""
@@ -179,10 +313,39 @@ class RedisCache(CacheInterface):
     
     def list_trim(self, key: str, start: int, end: int) -> bool:
         try:
-            return bool(self.redis_client.ltrim(key, start, end))
+            result = self.redis_client.ltrim(key, start, end)
+            return result == "OK" or result == b"OK"
         except Exception as e:
             logger.error(f"Redis list_trim error for key {key}: {e}")
             return False
+    
+    def zadd(self, key: str, mapping: Dict[str, float]) -> int:
+        try:
+            return self.redis_client.zadd(key, mapping)
+        except Exception as e:
+            logger.error(f"Redis zadd error for key {key}: {e}")
+            return 0
+    
+    def zremrangebyscore(self, key: str, min_score: float, max_score: float) -> int:
+        try:
+            return self.redis_client.zremrangebyscore(key, min_score, max_score)
+        except Exception as e:
+            logger.error(f"Redis zremrangebyscore error for key {key}: {e}")
+            return 0
+    
+    def zcard(self, key: str) -> int:
+        try:
+            return self.redis_client.zcard(key)
+        except Exception as e:
+            logger.error(f"Redis zcard error for key {key}: {e}")
+            return 0
+    
+    def pipeline(self):
+        try:
+            return self.redis_client.pipeline()
+        except Exception as e:
+            logger.error(f"Redis pipeline error: {e}")
+            return None
     
     def health_check(self) -> bool:
         try:
