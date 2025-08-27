@@ -288,6 +288,71 @@ class R2Storage:
             logger.error(f"Error listing objects: {e}")
             return []
 
+    def list_files(self, prefix: str = "", limit: int = 100, cursor: Optional[str] = None) -> Dict[str, Any]:
+        """List files in R2 storage with pagination support"""
+        if not self.enabled:
+            logger.warning("R2 storage disabled - cannot list files")
+            return {
+                'objects': [],
+                'cursor': None,
+                'truncated': False
+            }
+            
+        try:
+            url = self.base_url
+            params = {
+                'prefix': prefix,
+                'limit': limit
+            }
+            
+            if cursor:
+                params['cursor'] = cursor
+            
+            response = requests.get(url, headers=self.headers, params=params, timeout=self.timeout, verify=self.verify)
+            response.raise_for_status()
+            
+            data = response.json()
+            if data.get('success'):
+                result = data.get('result', {})
+                objects = result.get('objects', []) if isinstance(result, dict) else []
+                # Extract just the keys for the API response
+                file_keys = [obj.get('key', '') for obj in objects if obj.get('key')]
+                return {
+                    'objects': file_keys,
+                    'cursor': result.get('cursor'),
+                    'truncated': result.get('truncated', False)
+                }
+            else:
+                logger.error(f"API error listing files: {data.get('errors', [])}")
+                return {
+                    'objects': [],
+                    'cursor': None,
+                    'truncated': False
+                }
+        except Exception as e:
+            logger.error(f"Error listing files: {e}")
+            return {
+                'objects': [],
+                'cursor': None,
+                'truncated': False
+            }
+
+    def file_exists(self, key: str) -> bool:
+        """Check if a file exists in R2 storage"""
+        if not self.enabled:
+            logger.warning(f"R2 storage disabled - cannot check existence of {key}")
+            return False
+            
+        try:
+            url = f"{self.base_url}/{key}"
+            headers = {'Authorization': f'Bearer {self.api_token}'}
+            
+            response = requests.head(url, headers=headers, timeout=self.timeout, verify=self.verify)
+            return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Error checking file existence for {key}: {e}")
+            return False
+
     def get_latest_clip(self) -> Optional[dict]:
         """Get the most recently uploaded clip from R2 storage"""
         if not self.enabled:

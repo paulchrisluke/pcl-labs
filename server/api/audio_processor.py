@@ -13,6 +13,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.storage.r2 import R2Storage
 from src.security import security_middleware
+from src.ffmpeg_utils import ensure_ffmpeg, mp4_to_wav16k, get_audio_duration, chunk_audio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -111,6 +112,7 @@ class handler(BaseHTTPRequestHandler):
         """Handle the default health check endpoint"""
         r2_storage = R2Storage()
         r2_configured = r2_storage.enabled
+        ffmpeg_available = ensure_ffmpeg()
         
         response_data = {
             "status": "healthy",
@@ -118,6 +120,7 @@ class handler(BaseHTTPRequestHandler):
             "version": "1.0.0",
             "message": "Audio processor is running",
             "r2_configured": r2_configured,
+            "ffmpeg_available": ffmpeg_available,
             "note": "R2 upload requires API token with R2 Storage:Edit permissions" if not r2_configured else "R2 storage is configured and ready"
         }
         
@@ -397,17 +400,60 @@ class handler(BaseHTTPRequestHandler):
                 }
                 
                 if r2_storage.put_file(r2_key, str(video_path), content_type, metadata):
-                    # Get clip info with R2 URL
-                    clip_info = self.get_clip_info(validated_clip_id)
-                    clip_info["file_size"] = video_path.stat().st_size
-                    clip_info["file_path"] = r2_storage.get_file_url(r2_key)
-                    clip_info["r2_key"] = r2_key
-                    clip_info["file_format"] = file_extension[1:]  # Remove the dot
+                    # Extract audio from video
+                    print(f"Extracting audio from {validated_clip_id}...")
+                    audio_path = tmp_path / f"{validated_clip_id}.wav"
                     
-                    result["success"] = True
-                    result["clip_info"] = clip_info
-                    result["note"] = f"Video file ({file_extension[1:]}) downloaded and uploaded to R2 successfully"
-                    print(f"Successfully processed clip {clip_id} - uploaded to R2")
+                    # Check if FFmpeg is available
+                    if not ensure_ffmpeg():
+                        result["error"] = "FFmpeg not available for audio extraction"
+                        return result
+                    
+                    # Extract audio to WAV format (16kHz, mono)
+                    if not mp4_to_wav16k(video_path, audio_path, sample_rate=16000, channels=1):
+                        result["error"] = "Failed to extract audio from video"
+                        return result
+                    
+                    # Get audio duration
+                    duration = None
+                    try:
+                        duration = get_audio_duration(audio_path)
+                    except Exception as e:
+                        print(f"Warning: Could not determine audio duration: {e}")
+                    
+                    # Upload audio to R2
+                    print(f"Uploading audio for {validated_clip_id} to R2...")
+                    audio_key = f"audio/{validated_clip_id}.wav"
+                    audio_metadata = {
+                        "clip_id": validated_clip_id,
+                        "source": "twitch",
+                        "processed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "file_size": str(audio_path.stat().st_size),
+                        "audio_format": "wav",
+                        "sample_rate": "16000",
+                        "channels": "1",
+                        "duration": str(duration) if duration else "unknown"
+                    }
+                    
+                    if r2_storage.put_file(audio_key, str(audio_path), "audio/wav", audio_metadata):
+                        # Get clip info with R2 URLs
+                        clip_info = self.get_clip_info(validated_clip_id)
+                        clip_info["file_size"] = video_path.stat().st_size
+                        clip_info["file_path"] = r2_storage.get_file_url(r2_key)
+                        clip_info["r2_key"] = r2_key
+                        clip_info["file_format"] = file_extension[1:]  # Remove the dot
+                        clip_info["audio_file_size"] = audio_path.stat().st_size
+                        clip_info["audio_file_path"] = r2_storage.get_file_url(audio_key)
+                        clip_info["audio_r2_key"] = audio_key
+                        clip_info["audio_duration"] = duration
+                        
+                        result["success"] = True
+                        result["clip_info"] = clip_info
+                        result["note"] = f"Video and audio files processed and uploaded to R2 successfully"
+                        print(f"Successfully processed clip {clip_id} - video and audio uploaded to R2")
+                    else:
+                        result["error"] = "Failed to upload audio file to R2 storage"
+                        print(f"Failed to upload audio for clip {clip_id} to R2")
                 else:
                     result["error"] = "Failed to upload video file to R2 storage"
                     print(f"Failed to upload clip {clip_id} to R2")

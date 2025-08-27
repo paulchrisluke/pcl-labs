@@ -90,12 +90,8 @@ async def health_check():
     """Health check endpoint"""
     
     ffmpeg_available = ensure_ffmpeg()
-    r2_configured = all([
-        os.getenv('CLOUDFLARE_ACCOUNT_ID'),
-        os.getenv('CLOUDFLARE_ZONE_ID'),
-        os.getenv('CLOUDFLARE_API_TOKEN'),
-        os.getenv('R2_BUCKET')
-    ])
+    # Check if R2 storage is actually enabled and working
+    r2_configured = processor.r2.enabled if hasattr(processor, 'r2') else False
     
     # Check cache health - make it non-blocking and resilient
     try:
@@ -412,6 +408,20 @@ async def cleanup_old_tasks(max_age_hours: int = 24):
 async def get_task_stats():
     """Get statistics about tasks"""
     return task_manager.get_task_stats()
+
+@app.get("/debug/list-all-files")
+async def list_all_files_in_r2(limit: int = 100):
+    """Debug endpoint to list all files in R2 bucket"""
+    try:
+        result = processor.r2.list_files('', limit=limit)
+        return {
+            "total_files": len(result['objects']),
+            "files": result['objects'],
+            "cursor": result['cursor'],
+            "has_more": result['truncated']
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

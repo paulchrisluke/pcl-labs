@@ -6,6 +6,72 @@ import { handleGitHubRequest } from './routes/github.js';
 import { generateStatusPage } from './status-page.js';
 import { calculateUptime } from './utils/uptime.js';
 
+/**
+ * Get comprehensive audio processing status for a clip
+ */
+async function getClipAudioStatus(clipId: string, env: Environment) {
+  try {
+    // Check for video file
+    const videoFile = await env.R2_BUCKET.head(`clips/${clipId}.mp4`);
+    const hasVideo = !!videoFile;
+    
+    // Check for audio file
+    const audioFile = await env.R2_BUCKET.head(`audio/${clipId}.wav`);
+    const hasAudio = !!audioFile;
+    
+    // Check for transcript
+    const transcriptFile = await env.R2_BUCKET.head(`transcripts/${clipId}.json`);
+    const hasTranscript = !!transcriptFile;
+    
+    // Determine processing status
+    let processingStatus = 'not_started';
+    if (hasVideo && hasAudio && hasTranscript) {
+      processingStatus = 'complete';
+    } else if (hasVideo && hasAudio) {
+      processingStatus = 'audio_ready_transcription_needed';
+    } else if (hasVideo) {
+      processingStatus = 'video_ready_audio_needed';
+    } else {
+      processingStatus = 'not_started';
+    }
+    
+    // Get file sizes and metadata
+    const videoSize = hasVideo ? videoFile?.size : null;
+    const audioSize = hasAudio ? audioFile?.size : null;
+    const transcriptSize = hasTranscript ? transcriptFile?.size : null;
+    
+    return {
+      clip_id: clipId,
+      has_video: hasVideo,
+      has_audio: hasAudio,
+      has_transcript: hasTranscript,
+      processing_status: processingStatus,
+      processing_complete: hasVideo && hasAudio && hasTranscript,
+      file_sizes: {
+        video: videoSize,
+        audio: audioSize,
+        transcript: transcriptSize
+      },
+      last_modified: {
+        video: hasVideo ? videoFile?.lastModified : null,
+        audio: hasAudio ? audioFile?.lastModified : null,
+        transcript: hasTranscript ? transcriptFile?.lastModified : null
+      }
+    };
+  } catch (error) {
+    console.error(`Error getting audio status for clip ${clipId}:`, error);
+    return {
+      clip_id: clipId,
+      has_video: false,
+      has_audio: false,
+      has_transcript: false,
+      processing_status: 'error',
+      processing_complete: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -571,9 +637,31 @@ export default {
             const batchPromises = batch.map(async (object: { key: string }) => {
               try {
                 const clipObject = await env.R2_BUCKET.get(object.key);
-                return clipObject ? await clipObject.json() : null;
+                if (!clipObject) return null;
+                
+                const clipData = await clipObject.json();
+                const clipId = clipData.id;
+                
+                // Check for video file
+                const videoFile = await env.R2_BUCKET.head(`clips/${clipId}.mp4`);
+                
+                // Add video file info to the clip data
+                const enhancedClip = {
+                  ...clipData,
+                  video_file: videoFile ? {
+                    exists: true,
+                    size: videoFile.size,
+                    uploaded: videoFile.uploaded,
+                    last_modified: videoFile.lastModified,
+                    url: `https://clip-recap-assets.paulchrisluke.workers.dev/clips/${clipId}.mp4`
+                  } : {
+                    exists: false
+                  }
+                };
+                
+                return enhancedClip;
               } catch (error) {
-                console.error(`Failed to parse JSON for ${object.key}:`, error);
+                console.error(`Failed to process clip ${object.key}:`, error);
                 return null;
               }
             });
@@ -982,6 +1070,118 @@ export default {
           error: 'Invalid transcription endpoint'
         }), {
           status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Audio processing status endpoints
+    if (url.pathname === '/api/audio/status') {
+      try {
+        const { validateClipId } = await import('./utils/validation.js');
+        
+        switch (request.method) {
+          case 'GET': {
+            // Get overall audio processing status
+            const { DeduplicationService } = await import('./services/deduplication.js');
+            const { TranscriptionService } = await import('./services/transcribe.js');
+            
+            const deduplicationService = new DeduplicationService(env);
+            const transcriptionService = new TranscriptionService(env);
+            
+            // Get all stored clips
+            const storedClips = await deduplicationService.getAllStoredClips();
+            const clipIds = storedClips.map(clip => clip.clip_id);
+            
+            // Check status for each clip
+            const statusResults = [];
+            for (const clipId of clipIds) {
+              const status = await getClipAudioStatus(clipId, env);
+              statusResults.push(status);
+            }
+            
+            const summary = {
+              total_clips: statusResults.length,
+              with_video: statusResults.filter(s => s.has_video).length,
+              with_audio: statusResults.filter(s => s.has_audio).length,
+              with_transcript: statusResults.filter(s => s.has_transcript).length,
+              processing_complete: statusResults.filter(s => s.processing_complete).length
+            };
+            
+            return new Response(JSON.stringify({
+              success: true,
+              summary,
+              clips: statusResults
+            }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          default:
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Method not allowed'
+            }), {
+              status: 405,
+              headers: { 'Content-Type': 'application/json' }
+            });
+        }
+      } catch (error) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Individual clip audio status endpoint
+    if (url.pathname.startsWith('/api/audio/status/') && request.method === 'GET') {
+      try {
+        const { validateClipId } = await import('./utils/validation.js');
+        const clipId = url.pathname.split('/').pop();
+        
+        if (!clipId) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'clipId is required'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Validate clip ID format
+        const validation = validateClipId(clipId);
+        if (!validation.isValid) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: validation.error || 'Invalid clip ID format'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const status = await getClipAudioStatus(clipId, env);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          ...status
+        }), {
+          status: 200,
           headers: { 'Content-Type': 'application/json' }
         });
         

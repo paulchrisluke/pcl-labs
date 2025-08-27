@@ -14,10 +14,13 @@ export class ContentService {
   async selectBestClips(clips: TwitchClip[], transcripts: any[]): Promise<TwitchClip[]> {
     console.log('Selecting best clips...');
     
-    // Score clips based on metadata only (no transcripts available)
-    const scoredClips = clips.map(clip => {
-      const score = this.scoreClip(clip);
-      return { clip, score };
+    // Load transcripts for clips that have them
+    const clipsWithTranscripts = await this.loadTranscriptsForClips(clips);
+    
+    // Score clips based on metadata and transcript content
+    const scoredClips = clipsWithTranscripts.map(clipData => {
+      const score = this.scoreClip(clipData.clip, clipData.transcript);
+      return { clip: clipData.clip, score, transcript: clipData.transcript };
     });
 
     // Sort by score and take top 5-12
@@ -30,10 +33,36 @@ export class ContentService {
     return sortedClips;
   }
 
-  private scoreClip(clip: TwitchClip): number {
+  private async loadTranscriptsForClips(clips: TwitchClip[]): Promise<Array<{clip: TwitchClip, transcript: any | null}>> {
+    const clipsWithTranscripts = [];
+    
+    for (const clip of clips) {
+      try {
+        // Check if transcript exists
+        const transcriptObj = await this.env.R2_BUCKET.get(`transcripts/${clip.id}.json`);
+        let transcript = null;
+        
+        if (transcriptObj) {
+          transcript = await transcriptObj.json();
+          console.log(`📝 Found transcript for clip ${clip.id}`);
+        } else {
+          console.log(`📝 No transcript found for clip ${clip.id}`);
+        }
+        
+        clipsWithTranscripts.push({ clip, transcript });
+      } catch (error) {
+        console.error(`Error loading transcript for clip ${clip.id}:`, error);
+        clipsWithTranscripts.push({ clip, transcript: null });
+      }
+    }
+    
+    return clipsWithTranscripts;
+  }
+
+  private scoreClip(clip: TwitchClip, transcript: any | null): number {
     let score = 0;
     
-    // Score based on clip metadata only
+    // Score based on clip metadata
     // View count bonus (but not too much)
     score += Math.min(clip.view_count / 10, 5);
     
@@ -52,6 +81,27 @@ export class ContentService {
     if (title.includes('test') || title.includes('build')) score += 2;
     if (title.includes('deploy') || title.includes('release')) score += 2;
     
+    // Bonus for clips with transcript content
+    if (transcript && transcript.text) {
+      const transcriptText = transcript.text.toLowerCase();
+      
+      // Bonus for technical content
+      if (transcriptText.includes('error') || transcriptText.includes('bug') || transcriptText.includes('fix')) score += 5;
+      if (transcriptText.includes('test') || transcriptText.includes('build') || transcriptText.includes('deploy')) score += 3;
+      if (transcriptText.includes('code') || transcriptText.includes('function') || transcriptText.includes('api')) score += 2;
+      
+      // Bonus for longer, more detailed transcripts
+      const wordCount = transcriptText.split(/\s+/).length;
+      if (wordCount > 50) score += 2;
+      if (wordCount > 100) score += 3;
+      
+      // Bonus for clear, coherent speech (indicated by longer segments)
+      if (transcript.segments && transcript.segments.length > 0) {
+        const avgSegmentLength = transcript.segments.reduce((sum: number, seg: any) => sum + seg.text.length, 0) / transcript.segments.length;
+        if (avgSegmentLength > 20) score += 2; // Bonus for longer, more coherent segments
+      }
+    }
+    
     return score;
   }
 
@@ -61,8 +111,11 @@ export class ContentService {
     const date = new Date().toISOString().split('T')[0];
     const sections: ClipSection[] = [];
 
-    for (const clip of clips) {
-      const section = await this.generateClipSection(clip);
+    // Load transcripts for all clips
+    const clipsWithTranscripts = await this.loadTranscriptsForClips(clips);
+
+    for (const clipData of clipsWithTranscripts) {
+      const section = await this.generateClipSection(clipData.clip, clipData.transcript);
       sections.push(section);
     }
 
@@ -101,12 +154,22 @@ export class ContentService {
     }
   }
 
-  private async generateClipSection(clip: TwitchClip): Promise<ClipSection> {
+  private async generateClipSection(clip: TwitchClip, transcript: any | null): Promise<ClipSection> {
     // Generate section using Workers AI
-    const prompt = `Create a blog section for this Twitch clip:
+    let prompt = `Create a blog section for this Twitch clip:
 
 Clip Title: ${clip.title}
-Duration: ${clip.duration} seconds
+Duration: ${clip.duration} seconds`;
+    
+    // Add transcript data if available
+    if (transcript && transcript.text) {
+      prompt += `
+
+Transcript:
+${transcript.text}`;
+    }
+    
+    prompt += `
 View Count: ${clip.view_count}
 Created: ${clip.created_at}
 

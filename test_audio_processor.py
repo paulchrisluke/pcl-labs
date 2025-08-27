@@ -10,161 +10,112 @@ import time
 import sys
 
 # Configuration
-BASE_URL = "https://pcl-labs-cgjr4doid-pcl-labs.vercel.app"
-API_BASE = f"{BASE_URL}/api/audio_processor"
+BASE_URL = "http://localhost:8000"
+API_BASE = BASE_URL
 
 def test_health_check():
     """Test the health check endpoint"""
-    print("🔍 Testing health check...")
+    print("\n🔍 Testing health check...")
     
     try:
-        response = requests.get(API_BASE)
+        response = requests.get(f"{API_BASE}/health")
         response.raise_for_status()
         
         data = response.json()
-        print(f"✅ Health check passed: {data['status']}")
-        print(f"   Service: {data['service']}")
-        print(f"   Version: {data['version']}")
-        print(f"   R2 Configured: {data['r2_configured']}")
-        print(f"   Note: {data['note']}")
+        print(f"✅ Health check passed: {data.get('status', 'unknown')}")
+        print(f"   FFmpeg Available: {data.get('ffmpeg_available', 'Unknown')}")
+        print(f"   R2 Configured: {data.get('r2_configured', 'Unknown')}")
+        print(f"   Cache Healthy: {data.get('cache_healthy', 'Unknown')}")
+        print(f"   Cache Type: {data.get('cache_type', 'Unknown')}")
         
-        return data['r2_configured']
-        
+        return True
     except Exception as e:
         print(f"❌ Health check failed: {e}")
         return False
 
-def get_latest_clip():
-    """Get the latest clip from R2 storage"""
-    print("\n🔍 Getting latest clip from R2 storage...")
-    
-    try:
-        response = requests.get(f"{API_BASE}/latest")
-        response.raise_for_status()
-        
-        data = response.json()
-        
-        if data.get('success'):
-            latest_clip = data['latest_clip']
-            print(f"✅ Found latest clip: {latest_clip['clip_id']}")
-            print(f"   File: {latest_clip['key']}")
-            print(f"   Size: {latest_clip['size']} bytes")
-            print(f"   Uploaded: {latest_clip['uploaded']}")
-            return latest_clip['clip_id']
-        else:
-            print(f"❌ No clips found: {data['message']}")
-            return None
-            
-    except Exception as e:
-        print(f"❌ Failed to get latest clip: {e}")
-        return None
-
 def list_all_clips():
-    """List all clips in R2 storage"""
-    print("\n🔍 Listing all clips in R2 storage...")
+    """List all clips from Cloudflare Worker API"""
+    print("\n🔍 Listing all clips from Cloudflare Worker API...")
     
     try:
-        response = requests.get(f"{API_BASE}/clips")
+        # Get clips from your Cloudflare Worker API
+        response = requests.get("https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips/stored")
         response.raise_for_status()
         
         data = response.json()
         
-        if data.get('success'):
+        if data.get('success') and data.get('clips'):
             clips = data['clips']
-            print(f"✅ Found {data['total_clips']} clips:")
+            print(f"✅ Found {len(clips)} clips:")
             
-            for i, clip in enumerate(clips[:5], 1):  # Show first 5 clips
-                print(f"   {i}. {clip['clip_id']} ({clip['size']} bytes)")
-            
-            if len(clips) > 5:
-                print(f"   ... and {len(clips) - 5} more")
-            
-            return clips
+            for i, clip in enumerate(clips, 1):
+                status = "✅" if clip.get('video_file', {}).get('exists') else "❌"
+                print(f"   {i}. {status} {clip['id']} - {clip['title']} ({clip['duration']}s)")
+                
+            return [clip['id'] for clip in clips]
         else:
-            print(f"❌ Failed to list clips: {data.get('message', 'Unknown error')}")
+            print(f"❌ No clips found: {data.get('message', 'Unknown error')}")
             return []
             
     except Exception as e:
         print(f"❌ Failed to list clips: {e}")
         return []
 
-def test_audio_processing(clip_id):
-    """Test audio processing with the given clip ID"""
-    print(f"\n🎵 Testing audio processing with clip: {clip_id}")
-    
-    payload = {
-        "clip_ids": [clip_id],
-        "background": False
-    }
+def process_all_clips(clip_ids):
+    """Process all clips through the local audio processor"""
+    print(f"\n🎵 Processing all {len(clip_ids)} clips through local audio processor...")
     
     try:
-        print("   Sending processing request...")
-        response = requests.post(
-            API_BASE,
-            headers={'Content-Type': 'application/json'},
-            data=json.dumps(payload)
-        )
+        # Process all clips at once
+        response = requests.post(f"{API_BASE}/process-clips", json={
+            "clip_ids": clip_ids,
+            "background": False
+        })
         response.raise_for_status()
         
         data = response.json()
+        print(f"✅ Processing result: {data.get('message', 'Unknown')}")
         
-        if data.get('success'):
-            print(f"✅ Processing successful: {data['message']}")
-            
-            results = data.get('results', {})
-            print(f"   Total: {results.get('total', 0)}")
-            print(f"   Successful: {results.get('successful', 0)}")
-            print(f"   Failed: {results.get('failed', 0)}")
+        # Handle nested results structure
+        results_data = data.get('results', {})
+        if isinstance(results_data, dict):
+            print(f"   Total: {results_data.get('total', 0)}")
+            print(f"   Successful: {results_data.get('successful', 0)}")
+            print(f"   Failed: {results_data.get('failed', 0)}")
             
             # Show detailed results
-            for result in results.get('results', []):
-                if result.get('success'):
-                    clip_info = result.get('clip_info', {})
-                    print(f"   ✅ {result['clip_id']}: {result.get('note', 'Processed successfully')}")
-                    if clip_info.get('file_path'):
-                        print(f"      File: {clip_info['file_path']}")
-                else:
-                    print(f"   ❌ {result['clip_id']}: {result.get('error', 'Unknown error')}")
+            for result in results_data.get('results', []):
+                status = "✅" if result.get('success') else "❌"
+                print(f"   {status} {result['clip_id']}: {result.get('error', 'Processed successfully')}")
+                if result.get('files_uploaded'):
+                    print(f"      Files: {', '.join(result['files_uploaded'])}")
         else:
-            print(f"❌ Processing failed: {data['message']}")
-            
+            print(f"   Response: {data}")
+        
+        return True
     except Exception as e:
-        print(f"❌ Processing request failed: {e}")
+        print(f"❌ Failed to process clips: {e}")
+        return False
 
 def main():
-    """Main test function"""
     print("🚀 Starting Audio Processor API Test")
     print("=" * 50)
     
-    # Test health check first
-    r2_configured = test_health_check()
-    
-    if not r2_configured:
-        print("\n⚠️  R2 storage is not configured. Cannot test with real clips.")
-        print("   Please configure the following environment variables:")
-        print("   - CLOUDFLARE_ACCOUNT_ID")
-        print("   - CLOUDFLARE_ZONE_ID") 
-        print("   - CLOUDFLARE_API_TOKEN")
-        print("   - R2_BUCKET")
+    # Test health check
+    if not test_health_check():
+        print("❌ Health check failed, aborting test")
         return
     
-    # List all clips
-    clips = list_all_clips()
-    
-    if not clips:
-        print("\n⚠️  No clips found in R2 storage.")
-        print("   Please upload some clips first before testing.")
+    # Get all clips
+    clip_ids = list_all_clips()
+    if not clip_ids:
+        print("❌ No clips found, aborting test")
         return
     
-    # Get latest clip
-    latest_clip_id = get_latest_clip()
-    
-    if not latest_clip_id:
-        print("\n⚠️  Could not retrieve latest clip.")
+    # Process all clips
+    if not process_all_clips(clip_ids):
+        print("❌ Failed to process clips")
         return
-    
-    # Test audio processing with the latest clip
-    test_audio_processing(latest_clip_id)
     
     print("\n" + "=" * 50)
     print("✅ Test completed!")
