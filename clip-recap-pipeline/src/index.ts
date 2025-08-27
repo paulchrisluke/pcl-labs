@@ -557,17 +557,25 @@ export default {
           const list = await env.R2_BUCKET.list({ prefix: 'clips/' });
           const clips = [];
           
+          // Filter for only JSON files to avoid parsing binary data
+          const jsonFiles = list.objects.filter(obj => obj.key.endsWith('.json'));
+          
           // Limit the number of clips to prevent performance issues
           const MAX_CLIPS = 100;
-          const objectsToFetch = list.objects.slice(0, MAX_CLIPS);
+          const objectsToFetch = jsonFiles.slice(0, MAX_CLIPS);
 
           // Fetch clips in parallel with batching
           const batchSize = 10;
           for (let i = 0; i < objectsToFetch.length; i += batchSize) {
             const batch = objectsToFetch.slice(i, i + batchSize);
             const batchPromises = batch.map(async (object: { key: string }) => {
-              const clipObject = await env.R2_BUCKET.get(object.key);
-              return clipObject ? clipObject.json() : null;
+              try {
+                const clipObject = await env.R2_BUCKET.get(object.key);
+                return clipObject ? await clipObject.json() : null;
+              } catch (error) {
+                console.error(`Failed to parse JSON for ${object.key}:`, error);
+                return null;
+              }
             });
 
             const batchResults = await Promise.all(batchPromises);
@@ -607,7 +615,8 @@ export default {
         
         // Get stored clips
         const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
-        const clipIds = clipsList.objects.slice(0, 2).map(obj => obj.key.replace('clips/', '').replace('.json', ''));
+        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
+        const clipIds = jsonFiles.slice(0, 2).map(obj => obj.key.replace('clips/', '').replace('.json', ''));
         
         console.log(`📥 Processing ${clipIds.length} clips: ${clipIds.join(', ')}`);
         
@@ -679,15 +688,13 @@ export default {
         console.log('🎵 Processing audio for transcription test...');
         const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-no52x5jv0-pcl-labs.vercel.app/api/audio_processor';
         
-        const audioResponse = await fetch(`${audioProcessorUrl}/process-clips`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clip_ids: [testClipId],
-            background: false
-          })
+        // Use security service for authenticated requests
+        const { SecurityService } = await import('./services/security.js');
+        const securityService = new SecurityService(env);
+        
+        const audioResponse = await securityService.securePost(`${audioProcessorUrl}/process-clips`, {
+          clip_ids: [testClipId],
+          background: false
         });
 
         if (!audioResponse.ok) {
@@ -999,6 +1006,8 @@ export default {
       return handleWebhook(request, env, ctx);
     }
     
+
+
     // Default response - API Status Page
     const html = await generateStatusPage(env, url.origin);
     

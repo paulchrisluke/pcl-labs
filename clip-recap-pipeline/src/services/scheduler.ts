@@ -103,15 +103,13 @@ async function processAudioForClips(clipIds: string[], env: Environment): Promis
     const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
     const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
     
-    const audioResponse = await fetch(`${audioProcessorUrl}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        clip_ids: clipIds,
-        background: false
-      })
+    // Use security service for authenticated requests
+    const { SecurityService } = await import('./security.js');
+    const securityService = new SecurityService(env);
+    
+    const audioResponse = await securityService.securePost(`${audioProcessorUrl}`, {
+      clip_ids: clipIds,
+      background: false
     });
     
     if (!audioResponse.ok) {

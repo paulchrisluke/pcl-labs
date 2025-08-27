@@ -77,6 +77,9 @@ wrangler secret put GITHUB_TOKEN_BLAWBY
 # Discord Bot
 wrangler secret put DISCORD_BOT_TOKEN
 wrangler secret put DISCORD_REVIEW_CHANNEL_ID
+
+# Worker Configuration (Optional)
+wrangler secret put WORKER_ORIGIN  # Origin header for API requests, defaults to production worker URL
 ```
 
 ### Environment Variables

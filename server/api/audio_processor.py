@@ -12,6 +12,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.storage.r2 import R2Storage
+from src.security import security_middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,7 +56,43 @@ def validate_clip_id(clip_id: str) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
+    def validate_request(self, method: str, body: str = '') -> tuple[bool, str]:
+        """
+        Validate request using security middleware.
+        Returns: (is_valid, error_message)
+        """
+        # Get headers as dictionary
+        headers = dict(self.headers.items())
+        
+        # Debug logging
+        # Debug logging (use debug level to avoid exposing sensitive data in production)
+        logger.debug(f"Received headers count: {len(headers)}")
+        logger.debug(f"Required headers check:")
+        logger.debug(f"  X-Request-Signature: {'PRESENT' if headers.get('X-Request-Signature') or headers.get('x-request-signature') else 'MISSING'}")
+        logger.debug(f"  X-Request-Timestamp: {'PRESENT' if headers.get('X-Request-Timestamp') or headers.get('x-request-timestamp') else 'MISSING'}")
+        logger.debug(f"  X-Request-Nonce: {'PRESENT' if headers.get('X-Request-Nonce') or headers.get('x-request-nonce') else 'MISSING'}")
+        
+        # Validate request
+        is_valid, error_message = security_middleware.validate_request(
+            method=method,
+            path=self.path,
+            headers=headers,
+            body=body
+        )
+        
+        return is_valid, error_message
+    
     def do_GET(self):
+        # Validate request security
+        is_valid, error_message = self.validate_request('GET')
+        if not is_valid:
+            # Return appropriate status code based on error type
+            if "Rate limit exceeded" in error_message:
+                self.send_error_response(429, f"Security validation failed: {error_message}")
+            else:
+                self.send_error_response(401, f"Security validation failed: {error_message}")
+            return
+        
         # Parse the path to determine the endpoint
         path = self.path.rstrip('/')
         
@@ -185,6 +222,17 @@ class handler(BaseHTTPRequestHandler):
                 return  # Error response already sent
                 
             body = self.rfile.read(content_length)
+            body_str = body.decode('utf-8')
+            
+            # Validate request security
+            is_valid, error_message = self.validate_request('POST', body_str)
+            if not is_valid:
+                # Return appropriate status code based on error type
+                if "Rate limit exceeded" in error_message:
+                    self.send_error_response(429, f"Security validation failed: {error_message}")
+                else:
+                    self.send_error_response(401, f"Security validation failed: {error_message}")
+                return
             
             try:
                 data = json.loads(body.decode('utf-8'))
@@ -219,25 +267,18 @@ class handler(BaseHTTPRequestHandler):
             self.send_error_response(500, str(e))
     
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+        # Return 405 Method Not Allowed for OPTIONS requests
+        self.send_error_response(405, "Method not allowed")
     
     def send_success_response(self, data):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
     
     def send_error_response(self, status_code, message):
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps({
             "success": False,

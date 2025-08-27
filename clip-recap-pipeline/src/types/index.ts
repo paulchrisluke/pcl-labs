@@ -20,6 +20,8 @@ export interface Environment {
   CONTENT_REPO_NAME: string;
   CONTENT_REPO_MAIN_BRANCH: string;
   AUDIO_PROCESSOR_URL?: string;
+  HMAC_SHARED_SECRET: string;
+  WORKER_ORIGIN?: string; // Origin header for API requests (set via wrangler secret put), defaults to production worker URL
 }
 
 // Health endpoint response interface

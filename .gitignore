@@ -56,3 +56,4 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
+.env*.local
