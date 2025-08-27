@@ -9,7 +9,7 @@ import { config } from 'dotenv';
 config();
 
 const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
-const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-rf20o0ykn-pcl-labs.vercel.app/api/audio_processor';
+const AUDIO_PROCESSOR_URL = process.env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-zseyqko2e-pcl-labs.vercel.app/api/audio_processor';
 
 interface TestResult {
   name: string;
@@ -97,15 +97,24 @@ async function testHealthEndpoints(): Promise<TestResult[]> {
   // Test audio processor health
   try {
     console.log('🔍 Testing audio processor health...');
-    const audioResult = await fetchWithTimeout(`${AUDIO_PROCESSOR_URL}/health`);
+    
+    // Use security service for authenticated request
+    const { SecurityService } = await import('./src/services/security.js');
+    const securityService = new SecurityService({
+      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || '',
+      WORKER_ORIGIN: process.env.WORKER_ORIGIN || 'https://clip-recap-pipeline.paulchrisluke.workers.dev'
+    });
+    
+    const audioResponse = await securityService.secureGet(`${AUDIO_PROCESSOR_URL}/health`);
+    const audioResult = await audioResponse.json();
     
     results.push({
       name: 'Audio Processor Health',
-      success: audioResult.ok && audioResult.body.status === 'healthy',
+      success: audioResponse.ok && audioResult.status === 'healthy',
       data: {
-        status: audioResult.status,
-        body: audioResult.body,
-        text: audioResult.text
+        status: audioResponse.status,
+        body: audioResult,
+        text: JSON.stringify(audioResult)
       }
     });
   } catch (error) {
@@ -169,50 +178,45 @@ async function testClipProcessing(): Promise<TestResult[]> {
     return results;
   }
   
-  try {
-    console.log(`🎵 Testing clip processing for ${testClipId}...`);
-    
-    // Test audio processing with fallback endpoint
-    let audioResponse: Response;
-    let audioResult: any;
-    
-    try {
-      // Try hyphenated endpoint first
-      audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/process-clips`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+      console.log(`🎵 Testing clip processing for ${testClipId}...`);
+      
+      // Use security service for authenticated request
+      const { SecurityService } = await import('./src/services/security.js');
+      const securityService = new SecurityService({
+        HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || '',
+        WORKER_ORIGIN: process.env.WORKER_ORIGIN || 'https://clip-recap-pipeline.paulchrisluke.workers.dev'
+      });
+      
+      // Test audio processing with fallback endpoint
+      let audioResponse: Response;
+      let audioResult: any;
+      
+      try {
+        // Try hyphenated endpoint first
+        audioResponse = await securityService.securePost(`${AUDIO_PROCESSOR_URL}/process-clips`, {
           clip_ids: [testClipId],
           background: false
-        })
-      });
-      
-      if (!audioResponse.ok) {
-        console.log('⚠️ Hyphenated endpoint failed, trying underscore endpoint...');
-        // Fallback to underscore endpoint
-        audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/process_clips`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        });
+        
+        if (!audioResponse.ok) {
+          console.log('⚠️ Hyphenated endpoint failed, trying underscore endpoint...');
+          // Fallback to underscore endpoint
+          audioResponse = await securityService.securePost(`${AUDIO_PROCESSOR_URL}/process_clips`, {
             clip_ids: [testClipId],
             background: false
-          })
+          });
+        }
+        
+        audioResult = await audioResponse.json();
+      } catch (jsonError) {
+        results.push({
+          name: 'Audio Processing',
+          success: false,
+          error: `Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`
         });
+        return results;
       }
-      
-      audioResult = await audioResponse.json();
-    } catch (jsonError) {
-      results.push({
-        name: 'Audio Processing',
-        success: false,
-        error: `Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`
-      });
-      return results;
-    }
     
     results.push({
       name: 'Audio Processing',
@@ -285,8 +289,14 @@ async function testStoredClips(): Promise<TestResult[]> {
       }
     });
     
-    // Test processed clips list
-    const processedResponse = await fetch(`${AUDIO_PROCESSOR_URL}/list-processed-clips?limit=10`);
+    // Test processed clips list using security service
+    const { SecurityService } = await import('./src/services/security.js');
+    const securityService = new SecurityService({
+      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || '',
+      WORKER_ORIGIN: process.env.WORKER_ORIGIN || 'https://clip-recap-pipeline.paulchrisluke.workers.dev'
+    });
+    
+    const processedResponse = await securityService.secureGet(`${AUDIO_PROCESSOR_URL}/list-processed-clips?limit=10`);
     const processedResult = await processedResponse.json();
     
     results.push({

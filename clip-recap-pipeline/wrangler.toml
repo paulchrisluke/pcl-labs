@@ -51,3 +51,4 @@ bucket_name = "clip-recap-assets"
 # GITHUB_TOKEN
 # GITHUB_TOKEN_BLAWBY
 # GITHUB_TOKEN_PAULCHRISLUKE
+# WORKER_ORIGIN (optional - defaults to production worker URL)

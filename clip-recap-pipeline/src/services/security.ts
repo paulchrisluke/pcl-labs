@@ -12,22 +12,41 @@ export class SecurityService {
 
   /**
    * Generate a random nonce for request signing
+   * Uses cryptographically secure random generation
+   * Must match Python server validation: alphanumeric only, 16-64 chars
    */
   private generateNonce(): string {
+    // Generate 32 cryptographically secure random bytes
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    
+    // Convert to alphanumeric string only (no hyphens or underscores)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
+    
     for (let i = 0; i < 32; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+      result += chars[randomBytes[i] % chars.length];
     }
+    
     return result;
   }
 
   /**
    * Generate an idempotency key for state-changing operations
+   * Uses cryptographically secure random generation
    */
   private generateIdempotencyKey(): string {
     const timestamp = Date.now().toString();
-    const random = Math.random().toString(36).substring(2, 15);
+    
+    // Generate 16 cryptographically secure random bytes
+    const randomBytes = new Uint8Array(16);
+    crypto.getRandomValues(randomBytes);
+    
+    // Convert to hex string
+    const random = Array.from(randomBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
     return `${timestamp}-${random}`;
   }
 
@@ -79,7 +98,6 @@ export class SecurityService {
       'X-Request-Timestamp': timestamp,
       'X-Request-Nonce': nonce,
       'X-Idempotency-Key': idempotencyKey,
-      'Origin': 'https://clip-recap-pipeline.paulchrisluke.workers.dev',
     };
   }
 
@@ -161,14 +179,42 @@ export class SecurityService {
    * Validate response from the Python API
    */
   async validateResponse(response: Response): Promise<boolean> {
+    // First check HTTP response status
     if (!response.ok) {
       console.error(`API request failed: ${response.status} ${response.statusText}`);
       return false;
     }
 
     try {
-      const data = await response.json();
-      return data.success !== false;
+      const data = await response.json() as { success?: boolean; error?: string; message?: string };
+      
+      // Explicitly require success to be true
+      if (data && data.success === true) {
+        return true;
+      }
+      
+      // If success is explicitly false, log the error and return false
+      if (data && data.success === false) {
+        console.error('API returned explicit failure:', data.error || data.message || 'Unknown error');
+        return false;
+      }
+      
+      // If success is missing/undefined, check for other error indicators
+      if (data && data.error) {
+        console.error('API response contains error field:', data.error);
+        return false;
+      }
+      
+      // If we have a message but no success flag, treat as suspicious
+      if (data && data.message && data.success === undefined) {
+        console.warn('API response missing success flag but has message:', data.message);
+        return false;
+      }
+      
+      // If no success flag and no other indicators, treat as failure
+      console.error('API response missing success flag and no other success indicators found');
+      return false;
+      
     } catch (error) {
       console.error('Failed to parse API response:', error);
       return false;
