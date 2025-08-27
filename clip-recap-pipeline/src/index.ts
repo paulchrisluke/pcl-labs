@@ -679,15 +679,13 @@ export default {
         console.log('🎵 Processing audio for transcription test...');
         const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-no52x5jv0-pcl-labs.vercel.app/api/audio_processor';
         
-        const audioResponse = await fetch(`${audioProcessorUrl}/process-clips`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clip_ids: [testClipId],
-            background: false
-          })
+        // Use security service for authenticated requests
+        const { SecurityService } = await import('./services/security.js');
+        const securityService = new SecurityService(env);
+        
+        const audioResponse = await securityService.securePost(`${audioProcessorUrl}/process-clips`, {
+          clip_ids: [testClipId],
+          background: false
         });
 
         if (!audioResponse.ok) {

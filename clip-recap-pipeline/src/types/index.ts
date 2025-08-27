@@ -20,6 +20,7 @@ export interface Environment {
   CONTENT_REPO_NAME: string;
   CONTENT_REPO_MAIN_BRANCH: string;
   AUDIO_PROCESSOR_URL?: string;
+  HMAC_SHARED_SECRET: string;
 }
 
 // Health endpoint response interface
