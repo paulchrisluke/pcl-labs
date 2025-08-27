@@ -1141,8 +1141,94 @@ export default {
     if (url.pathname === '/webhook/github') {
       return handleWebhook(request, env, ctx);
     }
-    
 
+    // Manual pipeline trigger endpoint
+    if (url.pathname === '/api/trigger-pipeline' && request.method === 'POST') {
+      try {
+        console.log('🚀 Manual pipeline trigger activated...');
+        
+        // Import the scheduler function
+        const { handleDailyPipeline } = await import('./services/scheduler.js');
+        
+        // Run the full daily pipeline
+        await handleDailyPipeline(env);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Pipeline triggered successfully',
+          timestamp: new Date().toISOString(),
+          note: 'Check logs for detailed progress'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Manual pipeline trigger failed:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Manual audio processing endpoint (processes all stored clips)
+    if (url.pathname === '/api/process-all-clips' && request.method === 'POST') {
+      try {
+        console.log('🎵 Manual audio processing for all stored clips...');
+        
+        // Get all stored clips
+        const clipsList = await env.R2_BUCKET.list({ prefix: 'clips/' });
+        const jsonFiles = clipsList.objects.filter(obj => obj.key.endsWith('.json'));
+        const clipIds = jsonFiles.map(obj => obj.key.replace('clips/', '').replace('.json', ''));
+        
+        console.log(`📥 Found ${clipIds.length} stored clips to process: ${clipIds.join(', ')}`);
+        
+        if (clipIds.length === 0) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'No stored clips found to process'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Import the audio processing function
+        const { processAudioForClips } = await import('./services/scheduler.js');
+        
+        // Process all clips with deduplication
+        await processAudioForClips(clipIds, env);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Audio processing completed for ${clipIds.length} clips`,
+          processed_clips: clipIds,
+          timestamp: new Date().toISOString(),
+          note: 'Check R2 storage for processed files'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Manual audio processing failed:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     // Default response - API Status Page
     const html = await generateStatusPage(env, url.origin);

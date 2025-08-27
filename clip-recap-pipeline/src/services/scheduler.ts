@@ -95,7 +95,7 @@ async function handleTokenValidation(env: Environment): Promise<void> {
 /**
  * Process audio for clips: download, extract, and transcribe with deduplication
  */
-async function processAudioForClips(clipIds: string[], env: Environment): Promise<void> {
+export async function processAudioForClips(clipIds: string[], env: Environment): Promise<void> {
   console.log(`🎵 Processing audio for ${clipIds.length} clips...`);
   
   try {
@@ -164,7 +164,7 @@ async function processAudioForClips(clipIds: string[], env: Environment): Promis
   }
 }
 
-async function handleDailyPipeline(env: Environment): Promise<void> {
+export async function handleDailyPipeline(env: Environment): Promise<void> {
   console.log('Starting daily clip recap pipeline...');
   
   try {
