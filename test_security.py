@@ -15,7 +15,7 @@ import string
 from typing import Dict, Any
 
 # Test configuration
-API_BASE_URL = "https://pcl-labs-cgjr4doid-pcl-labs.vercel.app/api/audio_processor"
+API_BASE_URL = "https://pcl-labs-rf20o0ykn-pcl-labs.vercel.app/api/audio_processor"
 HMAC_SECRET = "test_secret_for_development_only"  # Replace with actual secret
 WORKERS_ORIGIN = "https://clip-recap-pipeline.paulchrisluke.workers.dev"
 

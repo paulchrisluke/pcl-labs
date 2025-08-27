@@ -79,6 +79,7 @@ export class SecurityService {
       'X-Request-Timestamp': timestamp,
       'X-Request-Nonce': nonce,
       'X-Idempotency-Key': idempotencyKey,
+      'Origin': 'https://clip-recap-pipeline.paulchrisluke.workers.dev',
     };
   }
 
