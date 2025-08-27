@@ -171,6 +171,7 @@ npx tsx test-health.ts      # Health check endpoint
 npx tsx test-twitch.ts      # Twitch credentials and API
 npx tsx test-github.ts      # GitHub credentials and API
 npx tsx test-pipeline.ts    # Daily pipeline functionality
+npx tsx test-audio-pipeline.ts  # Audio processing pipeline integration (uses stored clips)
 ```
 
 **Test Coverage:**
@@ -178,6 +179,7 @@ npx tsx test-pipeline.ts    # Daily pipeline functionality
 - **Twitch Integration** (`test-twitch.ts`): Credentials, token validation, clip fetching
 - **GitHub Integration** (`test-github.ts`): Credentials, repository access, API connectivity
 - **Pipeline Functionality** (`test-pipeline.ts`): Clip storage, retrieval, validation, and database operations
+- **Audio Processing** (`test-audio-pipeline.ts`): Audio processing pipeline integration using actual stored clips from R2
 
 **Test Results:**
 All tests validate the complete pipeline workflow:
