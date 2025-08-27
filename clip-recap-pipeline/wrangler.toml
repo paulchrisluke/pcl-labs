@@ -40,6 +40,7 @@ index_name = "clip-recap-embeddings"
 [[r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
+preview_bucket_name = "clip-recap-assets"
 
 # All sensitive data is stored as secrets using wrangler secret put
 # Run 'npx wrangler secret list' to see current secrets

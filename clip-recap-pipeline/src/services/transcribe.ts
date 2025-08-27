@@ -40,6 +40,17 @@ export class TranscriptionService {
   }
 
   /**
+   * Convert ArrayBuffer to base64 string
+   */
+  private base64Encode(arrayBuffer: ArrayBuffer): string {
+    let binary = "";
+    const bytes = new Uint8Array(arrayBuffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+
+  /**
    * Convert transcript segments to VTT format
    */
   private toVTT(segments: TranscriptSegment[]): string {
@@ -116,23 +127,35 @@ export class TranscriptionService {
         return await existingTranscript.json() as TranscriptResult;
       }
 
-      // Get audio file from R2
-      const audioObj = await this.env.R2_BUCKET.get(`audio/${clipId}.wav`);
+      // Get WAV audio file from R2 (16-bit PCM, mono, 16kHz)
+      const audioObj = await this.env.R2_BUCKET.get(`audio/${clipId}_8bit.wav`);
+      
       if (!audioObj || !('body' in audioObj)) {
         console.error(`❌ Audio file not found for clip ${clipId}`);
         return null;
       }
 
-      // Convert to Uint8Array for Whisper
+      // Get the audio as ArrayBuffer and convert to base64
       const audioBuffer = await new Response(audioObj.body).arrayBuffer();
-      const audioBytes = new Uint8Array(audioBuffer);
+      console.log(`🎵 WAV audio buffer size: ${audioBuffer.byteLength} bytes`);
+      
+      // Validate file size (keep under ~25 MB for Workers AI)
+      if (audioBuffer.byteLength > 25 * 1024 * 1024) {
+        console.error(`❌ Audio file too large for transcription: ${audioBuffer.byteLength} bytes`);
+        return null;
+      }
 
-      console.log(`🎵 Audio loaded for ${clipId}, size: ${audioBytes.length} bytes`);
+      // Convert to base64 string (Whisper expects base64 of the full file bytes)
+      const base64Audio = this.base64Encode(audioBuffer);
+      console.log(`🎵 Base64 encoded audio length: ${base64Audio.length} characters`);
 
-      // Call Whisper API - pass Uint8Array directly to avoid memory duplication
-      // The Whisper API accepts TypedArray/buffer directly, no need to spread into new array
+      // Debug: check first few bytes to ensure we have a proper WAV file
+      const firstBytes = Array.from(new Uint8Array(audioBuffer.slice(0, 4)));
+      console.log(`🎵 First 4 bytes: ${firstBytes} (should be [82, 73, 70, 70] for 'RIFF')`);
+
+      // Call Whisper API with base64-encoded audio
       const whisperResponse = await this.env.ai.run('@cf/openai/whisper-large-v3-turbo', {
-        audio: audioBytes
+        audio: base64Audio
       });
 
       console.log(`✅ Whisper transcription completed for ${clipId}`);
@@ -174,6 +197,7 @@ export class TranscriptionService {
 
     } catch (error) {
       console.error(`❌ Transcription failed for ${clipId}:`, error);
+      console.error(`❌ Error details:`, error instanceof Error ? error.stack : error);
       return null;
     }
   }

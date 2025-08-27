@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
@@ -7,11 +7,13 @@ import time
 import re
 import asyncio
 import hmac
+import hashlib
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .download_extract import AudioProcessor
 from .task_manager import task_manager, TaskStatus
 from .ffmpeg_utils import ensure_ffmpeg
 from .cache import cache
+from .security import security_middleware
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,28 @@ app = FastAPI(
 
 # Initialize audio processor
 processor = AudioProcessor()
+
+async def verify_security(request: Request):
+    """Verify HMAC security headers"""
+    try:
+        # Get headers
+        headers = dict(request.headers)
+        body = await request.body()
+        body_str = body.decode('utf-8') if body else ''
+        
+        # Validate request
+        is_valid, error_message = security_middleware.validate_request(
+            method=request.method,
+            path=request.url.path,
+            headers=headers,
+            body=body_str
+        )
+        
+        if not is_valid:
+            raise HTTPException(status_code=401, detail=f"Security validation failed: {error_message}")
+            
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Security validation failed: {str(e)}")
 
 class ProcessClipRequest(BaseModel):
     clip_ids: List[str]
@@ -115,7 +139,7 @@ async def health_check():
     )
 
 @app.post("/process-clips", response_model=ProcessClipResponse)
-async def process_clips(request: ProcessClipRequest, background_tasks: BackgroundTasks):
+async def process_clips(request: ProcessClipRequest, background_tasks: BackgroundTasks, _: None = Depends(verify_security)):
     """Process Twitch clips: download, extract audio, upload to R2"""
     
     # Validate clip IDs at the API boundary

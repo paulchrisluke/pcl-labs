@@ -128,7 +128,7 @@ export async function processAudioForClips(clipIds: string[], env: Environment):
  */
 async function processAudioWithRetry(clipIds: string[], env: Environment, maxRetries: number = 3): Promise<void> {
   const baseUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app';
-  const audioProcessorUrl = `${baseUrl}/api/audio_processor`;
+  const audioProcessorUrl = `${baseUrl}/api/process-clips`;
   
   // Use security service for authenticated requests
   const { SecurityService } = await import('./security.js');

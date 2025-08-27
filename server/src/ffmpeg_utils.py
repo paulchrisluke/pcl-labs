@@ -74,6 +74,113 @@ def mp4_to_wav16k(src_mp4: Path, dst_wav: Path, sample_rate: int = 16000, channe
         logger.error(f"Error converting {src_mp4}: {e}")
         return False
 
+def mp4_to_whisper_wav(src_mp4: Path, dst_audio: Path, sample_rate: int = 16000, channels: int = 1, timeout: int = 300) -> bool:
+    """Convert MP4 to Whisper-compatible WAV (16-bit PCM, mono, 16kHz)"""
+    try:
+        # Validate input file
+        if not src_mp4.exists():
+            logger.error(f"Source file does not exist: {src_mp4}")
+            return False
+        
+        if not src_mp4.is_file():
+            logger.error(f"Source path is not a file: {src_mp4}")
+            return False
+        
+        # Ensure output directory exists
+        dst_audio.parent.mkdir(parents=True, exist_ok=True)
+        
+        # FFmpeg command for Whisper-compatible WAV (16-bit PCM, mono, 16kHz)
+        cmd = [
+            "ffmpeg",
+            "-nostdin",  # Non-interactive mode
+            "-y",        # Overwrite output files
+            "-i", str(src_mp4),
+            "-vn",       # No video
+            "-ac", str(channels),  # Number of audio channels
+            "-ar", str(sample_rate),  # Sample rate
+            "-acodec", "pcm_s16le",  # 16-bit signed PCM little-endian
+            str(dst_audio)
+        ]
+        
+        # Run FFmpeg command with timeout
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=timeout)
+        
+        # Verify output file exists and has content
+        if dst_audio.exists() and dst_audio.stat().st_size > 0:
+            logger.info(f"Successfully converted {src_mp4} to Whisper WAV {dst_audio}")
+            return True
+        else:
+            logger.error(f"Output file {dst_audio} is empty or missing")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"FFmpeg conversion timed out after {timeout} seconds for {src_mp4}")
+        return False
+    except subprocess.CalledProcessError as e:
+        logger.error(f"FFmpeg error: {e}")
+        logger.error(f"FFmpeg stderr: {e.stderr}")
+        return False
+    except Exception as e:
+        logger.error(f"Error converting {src_mp4}: {e}")
+        return False
+
+def mp4_to_8bit_audio(src_mp4: Path, dst_audio: Path, sample_rate: int = 16000, channels: int = 1, timeout: int = 300) -> bool:
+    """
+    Convert MP4 to Whisper-compatible WAV (16-bit PCM, mono, 16kHz)
+    
+    Note: This function was originally intended for 8-bit audio but has been updated
+    to use 16-bit PCM as 8-bit audio causes "Invalid audio input" errors with Whisper.
+    The function name is kept for backward compatibility.
+    """
+    try:
+        # Validate input file
+        if not src_mp4.exists():
+            logger.error(f"Source file does not exist: {src_mp4}")
+            return False
+        
+        if not src_mp4.is_file():
+            logger.error(f"Source path is not a file: {src_mp4}")
+            return False
+        
+        # Ensure output directory exists
+        dst_audio.parent.mkdir(parents=True, exist_ok=True)
+        
+        # FFmpeg command for Whisper-compatible WAV (16-bit PCM, mono, 16kHz)
+        # This creates the format that Whisper expects: 16-bit signed PCM, mono, 16kHz
+        cmd = [
+            "ffmpeg",
+            "-nostdin",  # Non-interactive mode
+            "-y",        # Overwrite output files
+            "-i", str(src_mp4),
+            "-vn",       # No video
+            "-ac", str(channels),  # Number of audio channels
+            "-ar", str(sample_rate),  # Sample rate
+            "-acodec", "pcm_s16le",  # 16-bit signed PCM little-endian
+            str(dst_audio)
+        ]
+        
+        # Run FFmpeg command with timeout
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=timeout)
+        
+        # Verify output file exists and has content
+        if dst_audio.exists() and dst_audio.stat().st_size > 0:
+            logger.info(f"Successfully converted {src_mp4} to Whisper-compatible WAV {dst_audio}")
+            return True
+        else:
+            logger.error(f"Output file {dst_audio} is empty or missing")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"FFmpeg conversion timed out after {timeout} seconds for {src_mp4}")
+        return False
+    except subprocess.CalledProcessError as e:
+        logger.error(f"FFmpeg error: {e}")
+        logger.error(f"FFmpeg stderr: {e.stderr}")
+        return False
+    except Exception as e:
+        logger.error(f"Error converting {src_mp4}: {e}")
+        return False
+
 def get_audio_duration(file_path: Path) -> Optional[float]:
     """
     Get audio duration in seconds using ffprobe (preferred) or ffmpeg as fallback.

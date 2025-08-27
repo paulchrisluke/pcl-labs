@@ -645,7 +645,20 @@ export default {
                 // Check for video file
                 const videoFile = await env.R2_BUCKET.head(`clips/${clipId}.mp4`);
                 
-                // Add video file info to the clip data
+                // Check for 8-bit audio file (preferred) or WAV fallback
+                let audioFile = await env.R2_BUCKET.head(`audio/${clipId}.raw`);
+                let audioFormat = 'raw';
+                if (!audioFile) {
+                  audioFile = await env.R2_BUCKET.head(`audio/${clipId}.wav`);
+                  audioFormat = 'wav';
+                }
+                
+                // Check for transcript files
+                const transcriptJson = await env.R2_BUCKET.head(`transcripts/${clipId}.json`);
+                const transcriptTxt = await env.R2_BUCKET.head(`transcripts/${clipId}.txt`);
+                const transcriptVtt = await env.R2_BUCKET.head(`transcripts/${clipId}.vtt`);
+                
+                // Add file info to the clip data
                 const enhancedClip = {
                   ...clipData,
                   video_file: videoFile ? {
@@ -656,6 +669,38 @@ export default {
                     url: `https://clip-recap-assets.paulchrisluke.workers.dev/clips/${clipId}.mp4`
                   } : {
                     exists: false
+                  },
+                  audio_file: audioFile ? {
+                    exists: true,
+                    size: audioFile.size,
+                    uploaded: audioFile.uploaded,
+                    last_modified: audioFile.lastModified,
+                    url: `https://clip-recap-assets.paulchrisluke.workers.dev/audio/${clipId}.${audioFormat}`
+                  } : {
+                    exists: false
+                  },
+                  transcript: {
+                    json: transcriptJson ? {
+                      exists: true,
+                      size: transcriptJson.size,
+                      uploaded: transcriptJson.uploaded,
+                      last_modified: transcriptJson.lastModified,
+                      url: `https://clip-recap-assets.paulchrisluke.workers.dev/transcripts/${clipId}.json`
+                    } : { exists: false },
+                    txt: transcriptTxt ? {
+                      exists: true,
+                      size: transcriptTxt.size,
+                      uploaded: transcriptTxt.uploaded,
+                      last_modified: transcriptTxt.lastModified,
+                      url: `https://clip-recap-assets.paulchrisluke.workers.dev/transcripts/${clipId}.txt`
+                    } : { exists: false },
+                    vtt: transcriptVtt ? {
+                      exists: true,
+                      size: transcriptVtt.size,
+                      uploaded: transcriptVtt.uploaded,
+                      last_modified: transcriptVtt.lastModified,
+                      url: `https://clip-recap-assets.paulchrisluke.workers.dev/transcripts/${clipId}.vtt`
+                    } : { exists: false }
                   }
                 };
                 
@@ -709,16 +754,15 @@ export default {
         console.log(`📥 Processing ${clipIds.length} clips: ${clipIds.join(', ')}`);
         
         // Call audio processor
-        const audioProcessorUrl = 'https://pcl-labs.vercel.app/api/audio-processor';
-        const audioResponse = await fetch(audioProcessorUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clip_ids: clipIds,
-            background: false
-          })
+        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app/api/process-clips';
+        
+        // Use security service for authenticated requests
+        const { SecurityService } = await import('./services/security.js');
+        const securityService = new SecurityService(env);
+        
+        const audioResponse = await securityService.securePost(`${audioProcessorUrl}/process-clips`, {
+          clip_ids: clipIds,
+          background: false
         });
         
         if (!audioResponse.ok) {
@@ -774,7 +818,7 @@ export default {
 
         // Step 2: Call audio processor to download and extract audio
         console.log('🎵 Processing audio for transcription test...');
-        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs-no52x5jv0-pcl-labs.vercel.app/api/audio_processor';
+        const audioProcessorUrl = env.AUDIO_PROCESSOR_URL || 'https://pcl-labs.vercel.app/api/process-clips';
         
         // Use security service for authenticated requests
         const { SecurityService } = await import('./services/security.js');
@@ -860,6 +904,58 @@ export default {
 
       } catch (error) {
         console.error('❌ Transcription pipeline test failed:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Force re-transcription endpoint (must come before general transcription routes)
+    if (url.pathname.startsWith('/api/transcribe/force/') && request.method === 'POST') {
+      try {
+        const clipId = url.pathname.replace('/api/transcribe/force/', '');
+        console.log(`🔄 Force re-transcribing clip: ${clipId}`);
+        
+        // Delete existing transcript files
+        await env.R2_BUCKET.delete(`transcripts/${clipId}.json`);
+        await env.R2_BUCKET.delete(`transcripts/${clipId}.txt`);
+        await env.R2_BUCKET.delete(`transcripts/${clipId}.vtt`);
+        await env.R2_BUCKET.delete(`transcripts/${clipId}.ok`);
+        
+        console.log(`🗑️ Deleted existing transcript files for ${clipId}`);
+        
+        // Import and run transcription service
+        const { TranscriptionService } = await import('./services/transcribe.js');
+        const transcriptionService = new TranscriptionService(env);
+        
+        const transcript = await transcriptionService.transcribeClip(clipId);
+        
+        if (transcript) {
+          return new Response(JSON.stringify({
+            success: true,
+            message: `Force re-transcription completed for ${clipId}`,
+            transcript: transcript
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } else {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `Force re-transcription failed for ${clipId}`
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error in force re-transcription:', error);
+        
         return new Response(JSON.stringify({
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -1464,6 +1560,104 @@ export default {
           success: false,
           error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+
+
+    // Test Whisper API endpoint with real audio
+    if (url.pathname === '/api/test-whisper' && request.method === 'POST') {
+      try {
+        console.log('🧪 Testing Whisper API with real audio...');
+        
+        // Get the existing WAV file from R2
+        const clipId = 'GracefulNiceTrayTwitchRPG-S0mXm1c-HzyKegf0';
+        const audioObj = await env.R2_BUCKET.get(`audio/${clipId}.wav`);
+        
+        if (!audioObj || !('body' in audioObj)) {
+          throw new Error('Audio file not found');
+        }
+        
+        // Use existing WAV and convert properly
+        const audioBuffer = await new Response(audioObj.body).arrayBuffer();
+        const headerSize = 44; // Standard WAV header size
+        const audioData = new Int16Array(audioBuffer, headerSize);
+        
+        // Convert 16-bit signed integers to 8-bit unsigned integers
+        const whisperAudio: number[] = [];
+        for (let i = 0; i < audioData.length; i++) {
+          const normalized = (audioData[i] + 32768) / 65536;
+          const eightBit = Math.round(normalized * 255);
+          whisperAudio.push(Math.max(0, Math.min(255, eightBit)));
+        }
+        
+        console.log(`🎵 Converted audio: ${whisperAudio.length} samples`);
+        
+        const whisperResponse = await env.ai.run('@cf/openai/whisper', {
+          audio: whisperAudio
+        });
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Whisper API test successful',
+          response: whisperResponse
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+      } catch (error) {
+        console.error('Error testing Whisper API:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Audio file serving endpoint
+    if (url.pathname.startsWith('/api/audio/file/') && request.method === 'GET') {
+      try {
+        const clipId = url.pathname.replace('/api/audio/file/', '');
+        console.log(`🎵 Serving audio file for clip: ${clipId}`);
+        
+        const audioObj = await env.R2_BUCKET.get(`audio/${clipId}.wav`);
+        
+        if (!audioObj) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Audio file not found'
+          }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        return new Response(audioObj.body, {
+          status: 200,
+          headers: {
+            'Content-Type': 'audio/wav',
+            'Content-Length': audioObj.size.toString(),
+            'Cache-Control': 'public, max-age=3600',
+            'Accept-Ranges': 'bytes',
+            'Content-Disposition': `inline; filename="${clipId}.wav"`
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error serving audio file:', error);
+        
+        return new Response(JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }

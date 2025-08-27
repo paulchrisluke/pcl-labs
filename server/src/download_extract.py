@@ -11,7 +11,7 @@ from typing import Dict, Optional, Tuple, Any, List
 from dotenv import load_dotenv
 from yt_dlp import YoutubeDL
 from .storage.r2 import R2Storage
-from .ffmpeg_utils import ensure_ffmpeg, mp4_to_wav16k, get_audio_duration, chunk_audio
+from .ffmpeg_utils import ensure_ffmpeg, mp4_to_wav16k, mp4_to_8bit_audio, get_audio_duration, chunk_audio
 
 # Load environment variables
 load_dotenv()
@@ -677,11 +677,13 @@ class AudioProcessor:
                         result["needs_chunking"] = False
                         print(f"Clip {clip_id} is {duration:.1f}s long, no chunking needed")
                 
-                # Extract audio
-                print(f"Extracting audio from {clip_id}...")
-                wav_path = tmp_path / f"{clip_id}.wav"
-                if not mp4_to_wav16k(mp4_path, wav_path, self.sample_rate, self.channels):
-                    result["error"] = "Failed to extract audio"
+                # Extract 8-bit audio (for Whisper)
+                print(f"Extracting 8-bit audio from {clip_id}...")
+                audio_8bit_path = tmp_path / f"{clip_id}_8bit.wav"
+                
+                # Extract 8-bit audio (for Whisper)
+                if not mp4_to_8bit_audio(mp4_path, audio_8bit_path, self.sample_rate, self.channels):
+                    result["error"] = "Failed to extract 8-bit audio"
                     return result
                 
                 # Upload files to R2
@@ -693,15 +695,22 @@ class AudioProcessor:
                 if self.r2.put_file(mp4_key, str(mp4_path), "video/mp4", metadata):
                     result["files_uploaded"].append(mp4_key)
                 
-                # Upload WAV
-                wav_key = f"audio/{clip_id}.wav"
-                if self.r2.put_file(wav_key, str(wav_path), "audio/wav", metadata):
-                    result["files_uploaded"].append(wav_key)
+                # Upload 8-bit audio (for Whisper)
+                audio_8bit_key = f"audio/{clip_id}_8bit.wav"
+                if self.r2.put_file(audio_8bit_key, str(audio_8bit_path), "audio/wav", metadata):
+                    result["files_uploaded"].append(audio_8bit_key)
                 
-                # If chunking is needed, create chunks
+                # If chunking is needed, create WAV and chunks
                 if result["needs_chunking"]:
                     try:
-                        print(f"Creating audio chunks for {clip_id}...")
+                        print(f"Creating WAV and audio chunks for {clip_id}...")
+                        wav_path = tmp_path / f"{clip_id}.wav"
+                        
+                        # Create WAV for chunking
+                        if not mp4_to_wav16k(mp4_path, wav_path, self.sample_rate, self.channels):
+                            result["error"] = "Failed to create WAV for chunking"
+                            return result
+                        
                         chunks_dir = tmp_path / "chunks"
                         chunk_files = chunk_audio(wav_path, chunks_dir)
                         
