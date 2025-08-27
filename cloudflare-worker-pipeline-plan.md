@@ -44,6 +44,22 @@
 * ✅ **Storage Operations**: R2 upload/download working correctly
 * ✅ **Error Handling**: Proper validation and error responses
 
+### 🚨 CRITICAL SECURITY TODO (TOMORROW)
+
+**CodeRabbit Security Review - Vercel API Endpoint Protection**
+
+**Issue**: Publishing the Vercel API URL (`https://pcl-labs-cgjr4doid-pcl-labs.vercel.app`) invites abuse - free clip processing on your infrastructure.
+
+**Required Actions**:
+* ❌ **Remove unauthenticated processing endpoints** - all clip processing must require authentication
+* ❌ **Add service-to-service authentication** - implement HMAC-signed requests with timestamp and nonce
+* ❌ **Enforce narrow IP allowlists** - restrict access to Cloudflare Workers IP ranges only
+* ❌ **Add strict rate limits** - implement per-endpoint rate limiting to protect ffmpeg/Whisper capacity
+* ❌ **Return 401/429 early** - reject unauthorized requests immediately to prevent resource abuse
+* ❌ **Remove public API documentation** - do not expose endpoint URLs in public repositories
+
+**Implementation Priority**: HIGH - Must be completed before any production deployment or public exposure of the API endpoints.
+
 ---
 
 ## High-level flow (ACTUAL)
@@ -68,6 +84,19 @@
 ```
 
 **Note**: Audio processing is handled by a separate Python API on Vercel, not integrated into the main Cloudflare Workers pipeline.
+
+**⚠️ MANDATORY CROSS-RUNTIME SECURITY & RELIABILITY CONTROLS:**
+
+* **CORS Policy**: No public CORS - only allow requests from Workers origin (`*.workers.dev`). Enforce strict `Origin` and `Host` header verification on all endpoints.
+* **Request Authentication**: HMAC-signed requests with expiring nonce/timestamp. Include `X-Request-Signature`, `X-Request-Timestamp`, `X-Request-Nonce` headers. Nonce expiry: 5 minutes. Server validates signature using shared secret.
+* **Rate Limiting**: Short request timeouts (30s max) and limited retry budget (2-3 retries) on client side. Implement exponential backoff with jitter.
+* **Idempotency**: Use `X-Idempotency-Key` header for all state-changing operations. Server validates and prevents duplicate processing.
+* **Validation Steps**: 
+  - Verify `Origin` header matches `*.workers.dev` pattern
+  - Check `X-Request-Timestamp` is within 5-minute window
+  - Validate HMAC signature using request body + timestamp + nonce
+  - Ensure `X-Idempotency-Key` is unique for operation
+  - Reject requests missing any required security headers
 
 ---
 
@@ -123,23 +152,23 @@
 * **Whisper Model**: `@cf/openai/whisper-large-v3-turbo` for high-quality transcription
 * **Chunking**: Handle clips longer than 90 seconds by chunking audio
 * **Storage**: Store transcripts as JSON with segments and metadata in R2
-* **API Calls**: Use fetch() from Workers to call Python API endpoints
-* **Data Exchange**: JSON payloads for clip processing requests
-* **Error Handling**: Retry logic and fallback mechanisms
+* **API Calls**: Use fetch() from Workers to call Python API endpoints with mandatory security headers
+* **Data Exchange**: JSON payloads for clip processing requests with HMAC signatures
+* **Error Handling**: Retry logic and fallback mechanisms with exponential backoff
 * **Storage Coordination**: Ensure R2 access from both Workers and Python API
 * **Monitoring**: Health checks and logging across both systems
-* **Deployment**: Ensure FFmpeg binary availability in Vercel environment
+### R2 Layout (keys) - ACTUAL IMPLEMENTATION
 
----
-
-## M8 — Schema & Manifest Architecture (FUTURE MILESTONE)
-
-### Recommended Approach (TL;DR)
-
-* **GitHub Markdown is the canonical post.**
-* **R2 holds the "manifest + artifacts"** for each post‑day (transcripts, scores, section metadata, run logs).
-* **Vectorize** indexes the text (clips + sections + post) for semantic search.
-* Everything shares a stable **`post_id`** (YYYY‑MM‑DD) and **`clip_id`**s.
+r2://recaps/
+  manifests/YYYY/MM/POST_ID.json              # source-of-truth metadata for the day
+  drafts/YYYY/MM/POST_ID.md                   # optional staging copy of the Markdown
+  clips/CLIP_ID/meta.json                     # clip metadata from Twitch
+  clips/CLIP_ID/video.mp4                     # downloaded video file (Python API) ✅ IMPLEMENTED
+  clips/YYYY/MM/CLIP_ID/audio.wav             # extracted audio file (Python API) ❌ NOT IMPLEMENTED
+  transcripts/YYYY/MM/CLIP_ID.json            # ASR output (segments, redacted) ❌ NOT IMPLEMENTED
+  blobs/<sha256>.wav                           # content-addressed dedupe (optional)
+  assets/POST_ID/cover.jpg                    # images/thumbnails
+  runs/DATE/run-<timestamp>.json              # workflow logs/metrics
 
 ### R2 Layout (keys) - ACTUAL IMPLEMENTATION
 
@@ -278,6 +307,14 @@ Index three granularities:
 11. **Data Flow**: Ensure proper data flow from Workers → Python API → R2 → Workers
 12. **Testing**: End-to-end testing of integrated pipeline
 
+### Security Implementation (MANDATORY)
+13. **CORS Configuration**: Implement strict CORS policy allowing only `*.workers.dev` origins
+14. **HMAC Authentication**: Add request signing with `X-Request-Signature`, `X-Request-Timestamp`, `X-Request-Nonce` headers
+15. **Rate Limiting**: Implement request timeouts (30s max) and retry budget (2-3 retries) with exponential backoff
+16. **Idempotency**: Add `X-Idempotency-Key` header validation for all state-changing operations
+17. **Header Validation**: Implement server-side validation of all security headers with proper error responses
+18. **Shared Secret Management**: Configure HMAC signing secret as environment variable on both Workers and Python API
+
 ### Alternative Implementation (Option B - Worker-side)
 13. **FFmpeg.wasm Integration**: Add FFmpeg.wasm to Worker deployment
 14. **Worker-side Audio Processing**: Implement audio extraction directly in Workers
@@ -317,12 +354,16 @@ Index three granularities:
 * `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, `GITHUB_PRIVATE_KEY` (for PR creation)
 * `DISCORD_BOT_TOKEN`, `DISCORD_REVIEW_CHANNEL_ID` (for notifications)
 * `CONTENT_REPO_OWNER=paulchrisluke`, `CONTENT_REPO_NAME=pcl-labs`, `CONTENT_REPO_MAIN_BRANCH=main` (environment variables)
+* `HMAC_SHARED_SECRET` (for Python API authentication)
+* `PYTHON_API_URL` (Vercel deployment URL)
 
 **Python API Environment Variables (Vercel):**
 * `CLOUDFLARE_ACCOUNT_ID`
 * `CLOUDFLARE_ZONE_ID`
 * `CLOUDFLARE_API_TOKEN`
 * `R2_BUCKET`
+* `HMAC_SHARED_SECRET` (for request authentication)
+* `WORKERS_ORIGIN` (for CORS validation)
 
 **Optional (AI Gateway):**
 * `GOOGLE_AI_STUDIO_API_KEY`, `AI_GATEWAY_ID`, `AI_GATEWAY_URL`

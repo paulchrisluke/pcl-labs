@@ -127,15 +127,38 @@ async function testClipProcessing(): Promise<TestResult[]> {
   
   try {
     console.log('🔍 Fetching stored clips to get a test clip ID...');
-    const clipsResponse = await fetch(`${WORKER_URL}/api/twitch/clips/stored`);
-    const clipsResult = await clipsResponse.json();
+    const clipsResult = await fetchWithTimeout(`${WORKER_URL}/api/twitch/clips/stored`, {}, 15000);
     
-    if (!clipsResponse.ok || !clipsResult.success || !clipsResult.clips || clipsResult.clips.length === 0) {
+    if (!clipsResult.ok) {
+      throw new Error(`HTTP ${clipsResult.status}: Failed to fetch stored clips`);
+    }
+    
+    let clipsData: any;
+    try {
+      clipsData = clipsResult.body;
+    } catch (jsonError) {
+      throw new Error(`Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
+    }
+    
+    // Strict validation of response shape
+    if (!clipsData || typeof clipsData !== 'object') {
+      throw new Error('Response is not a valid object');
+    }
+    
+    if (!clipsData.success || clipsData.success !== true) {
+      throw new Error('Response success field is not true');
+    }
+    
+    if (!Array.isArray(clipsData.clips) || clipsData.clips.length === 0) {
       throw new Error('No stored clips available for testing');
     }
     
+    if (!clipsData.clips[0] || !clipsData.clips[0].id) {
+      throw new Error('First clip does not have a valid ID');
+    }
+    
     // Use the first available clip
-    testClipId = clipsResult.clips[0].id;
+    testClipId = clipsData.clips[0].id;
     console.log(`📋 Using stored clip ID: ${testClipId}`);
   } catch (error) {
     results.push({
@@ -149,19 +172,47 @@ async function testClipProcessing(): Promise<TestResult[]> {
   try {
     console.log(`🎵 Testing clip processing for ${testClipId}...`);
     
-    // Test audio processing
-    const audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/process-clips`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        clip_ids: [testClipId],
-        background: false
-      })
-    });
+    // Test audio processing with fallback endpoint
+    let audioResponse: Response;
+    let audioResult: any;
     
-    const audioResult = await audioResponse.json();
+    try {
+      // Try hyphenated endpoint first
+      audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/process-clips`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clip_ids: [testClipId],
+          background: false
+        })
+      });
+      
+      if (!audioResponse.ok) {
+        console.log('⚠️ Hyphenated endpoint failed, trying underscore endpoint...');
+        // Fallback to underscore endpoint
+        audioResponse = await fetch(`${AUDIO_PROCESSOR_URL}/process_clips`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clip_ids: [testClipId],
+            background: false
+          })
+        });
+      }
+      
+      audioResult = await audioResponse.json();
+    } catch (jsonError) {
+      results.push({
+        name: 'Audio Processing',
+        success: false,
+        error: `Invalid JSON response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`
+      });
+      return results;
+    }
     
     results.push({
       name: 'Audio Processing',
