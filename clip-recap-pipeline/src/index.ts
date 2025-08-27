@@ -53,9 +53,9 @@ async function getClipAudioStatus(clipId: string, env: Environment) {
         transcript: transcriptSize
       },
       last_modified: {
-        video: hasVideo ? videoFile?.lastModified : null,
-        audio: hasAudio ? audioFile?.lastModified : null,
-        transcript: hasTranscript ? transcriptFile?.lastModified : null
+        video: hasVideo ? videoFile?.uploaded : null,
+        audio: hasAudio ? audioFile?.uploaded : null,
+        transcript: hasTranscript ? transcriptFile?.uploaded : null
       }
     };
   } catch (error) {

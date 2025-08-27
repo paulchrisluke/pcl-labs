@@ -359,7 +359,8 @@ class handler(BaseHTTPRequestHandler):
             "success": False,
             "error": None,
             "clip_info": None,
-            "note": "MP4 downloaded and uploaded to R2 storage"
+            "note": "MP4 downloaded and uploaded to R2 storage",
+            "partial_success": False
         }
         
         # Initialize R2 storage
@@ -371,15 +372,16 @@ class handler(BaseHTTPRequestHandler):
                 tmp_path = Path(tmp_dir)
                 
                 # Download video file
-                print(f"Downloading clip {validated_clip_id}...")
+                logger.info(f"Downloading clip {validated_clip_id}...")
                 video_path = self.download_clip_video(validated_clip_id, tmp_path)
                 
                 if not video_path.exists() or video_path.stat().st_size == 0:
                     result["error"] = "Failed to download video file"
+                    logger.error(f"Clip {validated_clip_id}: Video file download failed - file doesn't exist or is empty")
                     return result
                 
                 # Upload to R2 storage
-                print(f"Uploading clip {validated_clip_id} to R2...")
+                logger.info(f"Uploading clip {validated_clip_id} to R2...")
                 file_extension = video_path.suffix
                 r2_key = f"clips/{validated_clip_id}{file_extension}"
                 
@@ -399,70 +401,119 @@ class handler(BaseHTTPRequestHandler):
                     "original_format": file_extension[1:]  # Remove the dot
                 }
                 
-                if r2_storage.put_file(r2_key, str(video_path), content_type, metadata):
-                    # Extract audio from video
-                    print(f"Extracting audio from {validated_clip_id}...")
-                    audio_path = tmp_path / f"{validated_clip_id}.wav"
-                    
-                    # Check if FFmpeg is available
-                    if not ensure_ffmpeg():
-                        result["error"] = "FFmpeg not available for audio extraction"
-                        return result
-                    
-                    # Extract audio to WAV format (16kHz, mono)
-                    if not mp4_to_wav16k(video_path, audio_path, sample_rate=16000, channels=1):
-                        result["error"] = "Failed to extract audio from video"
-                        return result
-                    
-                    # Get audio duration
-                    duration = None
-                    try:
-                        duration = get_audio_duration(audio_path)
-                    except Exception as e:
-                        print(f"Warning: Could not determine audio duration: {e}")
-                    
-                    # Upload audio to R2
-                    print(f"Uploading audio for {validated_clip_id} to R2...")
-                    audio_key = f"audio/{validated_clip_id}.wav"
-                    audio_metadata = {
-                        "clip_id": validated_clip_id,
-                        "source": "twitch",
-                        "processed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        "file_size": str(audio_path.stat().st_size),
-                        "audio_format": "wav",
-                        "sample_rate": "16000",
-                        "channels": "1",
-                        "duration": str(duration) if duration else "unknown"
-                    }
-                    
-                    if r2_storage.put_file(audio_key, str(audio_path), "audio/wav", audio_metadata):
-                        # Get clip info with R2 URLs
-                        clip_info = self.get_clip_info(validated_clip_id)
-                        clip_info["file_size"] = video_path.stat().st_size
-                        clip_info["file_path"] = r2_storage.get_file_url(r2_key)
-                        clip_info["r2_key"] = r2_key
-                        clip_info["file_format"] = file_extension[1:]  # Remove the dot
-                        clip_info["audio_file_size"] = audio_path.stat().st_size
-                        clip_info["audio_file_path"] = r2_storage.get_file_url(audio_key)
-                        clip_info["audio_r2_key"] = audio_key
-                        clip_info["audio_duration"] = duration
-                        
-                        result["success"] = True
-                        result["clip_info"] = clip_info
-                        result["note"] = f"Video and audio files processed and uploaded to R2 successfully"
-                        print(f"Successfully processed clip {clip_id} - video and audio uploaded to R2")
-                    else:
-                        result["error"] = "Failed to upload audio file to R2 storage"
-                        print(f"Failed to upload audio for clip {clip_id} to R2")
-                else:
+                video_upload_success = r2_storage.put_file(r2_key, str(video_path), content_type, metadata)
+                if not video_upload_success:
                     result["error"] = "Failed to upload video file to R2 storage"
-                    print(f"Failed to upload clip {clip_id} to R2")
+                    logger.error(f"Clip {validated_clip_id}: Video upload to R2 failed")
+                    return result
+                
+                logger.info(f"Clip {validated_clip_id}: Video uploaded successfully to R2")
+                
+                # Extract audio from video
+                logger.info(f"Extracting audio from {validated_clip_id}...")
+                audio_path = tmp_path / f"{validated_clip_id}.wav"
+                
+                # Check if FFmpeg is available
+                if not ensure_ffmpeg():
+                    result["error"] = "FFmpeg not available for audio extraction"
+                    logger.error(f"Clip {validated_clip_id}: FFmpeg not available for audio extraction")
+                    # Rollback: Delete the uploaded video file since audio extraction failed
+                    if r2_storage.delete_file(r2_key):
+                        logger.info(f"Clip {validated_clip_id}: Rolled back video upload due to FFmpeg unavailability")
+                    else:
+                        logger.error(f"Clip {validated_clip_id}: Failed to rollback video upload - manual cleanup may be needed")
+                    return result
+                
+                # Extract audio to WAV format (16kHz, mono)
+                audio_extraction_success = mp4_to_wav16k(video_path, audio_path, sample_rate=16000, channels=1)
+                if not audio_extraction_success:
+                    result["error"] = "Failed to extract audio from video"
+                    logger.error(f"Clip {validated_clip_id}: Audio extraction failed - FFmpeg command failed or output file is invalid")
+                    # Rollback: Delete the uploaded video file since audio extraction failed
+                    if r2_storage.delete_file(r2_key):
+                        logger.info(f"Clip {validated_clip_id}: Rolled back video upload due to audio extraction failure")
+                    else:
+                        logger.error(f"Clip {validated_clip_id}: Failed to rollback video upload - manual cleanup may be needed")
+                    return result
+                
+                # Verify audio file was created and has content
+                if not audio_path.exists() or audio_path.stat().st_size == 0:
+                    result["error"] = "Audio extraction failed - no audio file generated"
+                    logger.error(f"Clip {validated_clip_id}: Audio extraction failed - audio file doesn't exist or is empty")
+                    # Rollback: Delete the uploaded video file since audio extraction failed
+                    if r2_storage.delete_file(r2_key):
+                        logger.info(f"Clip {validated_clip_id}: Rolled back video upload due to audio extraction failure")
+                    else:
+                        logger.error(f"Clip {validated_clip_id}: Failed to rollback video upload - manual cleanup may be needed")
+                    return result
+                
+                logger.info(f"Clip {validated_clip_id}: Audio extraction successful")
+                
+                # Get audio duration
+                duration = None
+                try:
+                    duration = get_audio_duration(audio_path)
+                    logger.info(f"Clip {validated_clip_id}: Audio duration determined: {duration} seconds")
+                except Exception as e:
+                    logger.warning(f"Clip {validated_clip_id}: Could not determine audio duration: {e}")
+                
+                # Upload audio to R2
+                logger.info(f"Uploading audio for {validated_clip_id} to R2...")
+                audio_key = f"audio/{validated_clip_id}.wav"
+                audio_metadata = {
+                    "clip_id": validated_clip_id,
+                    "source": "twitch",
+                    "processed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "file_size": str(audio_path.stat().st_size),
+                    "audio_format": "wav",
+                    "sample_rate": "16000",
+                    "channels": "1",
+                    "duration": str(duration) if duration else "unknown"
+                }
+                
+                audio_upload_success = r2_storage.put_file(audio_key, str(audio_path), "audio/wav", audio_metadata)
+                if not audio_upload_success:
+                    result["error"] = "Failed to upload audio file to R2 storage"
+                    result["partial_success"] = True
+                    result["note"] = "Video uploaded successfully but audio upload failed - video file remains in R2"
+                    logger.error(f"Clip {validated_clip_id}: Audio upload to R2 failed - video file remains in R2 storage")
+                    # Note: We don't rollback here as the user might want to keep the video even without audio
+                    # The partial_success flag indicates this state
+                    
+                    # Return partial success info
+                    clip_info = self.get_clip_info(validated_clip_id)
+                    clip_info["file_size"] = video_path.stat().st_size
+                    clip_info["file_path"] = r2_storage.get_file_url(r2_key)
+                    clip_info["r2_key"] = r2_key
+                    clip_info["file_format"] = file_extension[1:]  # Remove the dot
+                    clip_info["audio_upload_failed"] = True
+                    
+                    result["clip_info"] = clip_info
+                    return result
+                
+                logger.info(f"Clip {validated_clip_id}: Audio uploaded successfully to R2")
+                
+                # Full success - both video and audio uploaded
+                clip_info = self.get_clip_info(validated_clip_id)
+                clip_info["file_size"] = video_path.stat().st_size
+                clip_info["file_path"] = r2_storage.get_file_url(r2_key)
+                clip_info["r2_key"] = r2_key
+                clip_info["file_format"] = file_extension[1:]  # Remove the dot
+                clip_info["audio_file_size"] = audio_path.stat().st_size
+                clip_info["audio_file_path"] = r2_storage.get_file_url(audio_key)
+                clip_info["audio_r2_key"] = audio_key
+                clip_info["audio_duration"] = duration
+                
+                result["success"] = True
+                result["clip_info"] = clip_info
+                result["note"] = f"Video and audio files processed and uploaded to R2 successfully"
+                logger.info(f"Clip {validated_clip_id}: Successfully processed - video and audio uploaded to R2")
                 
                 return result
                 
         except Exception as e:
             result["error"] = str(e)
-            print(f"Error processing clip {clip_id}: {e}")
+            logger.error(f"Clip {validated_clip_id}: Unexpected error during processing: {e}")
             return result
 
     def process_clips(self, clip_ids: list) -> dict:

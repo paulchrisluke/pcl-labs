@@ -49,10 +49,14 @@ def list_all_clips():
             print(f"✅ Found {len(clips)} clips:")
             
             for i, clip in enumerate(clips, 1):
-                status = "✅" if clip.get('video_file', {}).get('exists') else "❌"
-                print(f"   {i}. {status} {clip['id']} - {clip['title']} ({clip['duration']}s)")
-                
-            return [clip['id'] for clip in clips]
+                video_exists = clip.get('video_file', {}).get('exists', False)
+                status = "✅" if video_exists else "❌"
+                clip_id = clip.get('id', 'unknown')
+                title = clip.get('title', 'Untitled')
+                duration = clip.get('duration', 0)
+                print(f"   {i}. {status} {clip_id} - {title} ({duration}s)")
+            
+            return [clip['id'] for clip in clips if 'id' in clip]
         else:
             print(f"❌ No clips found: {data.get('message', 'Unknown error')}")
             return []

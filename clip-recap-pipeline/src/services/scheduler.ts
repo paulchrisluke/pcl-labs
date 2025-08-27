@@ -191,10 +191,19 @@ async function processTranscriptionWithRetry(clipIds: string[], env: Environment
   const transcriptionService = new TranscriptionService(env);
   
   // Get clips that have audio but no transcript
+  // Get clips that have audio but no transcript
   const clipsToTranscribe = [];
   for (const clipId of clipIds) {
     try {
-      const hasAudio = await env.R2_BUCKET.head(`audio/${clipId}.wav`);
+      // Check for audio, but handle R2 errors gracefully
+      let hasAudio = false;
+      try {
+        hasAudio = !!(await env.R2_BUCKET.head(`audio/${clipId}.wav`));
+      } catch (r2Error) {
+        console.warn(`Failed to check audio file for ${clipId}:`, r2Error);
+        continue; // Skip this clip if we can't check R2
+      }
+
       const hasTranscript = await transcriptionService.hasTranscript(clipId);
       
       if (hasAudio && !hasTranscript) {

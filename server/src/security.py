@@ -251,9 +251,18 @@ class SecurityMiddleware:
         if not self.check_rate_limit(client_ip):
             return False, "Rate limit exceeded"
         
-        # Skip HMAC validation in development mode for easier testing
-        if os.getenv('PYTHON_ENV', 'development').lower() in ['development', 'dev', 'test']:
-            logger.info("Development mode: Skipping HMAC validation for easier testing")
+        # Check environment for development/testing modes
+        python_env = os.getenv('PYTHON_ENV')
+        if python_env is None:
+            logger.warning("PYTHON_ENV not set - treating as production environment")
+            python_env = 'production'
+        
+        effective_env = python_env.lower()
+        logger.info(f"Effective environment: {effective_env}")
+        
+        # Skip HMAC validation only in explicit development/testing environments
+        if effective_env in ['development', 'dev', 'test']:
+            logger.info(f"Development mode ({effective_env}): Skipping HMAC validation for easier testing")
             return True, ""
         
         # HMAC validation (skip for OPTIONS requests)

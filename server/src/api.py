@@ -6,6 +6,7 @@ import os
 import time
 import re
 import asyncio
+import hmac
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .download_extract import AudioProcessor
 from .task_manager import task_manager, TaskStatus
@@ -410,18 +411,52 @@ async def get_task_stats():
     return task_manager.get_task_stats()
 
 @app.get("/debug/list-all-files")
-async def list_all_files_in_r2(limit: int = 100):
-    """Debug endpoint to list all files in R2 bucket"""
+async def list_all_files_in_r2(
+    limit: int = 100,
+    cursor: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
+    x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token")
+):
+    """Debug endpoint to list all files in R2 bucket (Admin only)"""
+    
+    # Admin token validation
+    admin_token = os.getenv('ADMIN_TOKEN')
+    if not admin_token:
+        logger.error("ADMIN_TOKEN environment variable not set")
+        raise HTTPException(status_code=500, detail="Admin authentication not configured")
+    
+    # Check for admin token in headers
+    provided_token = x_admin_token or authorization
+    if not provided_token:
+        raise HTTPException(status_code=401, detail="Admin token required")
+    
+    # Remove 'Bearer ' prefix if present
+    if provided_token.startswith('Bearer '):
+        provided_token = provided_token[7:]
+    
+    # Validate admin token
+    if not hmac.compare_digest(provided_token, admin_token):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+    
+    # Validate and clamp limit parameter
+    if limit < 1:
+        limit = 1
+    elif limit > 1000:
+        limit = 1000
+    
     try:
-        result = processor.r2.list_files('', limit=limit)
+        result = processor.r2.list_files('', limit=limit, cursor=cursor)
+        
         return {
-            "total_files": len(result['objects']),
-            "files": result['objects'],
+            "objects": result['objects'],
             "cursor": result['cursor'],
             "has_more": result['truncated']
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
+        # Log the full error server-side
+        logger.error(f"Failed to list files in R2: {e}")
+        # Return generic error message
+        raise HTTPException(status_code=500, detail="Failed to list files")
 
 if __name__ == "__main__":
     import uvicorn

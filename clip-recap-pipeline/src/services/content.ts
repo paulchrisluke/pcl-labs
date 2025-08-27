@@ -18,10 +18,10 @@ export class ContentService {
     const clipsWithTranscripts = await this.loadTranscriptsForClips(clips);
     
     // Score clips based on metadata and transcript content
-    const scoredClips = clipsWithTranscripts.map(clipData => {
-      const score = this.scoreClip(clipData.clip, clipData.transcript);
+    const scoredClips = await Promise.all(clipsWithTranscripts.map(async clipData => {
+      const score = await this.scoreClip(clipData.clip, clipData.transcript);
       return { clip: clipData.clip, score, transcript: clipData.transcript };
-    });
+    }));
 
     // Sort by score and take top 5-12
     const sortedClips = scoredClips
@@ -59,7 +59,7 @@ export class ContentService {
     return clipsWithTranscripts;
   }
 
-  private scoreClip(clip: TwitchClip, transcript: any | null): number {
+  private async scoreClip(clip: TwitchClip, transcript: any | null): Promise<number> {
     let score = 0;
     
     // Score based on clip metadata
@@ -96,8 +96,9 @@ export class ContentService {
       if (wordCount > 100) score += 3;
       
       // Bonus for clear, coherent speech (indicated by longer segments)
-      if (transcript.segments && transcript.segments.length > 0) {
-        const avgSegmentLength = transcript.segments.reduce((sum: number, seg: any) => sum + seg.text.length, 0) / transcript.segments.length;
+      if (transcript.segments && Array.isArray(transcript.segments) && transcript.segments.length > 0) {
+        const avgSegmentLength = transcript.segments.reduce((sum: number, seg: any) =>
+          sum + (seg?.text?.length || 0), 0) / transcript.segments.length;
         if (avgSegmentLength > 20) score += 2; // Bonus for longer, more coherent segments
       }
     }
