@@ -7,66 +7,63 @@ import logging
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 import re
+from .cache import cache
 
 logger = logging.getLogger(__name__)
 
 class SecurityMiddleware:
     """
-    Security middleware for the Python API with HMAC authentication, CORS, and rate limiting.
+    Security middleware for the Python API with HMAC authentication and rate limiting.
     """
     
     def __init__(self):
+        # Validate HMAC secret is present and non-empty
         self.hmac_secret = os.getenv('HMAC_SHARED_SECRET')
-        self.workers_origin = os.getenv('WORKERS_ORIGIN', '*.workers.dev')
+        if not self.hmac_secret or not self.hmac_secret.strip():
+            error_msg = "HMAC_SHARED_SECRET environment variable is required and must be a non-empty string"
+            logger.critical(error_msg)
+            raise ValueError(error_msg)
+        
+
         self.nonce_expiry = 300  # 5 minutes
-        self.rate_limit_requests = 10  # requests per window
+        self.rate_limit_requests = 15  # requests per window
         self.rate_limit_window = 60  # seconds
         self.request_timeout = 30  # seconds
         
-        # In-memory rate limiting (for production, use Redis or similar)
-        self.rate_limit_store = {}
+        # Distributed rate limiting using pluggable cache (Redis in production, in-memory in dev)
+        self.cache = cache
+        self.rate_limit_prefix = "rate_limit:"
         
-        logger.info(f"Security middleware initialized - HMAC: {'SET' if self.hmac_secret else 'MISSING'}")
+        # TODO: In production, ensure Redis is properly configured for distributed rate limiting
+        # across multiple application instances. The in-memory fallback is only suitable for
+        # single-instance development/testing environments.
+        
+        logger.info(f"Security middleware initialized - HMAC: SET")
+        logger.info(f"Rate limiting cache: {type(self.cache).__name__}")
+        
+        # Log critical warning if using in-memory cache in production-like environment
+        if os.getenv('PYTHON_ENV', 'development').lower() not in ['development', 'dev', 'test']:
+            if isinstance(self.cache, type(cache)) and 'InMemoryCache' in str(type(self.cache)):
+                logger.critical(
+                    "WARNING: Using in-memory rate limiting in production environment! "
+                    "This will not work correctly with multiple application instances. "
+                    "Configure REDIS_URL environment variable for distributed rate limiting."
+                )
     
-    def validate_cors(self, origin: str, method: str) -> bool:
-        """
-        Validate CORS policy - only allow Cloudflare Workers origins.
-        """
-        if not origin:
-            logger.warning("No Origin header provided")
-            return False
-        
-        # Allow requests from Cloudflare Workers domains
-        if self.workers_origin == '*.workers.dev':
-            if not origin.endswith('.workers.dev'):
-                logger.warning(f"Invalid origin: {origin} - must end with .workers.dev")
-                return False
-        else:
-            # Allow specific origin if configured
-            if origin != self.workers_origin:
-                logger.warning(f"Invalid origin: {origin} - expected {self.workers_origin}")
-                return False
-        
-        # Allow only specific methods
-        allowed_methods = ['GET', 'POST', 'OPTIONS']
-        if method not in allowed_methods:
-            logger.warning(f"Invalid method: {method} - allowed: {allowed_methods}")
-            return False
-        
-        return True
+
     
     def validate_hmac_signature(self, request_body: str, headers: Dict[str, str]) -> bool:
         """
         Validate HMAC signature for request authentication.
         """
-        if not self.hmac_secret:
-            logger.error("HMAC secret not configured")
-            return False
+        logger.info(f"Starting HMAC validation with request_body: '{request_body}'")
         
-        # Extract required headers
-        signature = headers.get('X-Request-Signature')
-        timestamp = headers.get('X-Request-Timestamp')
-        nonce = headers.get('X-Request-Nonce')
+        # Extract required headers (case-insensitive)
+        signature = headers.get('X-Request-Signature') or headers.get('x-request-signature')
+        timestamp = headers.get('X-Request-Timestamp') or headers.get('x-request-timestamp')
+        nonce = headers.get('X-Request-Nonce') or headers.get('x-request-nonce')
+        
+        logger.info(f"Extracted headers - signature: {signature}, timestamp: {timestamp}, nonce: {nonce}")
         
         if not all([signature, timestamp, nonce]):
             logger.warning("Missing required security headers")
@@ -90,6 +87,17 @@ class SecurityMiddleware:
         
         # Recreate signature
         expected_signature = self._create_signature(request_body, timestamp, nonce)
+        
+        # Debug logging to see what's happening
+        logger.info(f"HMAC validation debug:")
+        logger.info(f"  Received signature: {signature}")
+        logger.info(f"  Expected signature: {expected_signature}")
+        logger.info(f"  HMAC secret length: {len(self.hmac_secret)}")
+        logger.info(f"  HMAC secret first 10 chars: {self.hmac_secret[:10]}...")
+        logger.info(f"  Request body: '{request_body}'")
+        logger.info(f"  Timestamp: {timestamp}")
+        logger.info(f"  Nonce: {nonce}")
+        logger.info(f"  Payload: '{request_body}{timestamp}{nonce}'")
         
         # Compare signatures (constant-time comparison)
         if not hmac.compare_digest(signature, expected_signature):
@@ -122,8 +130,8 @@ class SecurityMiddleware:
             logger.warning("Missing idempotency key")
             return False
         
-        # Validate format (alphanumeric, 16-64 chars)
-        if not re.match(r'^[a-zA-Z0-9]{16,64}$', idempotency_key):
+        # Validate format (alphanumeric with hyphens, common format: timestamp-random)
+        if not re.match(r'^[a-zA-Z0-9\-]{16,64}$', idempotency_key):
             logger.warning(f"Invalid idempotency key format: {idempotency_key}")
             return False
         
@@ -133,28 +141,45 @@ class SecurityMiddleware:
     
     def check_rate_limit(self, client_ip: str) -> bool:
         """
-        Check rate limiting for client IP.
+        Check rate limiting for client IP using distributed cache.
         """
         current_time = int(time.time())
         window_start = current_time - self.rate_limit_window
+        cache_key = f"{self.rate_limit_prefix}{client_ip}"
         
-        # Clean old entries
-        if client_ip in self.rate_limit_store:
-            self.rate_limit_store[client_ip] = [
-                t for t in self.rate_limit_store[client_ip] 
-                if t > window_start
-            ]
-        else:
-            self.rate_limit_store[client_ip] = []
-        
-        # Check if limit exceeded
-        if len(self.rate_limit_store[client_ip]) >= self.rate_limit_requests:
-            logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-            return False
-        
-        # Add current request
-        self.rate_limit_store[client_ip].append(current_time)
-        return True
+        try:
+            # Get existing timestamps for this IP
+            timestamps = self.cache.list_get(cache_key)
+            timestamps = [int(ts) for ts in timestamps if ts.isdigit()]
+            
+            # Filter out old entries (outside the current window)
+            valid_timestamps = [ts for ts in timestamps if ts > window_start]
+            
+            # Check if limit exceeded
+            if len(valid_timestamps) >= self.rate_limit_requests:
+                logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+                return False
+            
+            # Add current request timestamp
+            valid_timestamps.append(current_time)
+            
+            # Update cache with new timestamps and set TTL
+            # Use pipeline-like approach for better performance
+            self.cache.delete(cache_key)  # Clear existing list
+            for ts in valid_timestamps:
+                self.cache.list_append(cache_key, str(ts))
+            
+            # Set TTL to ensure cleanup (window duration + buffer)
+            self.cache.set(f"{cache_key}:ttl", "1", ttl=self.rate_limit_window + 60)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Rate limiting cache error for IP {client_ip}: {e}")
+            # On cache failure, allow the request but log the error
+            # This prevents cache issues from breaking the application
+            logger.warning(f"Rate limiting failed, allowing request for IP {client_ip} due to cache error")
+            return True
     
     def get_client_ip(self, headers: Dict[str, str]) -> str:
         """
@@ -184,13 +209,8 @@ class SecurityMiddleware:
         Comprehensive request validation.
         Returns: (is_valid, error_message, cors_headers)
         """
-        # Extract origin and client IP
-        origin = headers.get('Origin', '')
+        # Extract client IP
         client_ip = self.get_client_ip(headers)
-        
-        # CORS validation
-        if not self.validate_cors(origin, method):
-            return False, "CORS validation failed", {}
         
         # Rate limiting
         if not self.check_rate_limit(client_ip):
@@ -203,19 +223,12 @@ class SecurityMiddleware:
             
             # Idempotency validation for state-changing operations
             if method == 'POST':
-                idempotency_key = headers.get('X-Idempotency-Key')
+                idempotency_key = headers.get('X-Idempotency-Key') or headers.get('x-idempotency-key')
                 if not self.validate_idempotency(idempotency_key):
                     return False, "Invalid idempotency key", {}
         
-        # Prepare CORS headers
-        cors_headers = {
-            'Access-Control-Allow-Origin': origin,
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, X-Request-Signature, X-Request-Timestamp, X-Request-Nonce, X-Idempotency-Key',
-            'Access-Control-Max-Age': '86400',  # 24 hours
-        }
-        
-        return True, "", cors_headers
+        # No CORS headers needed - HMAC authentication is sufficient
+        return True, "", {}
     
     def create_signature_for_response(self, body: str, timestamp: str, nonce: str) -> str:
         """

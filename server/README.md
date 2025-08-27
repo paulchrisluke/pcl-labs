@@ -71,6 +71,99 @@ Optional:
 - `PYTHON_ENV` - Environment (development, production, test)
 - `DEBUG` - Enable debug mode (true/false)
 - `ALLOW_INSECURE` - Disable SSL verification for development (true/false)
+- `REDIS_URL` - Redis connection URL for distributed rate limiting (see Redis Configuration section)
+
+## Redis Configuration
+
+### Rate Limiting
+
+This service uses distributed rate limiting to prevent abuse across multiple application instances. The rate limiting system requires a shared cache (Redis) in production environments.
+
+### Development Mode
+
+In development mode (`PYTHON_ENV=development`), the system will:
+- Use Redis if `REDIS_URL` is provided
+- Fall back to in-memory cache if Redis is unavailable or not configured
+- Log warnings about in-memory cache limitations
+
+### Production Mode
+
+In production mode, Redis is **REQUIRED**:
+- `REDIS_URL` environment variable must be set
+- Application will fail to start if Redis is not available
+- Ensures proper rate limiting across multiple instances
+
+### Redis Setup Options
+
+#### 1. Local Redis (Development)
+```bash
+# Install Redis locally
+# macOS: brew install redis
+# Ubuntu: sudo apt-get install redis-server
+
+# Start Redis
+redis-server
+
+# Set environment variable
+export REDIS_URL="redis://localhost:6379/0"
+```
+
+#### 2. Redis Cloud (Production)
+1. Create account at [Redis Cloud](https://redis.com/try-free/)
+2. Create a database
+3. Get connection details and set:
+```bash
+export REDIS_URL="redis://username:password@redis-12345.c123.us-east-1-1.ec2.cloud.redislabs.com:12345/0"
+```
+
+#### 3. Upstash Redis (Production)
+1. Create account at [Upstash](https://upstash.com/)
+2. Create a Redis database
+3. Get connection details and set:
+```bash
+export REDIS_URL="redis://username:password@us1-capable-rat-12345.upstash.io:12345/0"
+```
+
+#### 4. Railway Redis (Production)
+1. Create account at [Railway](https://railway.app/)
+2. Add Redis service to your project
+3. Get connection URL from environment variables
+
+### Rate Limiting Configuration
+
+The rate limiting system is configured with these defaults:
+- **Requests per window**: 10 requests
+- **Window duration**: 60 seconds
+- **Cache key prefix**: `rate_limit:`
+
+These can be modified in `src/security.py` if needed.
+
+### Health Monitoring
+
+The `/health` endpoint includes cache health information:
+```json
+{
+  "status": "healthy",
+  "ffmpeg_available": true,
+  "r2_configured": true,
+  "cache_healthy": true,
+  "cache_type": "RedisCache"
+}
+```
+
+### Troubleshooting
+
+#### Redis Connection Issues
+- Check `REDIS_URL` format and credentials
+- Verify Redis server is running and accessible
+- Check firewall/network connectivity
+- Review application logs for connection errors
+
+#### Rate Limiting Not Working
+- Ensure Redis is properly configured in production
+- Check cache health via `/health` endpoint
+- Review rate limiting logs in application output
+- Verify multiple instances can access the same Redis instance
 
 ## Usage
 
@@ -182,6 +275,8 @@ server/
 │   ├── r2.py              # R2 storage utilities
 │   ├── ffmpeg_utils.py    # FFmpeg audio processing
 │   ├── download_extract.py # Main audio processor
+│   ├── cache.py           # Distributed cache interface (Redis/in-memory)
+│   ├── security.py        # Security middleware with rate limiting
 │   └── api.py             # FastAPI endpoints
 ├── main.py                # Server entry point
 ├── requirements.in        # Top-level dependencies

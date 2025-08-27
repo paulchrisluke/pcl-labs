@@ -10,24 +10,83 @@ import hmac
 import hashlib
 import json
 import requests
-import random
+import secrets
 import string
 from typing import Dict, Any
+from dotenv import load_dotenv
 
-# Test configuration
-API_BASE_URL = "https://pcl-labs-rf20o0ykn-pcl-labs.vercel.app/api/audio_processor"
-HMAC_SECRET = "test_secret_for_development_only"  # Replace with actual secret
-WORKERS_ORIGIN = "https://clip-recap-pipeline.paulchrisluke.workers.dev"
+# Load environment variables from .env file if it exists
+load_dotenv()
+
+def get_required_env_var(var_name: str, default: str = None) -> str:
+    """Get a required environment variable or raise a clear error."""
+    value = os.environ.get(var_name, default)
+    
+    if value is None:
+        raise ValueError(
+            f"Required environment variable '{var_name}' is not set. "
+            f"Please set this variable in your environment or .env file. "
+            f"In CI environments, this variable must be explicitly set."
+        )
+    
+    return value
+
+def get_optional_env_var(var_name: str, default: str) -> str:
+    """Get an optional environment variable with a safe default."""
+    return os.environ.get(var_name, default)
+
+# Test configuration - read from environment variables
+# For CI environments, these must be set explicitly
+# For local development, safe defaults are provided
+API_BASE_URL = get_required_env_var(
+    "API_BASE_URL", 
+    "https://pcl-labs-jdb2zhf13-pcl-labs.vercel.app/api/audio_processor"
+)
+
+HMAC_SECRET = get_required_env_var(
+    "HMAC_SHARED_SECRET"  # Match the env.example naming
+)
+
+WORKERS_ORIGIN = get_required_env_var(
+    "WORKERS_ORIGIN",
+    "https://clip-recap-pipeline.paulchrisluke.workers.dev"
+)
+
+# No fallback - HMAC_SHARED_SECRET must be set in environment
+
+def test_environment_variables():
+    """Test that environment variables are being read correctly."""
+    print("🔧 Testing environment variable configuration...")
+    
+    # Test that all required variables are set
+    required_vars = {
+        "API_BASE_URL": API_BASE_URL,
+        "HMAC_SHARED_SECRET": HMAC_SECRET,
+        "WORKERS_ORIGIN": WORKERS_ORIGIN
+    }
+    
+    for var_name, value in required_vars.items():
+        if not value:
+            print(f"❌ {var_name} is not set")
+            return False
+        else:
+            print(f"✅ {var_name}: {'SET' if var_name == 'HMAC_SHARED_SECRET' else value}")
+    
+    # No fallback validation needed - HMAC_SECRET must be set
+    
+    print("✅ Environment variables configured correctly")
+    return True
 
 def generate_nonce(length: int = 32) -> str:
     """Generate a random nonce for request signing."""
+    # Use alphanumeric only to match Python server validation
     chars = string.ascii_letters + string.digits
-    return ''.join(random.choice(chars) for _ in range(length))
+    return ''.join(secrets.choice(chars) for _ in range(length))
 
 def generate_idempotency_key() -> str:
     """Generate an idempotency key for state-changing operations."""
     timestamp = str(int(time.time()))
-    random_part = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
+    random_part = ''.join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(8))
     return f"{timestamp}-{random_part}"
 
 def create_signature(body: str, timestamp: str, nonce: str) -> str:
@@ -101,8 +160,8 @@ def test_health_check_without_security():
         return False
 
 def test_invalid_origin():
-    """Test with invalid origin (should fail)."""
-    print("\n🔍 Testing with invalid origin (should fail)...")
+    """Test with invalid origin (CORS removed - should pass with HMAC)."""
+    print("\n🔍 Testing with invalid origin (CORS removed - should pass with HMAC)...")
     
     headers = create_security_headers()
     headers['Origin'] = 'https://malicious-site.com'
@@ -112,11 +171,11 @@ def test_invalid_origin():
         print(f"Status: {response.status_code}")
         print(f"Response: {response.text[:200]}...")
         
-        if response.status_code == 401:
-            print("✅ CORS validation working - invalid origin rejected")
+        if response.status_code == 200:
+            print("✅ CORS validation removed - request passed with HMAC authentication")
             return True
         else:
-            print(f"❌ CORS validation failed - invalid origin should have been rejected")
+            print(f"❌ Request failed despite CORS being removed")
             return False
             
     except Exception as e:
@@ -158,13 +217,16 @@ def test_rate_limiting():
     """Test rate limiting by making multiple rapid requests."""
     print("\n🔍 Testing rate limiting...")
     
-    headers = create_security_headers()
     success_count = 0
     rate_limited_count = 0
     
-    for i in range(15):  # Make 15 requests rapidly
+    for i in range(25):  # Make 25 requests rapidly to test the new 15 request limit
         try:
+            # Generate fresh security headers for each request
+            headers = create_security_headers()
             response = requests.get(f"{API_BASE_URL}", headers=headers, timeout=10)
+            # Small delay to ensure unique timestamps
+            time.sleep(0.1)
             if response.status_code == 200:
                 success_count += 1
             elif response.status_code == 429:  # Rate limited
@@ -172,6 +234,7 @@ def test_rate_limiting():
                 print(f"Rate limited on request {i+1}")
             else:
                 print(f"Unexpected status {response.status_code} on request {i+1}")
+                print(f"Response: {response.text[:200]}...")
         except Exception as e:
             print(f"Request {i+1} error: {e}")
     
@@ -191,6 +254,7 @@ def main():
     print("=" * 50)
     
     tests = [
+        ("Environment Variables", test_environment_variables),
         ("Health Check with Security", test_health_check),
         ("Health Check without Security", test_health_check_without_security),
         ("Invalid Origin Test", test_invalid_origin),

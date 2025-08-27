@@ -56,29 +56,40 @@ def validate_clip_id(clip_id: str) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
-    def validate_request(self, method: str, body: str = '') -> tuple[bool, str, dict]:
+    def validate_request(self, method: str, body: str = '') -> tuple[bool, str]:
         """
         Validate request using security middleware.
-        Returns: (is_valid, error_message, cors_headers)
+        Returns: (is_valid, error_message)
         """
         # Get headers as dictionary
         headers = dict(self.headers.items())
         
+        # Debug logging
+        logger.info(f"Received headers: {headers}")
+        logger.info(f"Required headers check:")
+        logger.info(f"  X-Request-Signature: {headers.get('X-Request-Signature') or headers.get('x-request-signature', 'MISSING')}")
+        logger.info(f"  X-Request-Timestamp: {headers.get('X-Request-Timestamp') or headers.get('x-request-timestamp', 'MISSING')}")
+        logger.info(f"  X-Request-Nonce: {headers.get('X-Request-Nonce') or headers.get('x-request-nonce', 'MISSING')}")
+        
         # Validate request
-        is_valid, error_message, cors_headers = security_middleware.validate_request(
+        is_valid, error_message, _ = security_middleware.validate_request(
             method=method,
             path=self.path,
             headers=headers,
             body=body
         )
         
-        return is_valid, error_message, cors_headers
+        return is_valid, error_message
     
     def do_GET(self):
         # Validate request security
-        is_valid, error_message, cors_headers = self.validate_request('GET')
+        is_valid, error_message = self.validate_request('GET')
         if not is_valid:
-            self.send_error_response(401, f"Security validation failed: {error_message}")
+            # Return appropriate status code based on error type
+            if "Rate limit exceeded" in error_message:
+                self.send_error_response(429, f"Security validation failed: {error_message}")
+            else:
+                self.send_error_response(401, f"Security validation failed: {error_message}")
             return
         
         # Parse the path to determine the endpoint
@@ -87,15 +98,15 @@ class handler(BaseHTTPRequestHandler):
         # Accept both underscore and hyphenated base path variants
         if path in ['/api/audio_processor/latest', '/api/audio-processor/latest']:
             # Get latest clip endpoint
-            self.handle_get_latest_clip(cors_headers)
+            self.handle_get_latest_clip()
         elif path in ['/api/audio_processor/clips', '/api/audio-processor/clips']:
             # List all clips endpoint
-            self.handle_list_clips(cors_headers)
+            self.handle_list_clips()
         else:
             # Default health check endpoint
-            self.handle_health_check(cors_headers)
+            self.handle_health_check()
     
-    def handle_health_check(self, cors_headers=None):
+    def handle_health_check(self):
         """Handle the default health check endpoint"""
         r2_storage = R2Storage()
         r2_configured = r2_storage.enabled
@@ -109,9 +120,9 @@ class handler(BaseHTTPRequestHandler):
             "note": "R2 upload requires API token with R2 Storage:Edit permissions" if not r2_configured else "R2 storage is configured and ready"
         }
         
-        self.send_success_response(response_data, cors_headers)
+        self.send_success_response(response_data)
     
-    def handle_get_latest_clip(self, cors_headers=None):
+    def handle_get_latest_clip(self):
         """Handle getting the latest clip from R2 storage"""
         r2_storage = R2Storage()
         
@@ -131,7 +142,7 @@ class handler(BaseHTTPRequestHandler):
         else:
             self.send_error_response(404, "No clips found in R2 storage")
     
-    def handle_list_clips(self, cors_headers=None):
+    def handle_list_clips(self):
         """Handle listing all clips from R2 storage"""
         r2_storage = R2Storage()
         
@@ -148,7 +159,7 @@ class handler(BaseHTTPRequestHandler):
             "message": f"Found {len(clips)} clips in R2 storage"
         }
         
-        self.send_success_response(response_data, cors_headers)
+        self.send_success_response(response_data)
     
     def _validate_content_length(self) -> int:
         """Safely validate and parse Content-Length header"""
@@ -213,9 +224,13 @@ class handler(BaseHTTPRequestHandler):
             body_str = body.decode('utf-8')
             
             # Validate request security
-            is_valid, error_message, cors_headers = self.validate_request('POST', body_str)
+            is_valid, error_message = self.validate_request('POST', body_str)
             if not is_valid:
-                self.send_error_response(401, f"Security validation failed: {error_message}")
+                # Return appropriate status code based on error type
+                if "Rate limit exceeded" in error_message:
+                    self.send_error_response(429, f"Security validation failed: {error_message}")
+                else:
+                    self.send_error_response(401, f"Security validation failed: {error_message}")
                 return
             
             try:
@@ -244,54 +259,27 @@ class handler(BaseHTTPRequestHandler):
                 "success": results["failed"] == 0,
                 "message": f"Processed {results['successful']}/{results['total']} clips successfully",
                 "results": results
-            }, cors_headers)
+            })
             
         except Exception as e:
             logger.error(f"Error processing clips: {e}")
             self.send_error_response(500, str(e))
     
     def do_OPTIONS(self):
-        # Validate CORS for preflight request
-        is_valid, error_message, cors_headers = self.validate_request('OPTIONS')
-        if not is_valid:
-            self.send_error_response(401, f"Security validation failed: {error_message}")
-            return
-        
-        self.send_response(200)
-        
-        # Apply CORS headers from security middleware
-        if cors_headers:
-            for header, value in cors_headers.items():
-                self.send_header(header, value)
-        else:
-            # Fallback CORS headers
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        
-        self.end_headers()
-    
-    def send_success_response(self, data, cors_headers=None):
+        # Handle OPTIONS requests without CORS validation
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
-        
-        # Apply CORS headers from security middleware
-        if cors_headers:
-            for header, value in cors_headers.items():
-                self.send_header(header, value)
-        else:
-            # Fallback CORS headers
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        
+        self.end_headers()
+    
+    def send_success_response(self, data):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
     
     def send_error_response(self, status_code, message):
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps({
             "success": False,

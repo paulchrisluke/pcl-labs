@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from .download_extract import AudioProcessor
 from .task_manager import task_manager, TaskStatus
 from .ffmpeg_utils import ensure_ffmpeg
+from .cache import cache
 import logging
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,8 @@ class HealthResponse(BaseModel):
     status: str
     ffmpeg_available: bool
     r2_configured: bool
+    cache_healthy: bool
+    cache_type: str
 
 class TaskStatusResponse(BaseModel):
     task_id: str
@@ -93,10 +96,19 @@ async def health_check():
         os.getenv('R2_BUCKET')
     ])
     
+    # Check cache health
+    cache_healthy = cache.health_check()
+    cache_type = type(cache).__name__
+    
+    # Overall health depends on all critical services
+    overall_healthy = ffmpeg_available and r2_configured and cache_healthy
+    
     return HealthResponse(
-        status="healthy" if ffmpeg_available and r2_configured else "unhealthy",
+        status="healthy" if overall_healthy else "unhealthy",
         ffmpeg_available=ffmpeg_available,
-        r2_configured=r2_configured
+        r2_configured=r2_configured,
+        cache_healthy=cache_healthy,
+        cache_type=cache_type
     )
 
 @app.post("/process-clips", response_model=ProcessClipResponse)
