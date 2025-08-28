@@ -62,7 +62,7 @@ pip-sync requirements.txt
 Required environment variables:
 - `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
 - `CLOUDFLARE_API_TOKEN` - Cloudflare API token with R2 permissions
-- `R2_BUCKET` - R2 bucket name (default: clip-recap-assets)
+- `R2_BUCKET` - R2 bucket name (default: clip-recap-pipeline)
 
 Optional:
 - `MAX_CLIP_DURATION` - Maximum clip duration before chunking (default: 300s)
@@ -293,7 +293,7 @@ server/
 The service stores files in R2 with this structure:
 
 ```
-r2://clip-recap-assets/
+r2://clip-recap-pipeline/
 ├── clips/{clip_id}.mp4           # Original video files
 ├── audio/{clip_id}.wav           # Extracted audio (16kHz mono)
 ├── audio/{clip_id}/chunk_000.wav # Chunked audio for long clips

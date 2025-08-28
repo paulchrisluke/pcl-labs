@@ -6,6 +6,26 @@
  * This tests the complete flow from clips to transcription
  */
 
+// Load environment variables from .dev.vars if it exists
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+try {
+  const devVarsPath = join(process.cwd(), '.dev.vars');
+  const devVarsContent = readFileSync(devVarsPath, 'utf8');
+  
+  devVarsContent.split('\n').forEach(line => {
+    const [key, value] = line.split('=');
+    if (key && value && !process.env[key]) {
+      process.env[key] = value;
+    }
+  });
+  
+  console.log('✅ Loaded environment variables from .dev.vars');
+} catch (error) {
+  console.log('⚠️ Could not load .dev.vars, using existing environment variables');
+}
+
 const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
 
 /**
@@ -181,7 +201,7 @@ async function testFullPipeline() {
     
     for (const filePath of filesToCheck) {
       try {
-        const fileUrl = `https://clip-recap-assets.paulchrisluke.workers.dev/${filePath}`;
+        const fileUrl = `https://clip-recap-pipeline.paulchrisluke.workers.dev/${filePath}`;
         const fileResponse = await fetch(fileUrl, { method: 'HEAD' });
         
         if (fileResponse.ok) {
