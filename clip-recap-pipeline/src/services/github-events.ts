@@ -235,28 +235,62 @@ export class GitHubEventService {
   async markEventsAsProcessed(eventIds: string[]): Promise<void> {
     for (const eventId of eventIds) {
       try {
-        // Find the event file
-        const date = new Date();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        // Search for the event file across all dates
+        const eventKey = await this.findEventKey(eventId);
         
-        const key = `github-events/${year}/${month}/${day}/${eventId}.json`;
-        
-        const response = await this.env.R2_BUCKET.get(key);
-        if (response) {
-          const event = await response.json() as GitHubEvent;
-          event.processed = true;
-          
-          await this.env.R2_BUCKET.put(key, JSON.stringify(event, null, 2), {
-            httpMetadata: {
-              contentType: 'application/json',
-            },
-          });
+        if (eventKey) {
+          const response = await this.env.R2_BUCKET.get(eventKey);
+          if (response) {
+            const event = await response.json() as GitHubEvent;
+            event.processed = true;
+            
+            await this.env.R2_BUCKET.put(eventKey, JSON.stringify(event, null, 2), {
+              httpMetadata: {
+                contentType: 'application/json',
+              },
+            });
+            
+            console.log(`✅ Marked event ${eventId} as processed`);
+          }
+        } else {
+          console.warn(`⚠️ Event ${eventId} not found in R2 storage`);
         }
       } catch (error) {
         console.error(`Error marking event ${eventId} as processed:`, error);
       }
+    }
+  }
+
+  /**
+   * Find the R2 key for a specific event ID by searching through all stored events
+   */
+  private async findEventKey(eventId: string): Promise<string | null> {
+    try {
+      // List all objects under the github-events prefix
+      let continuationToken: string | undefined;
+      
+      do {
+        const listOptions: any = { prefix: 'github-events/' };
+        if (continuationToken) {
+          listOptions.cursor = continuationToken;
+        }
+        
+        const objects = await this.env.R2_BUCKET.list(listOptions);
+        
+        // Look for the event file
+        for (const obj of objects.objects) {
+          if (obj.key.endsWith(`${eventId}.json`)) {
+            return obj.key;
+          }
+        }
+        
+        continuationToken = objects.cursor;
+      } while (continuationToken);
+      
+      return null;
+    } catch (error) {
+      console.error(`Error searching for event ${eventId}:`, error);
+      return null;
     }
   }
 

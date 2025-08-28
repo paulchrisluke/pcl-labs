@@ -36,6 +36,13 @@ export interface HealthResponse {
 // ISO DateTime string type for consistent date handling
 export type ISODateTimeString = string;
 
+// Shared union types for clip-GitHub linking
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+export type MatchReason = 'temporal_proximity' | 'content_analysis' | 'manual_override';
+
+// GitHub event action types
+export type PullRequestAction = 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
+
 // Twitch API types
 export interface TwitchClip {
   id: string;
@@ -146,20 +153,20 @@ export interface GitHubEvent {
 
 export interface GitHubPullRequestEvent extends GitHubEvent {
   event_type: 'pull_request';
-  action: 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
+  action: PullRequestAction;
   payload: {
-    action: string;
+    action: PullRequestAction;
     pull_request: {
       number: number;
       title: string;
-      body: string;
+      body: string | null;
       html_url: string;
       state: string;
       merged: boolean;
-      merged_at: string | null;
-      created_at: string;
-      updated_at: string;
-      closed_at: string | null;
+      merged_at: ISODateTimeString | null;
+      created_at: ISODateTimeString;
+      updated_at: ISODateTimeString;
+      closed_at: ISODateTimeString | null;
       user: {
         login: string;
       };
@@ -187,7 +194,7 @@ export interface GitHubPushEvent extends GitHubEvent {
     commits: Array<{
       id: string;
       message: string;
-      timestamp: string;
+      timestamp: ISODateTimeString;
       url: string;
       author: {
         name: string;
@@ -208,12 +215,12 @@ export interface GitHubIssueEvent extends GitHubEvent {
     issue: {
       number: number;
       title: string;
-      body: string;
+      body: string | null;
       html_url: string;
       state: string;
-      created_at: string;
-      updated_at: string;
-      closed_at: string | null;
+      created_at: ISODateTimeString;
+      updated_at: ISODateTimeString;
+      closed_at: ISODateTimeString | null;
       user: {
         login: string;
       };
@@ -236,8 +243,8 @@ export interface LinkedPullRequest {
   title: string;
   url: string;
   merged_at: ISODateTimeString;
-  confidence: 'high' | 'medium' | 'low';
-  match_reason: 'temporal_proximity' | 'content_analysis' | 'manual_override';
+  confidence: ConfidenceLevel;
+  match_reason: MatchReason;
 }
 
 export interface LinkedCommit {
@@ -251,9 +258,9 @@ export interface LinkedIssue {
   number: number;
   title: string;
   url: string;
-  closed_at: ISODateTimeString;
-  confidence: 'high' | 'medium' | 'low';
-  match_reason: 'temporal_proximity' | 'content_analysis' | 'manual_override';
+  closed_at: ISODateTimeString | null;
+  confidence: ConfidenceLevel;
+  match_reason: MatchReason;
 }
 
 // Enhanced Clip Metadata with GitHub Context

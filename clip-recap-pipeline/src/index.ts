@@ -175,8 +175,28 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
         
         // List recent GitHub events
         const searchParams = url.searchParams;
-        const days = parseInt(searchParams.get('days') || '1');
+        const daysParam = searchParams.get('days');
         const repository = searchParams.get('repository') || undefined;
+        
+        // Validate and clamp the days parameter
+        let days = 1; // default value
+        if (daysParam !== null) {
+          const parsedDays = parseInt(daysParam);
+          if (Number.isFinite(parsedDays) && !Number.isNaN(parsedDays)) {
+            days = Math.floor(parsedDays);
+            // Clamp to sane range: min 1, max 365
+            days = Math.max(1, Math.min(365, days));
+          } else {
+            // Return 400 for clearly malformed input
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid days parameter - must be a valid number between 1 and 365'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        }
         
         const endDate = new Date();
         const startDate = new Date();

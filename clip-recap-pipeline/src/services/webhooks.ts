@@ -55,16 +55,36 @@ export async function handleWebhook(
 
     // Store the event for temporal matching (M8 - GitHub Integration)
     if (delivery && payload.repository?.full_name) {
-      const githubEventService = new GitHubEventService(env);
-      const stored = await githubEventService.storeEvent(
-        delivery,
-        event,
-        payload,
-        payload.repository.full_name
-      );
-      
-      if (!stored) {
-        console.warn(`Failed to store GitHub event: ${event} (${delivery})`);
+      const storeEventTask = async () => {
+        try {
+          const githubEventService = new GitHubEventService(env);
+          const stored = await githubEventService.storeEvent(
+            delivery,
+            event,
+            payload,
+            payload.repository.full_name
+          );
+          
+          if (!stored) {
+            console.warn(`Failed to store GitHub event: ${event} (${delivery})`);
+          }
+        } catch (error) {
+          console.error(`Failed to store GitHub event: ${event} (${delivery})`, error);
+        }
+      };
+
+      // Use ctx.waitUntil if available to offload to background task
+      if (ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(storeEventTask().catch(error => {
+          console.error(`Background task failed to store GitHub event: ${event} (${delivery})`, error);
+        }));
+      } else {
+        // Fallback to synchronous execution with error handling
+        try {
+          await storeEventTask();
+        } catch (error) {
+          console.error(`Failed to store GitHub event: ${event} (${delivery})`, error);
+        }
       }
     }
 
@@ -160,11 +180,23 @@ async function handlePullRequestEvent(payload: any, env: Environment): Promise<R
 async function handlePushEvent(payload: any, env: Environment): Promise<Response> {
   const { ref, commits, repository } = payload;
   
+  // Guard against non-array commits
+  if (!Array.isArray(commits)) {
+    console.warn(`Push event has non-array commits: ${typeof commits}`);
+    return new Response('OK', { status: 200 });
+  }
+  
   console.log(`Push to ${ref}: ${commits.length} commits`);
   
-  // Only process pushes to main branch
-  if (ref === 'refs/heads/main') {
-    console.log(`Main branch push with ${commits.length} commits`);
+  // Only process pushes to the repository's default branch
+  const defaultBranch = repository?.default_branch;
+  if (!defaultBranch) {
+    console.warn(`Repository missing default_branch, skipping push processing`);
+    return new Response('OK', { status: 200 });
+  }
+  
+  if (ref === `refs/heads/${defaultBranch}`) {
+    console.log(`${defaultBranch} branch push with ${commits.length} commits`);
     // Could trigger additional actions here
   }
   
