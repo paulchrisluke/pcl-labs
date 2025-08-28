@@ -82,12 +82,13 @@ export async function verifyHmacSignature(
     ['sign']
   );
   
+  // Generate expected signature
   const expectedSignature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
   const expectedHex = Array.from(new Uint8Array(expectedSignature))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
   
-  // Normalize both signatures to lowercase and convert to bytes for constant-time comparison
+  // Compare signatures using constant-time comparison
   try {
     const signatureBytes = hexToBytes(signature.toLowerCase());
     const expectedBytes = hexToBytes(expectedHex.toLowerCase());
@@ -128,48 +129,25 @@ export function createForbiddenResponse(message: string = 'Forbidden'): Response
 }
 
 /**
- * Middleware function to require HMAC authentication for endpoints
- * Returns null if authentication passes, or a Response if it fails
- * 
- * @param request - The incoming request
- * @param env - Environment variables
- * @param body - Optional body string for POST requests (to avoid double-reading)
+ * HMAC authentication middleware
+ * Rejects requests with Authorization header before any HMAC validation
  */
 export async function requireHmacAuth(
-  request: Request, 
+  request: Request,
   env: Environment,
-  body?: string
+  body: string = ''
 ): Promise<Response | null> {
-  // For POST requests, check Content-Length before processing
-  if (request.method === 'POST') {
-    const contentLength = request.headers.get('content-length');
-    if (contentLength) {
-      const size = parseInt(contentLength, 10);
-      // Limit to 10MB to prevent DoS attacks
-      if (size > 10 * 1024 * 1024) {
-        console.warn(`🚨 Request body too large: ${size} bytes`);
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Request body too large (max 10MB)'
-        }), {
-          status: 413,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-    
-    // If body is not provided, read it here to avoid double-reading
-    if (body === undefined) {
-      body = await request.text();
-    }
-  } else {
-    // For non-POST requests, body should be empty
-    body = '';
+  // Check for Authorization header first - reject immediately if present
+  if (request.headers.has('authorization')) {
+    return createUnauthorizedResponse('Authorization header not allowed with HMAC authentication');
   }
-
-  if (!(await verifyHmacSignature(request, env, body))) {
-    console.warn(`🚨 Unauthorized access attempt to ${request.url}`);
+  
+  // Proceed with HMAC validation
+  const isValid = await verifyHmacSignature(request, env, body);
+  if (!isValid) {
     return createUnauthorizedResponse('HMAC authentication required');
   }
-  return null; // Continue processing
+  
+  // Return null to indicate successful authentication
+  return null;
 }

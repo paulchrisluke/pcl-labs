@@ -375,6 +375,39 @@ export default {
       // HMAC_SHARED_SECRET is sufficient for authentication - no need for separate admin tokens
     }
 
+    // Apply HMAC authentication to protected API endpoints
+    if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/twitch/clips/stored')) {
+      try {
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        
+        // For GET requests, body is empty
+        const body = request.method === 'GET' ? '' : await request.text();
+        
+        const authResult = await requireHmacAuth(request, env, body);
+        if (authResult) {
+          return authResult; // Returns 401 response if authentication fails
+        }
+        
+        // Reconstruct request with body for downstream processing
+        if (request.method !== 'GET') {
+          request = new Request(request.url, {
+            method: request.method,
+            headers: request.headers,
+            body: body
+          });
+        }
+      } catch (error) {
+        console.error('HMAC authentication error:', error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Authentication error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Validate Twitch credentials endpoint
     if (url.pathname === '/validate-twitch') {
       try {

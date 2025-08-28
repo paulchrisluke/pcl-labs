@@ -3,6 +3,7 @@
  */
 
 import { config } from 'dotenv'
+import { SecurityService } from './src/services/security.js'
 
 // Load environment variables
 config()
@@ -78,32 +79,17 @@ async function createSecurityHeaders(body: string = ''): Promise<Record<string, 
 }
 
 // Initialize SecurityService once at module level
-let securityService: any = null
+let securityService: SecurityService | null = null
 
-async function initializeSecurityService(): Promise<any> {
+async function initializeSecurityService(): Promise<SecurityService> {
   if (!securityService) {
-    // Always use direct fetch since we're testing against the worker which has its own secrets
-    console.log('🔧 Using direct fetch for worker testing');
-    securityService = {
-      securePost: async (url: string, data: any) => {
-        const body = JSON.stringify(data);
-        const headers = await createSecurityHeaders(body);
-        
-        return fetch(url, {
-          method: 'POST',
-          headers,
-          body
-        });
-      },
-      secureGet: async (url: string) => {
-        const headers = await createSecurityHeaders();
-        
-        return fetch(url, {
-          method: 'GET',
-          headers
-        });
-      }
-    };
+    // Create a mock environment with the required HMAC secret
+    const mockEnv = {
+      HMAC_SHARED_SECRET: process.env.HMAC_SHARED_SECRET || 'test-secret-key',
+    } as any;
+    
+    securityService = new SecurityService(mockEnv);
+    console.log('🔧 Initialized SecurityService with HMAC authentication');
   }
   return securityService
 }
@@ -243,14 +229,19 @@ async function testClipProcessing(): Promise<TestResult[]> {
 
   // Get a real clip ID from stored clips
   let testClipId: string
+  const svc = await initializeSecurityService()
 
   try {
     console.log('🔍 Fetching stored clips to get a test clip ID...')
-    const clipsResult = await fetchWithTimeout(
-      `${WORKER_URL}/api/twitch/clips/stored`,
-      {},
-      15000,
-    )
+    const clipsResponse = await svc.secureGet(`${WORKER_URL}/api/twitch/clips/stored`)
+    
+    // Convert Response to FetchResult format for consistency
+    const clipsResult = {
+      ok: clipsResponse.ok,
+      status: clipsResponse.status,
+      body: await clipsResponse.json(),
+      text: undefined,
+    }
 
     if (!clipsResult.ok) {
       throw new Error(
@@ -329,16 +320,11 @@ async function testClipProcessing(): Promise<TestResult[]> {
       await new Promise((resolve) => setTimeout(resolve, 10000))
 
       // Test transcription
-      const transcribeBody = JSON.stringify({ clipId: testClipId });
-      const transcribeHeaders = await createSecurityHeaders(transcribeBody);
-      
-      const transcribeResponse = await fetch(
+      const transcribeResponse = await svc.securePost(
         `${WORKER_URL}/api/transcribe/clip`,
         {
-          method: 'POST',
-          headers: transcribeHeaders,
-          body: transcribeBody,
-        },
+          clipId: testClipId,
+        }
       )
 
       const transcribeResult = await transcribeResponse.json()
@@ -350,8 +336,8 @@ async function testClipProcessing(): Promise<TestResult[]> {
       })
 
       // Test transcript status
-      const statusResponse = await fetch(
-        `${WORKER_URL}/api/transcribe/status/${testClipId}`,
+      const statusResponse = await svc.secureGet(
+        `${WORKER_URL}/api/transcribe/status/${testClipId}`
       )
       const statusResult = await statusResponse.json()
 
@@ -379,7 +365,8 @@ async function testStoredClips(): Promise<TestResult[]> {
     console.log('📖 Testing stored clips...')
 
     // Get stored clips
-    const clipsResponse = await fetch(`${WORKER_URL}/api/twitch/clips/stored`)
+    const svc = await initializeSecurityService()
+    const clipsResponse = await svc.secureGet(`${WORKER_URL}/api/twitch/clips/stored`)
     const clipsResult = await clipsResponse.json()
 
     results.push({
@@ -392,10 +379,8 @@ async function testStoredClips(): Promise<TestResult[]> {
     })
 
     // Test worker's clip processing status
-    const processedResponse = await fetchWithTimeout(
-      `${WORKER_URL}/api/twitch/clips/stored?limit=10`,
-    )
-    const processedResult = processedResponse.body
+    const processedResponse = await svc.secureGet(`${WORKER_URL}/api/twitch/clips/stored?limit=10`)
+    const processedResult = await processedResponse.json()
 
     results.push({
       name: 'Worker Clip Status',

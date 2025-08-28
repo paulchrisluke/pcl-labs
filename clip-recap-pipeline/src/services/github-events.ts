@@ -55,9 +55,15 @@ export class GitHubEventService {
         break;
         
       case 'pull_request':
-        // Use updated_at for most actions, created_at for new PRs
+        // Prefer merged_at or closed_at to reflect the meaningful event moment
         if (payload.action === 'opened' && payload.pull_request?.created_at) {
           return payload.pull_request.created_at;
+        }
+        if (payload.action === 'closed' && payload.pull_request?.merged_at) {
+          return payload.pull_request.merged_at;
+        }
+        if (payload.pull_request?.closed_at) {
+          return payload.pull_request.closed_at;
         }
         if (payload.pull_request?.updated_at) {
           return payload.pull_request.updated_at;
@@ -71,6 +77,9 @@ export class GitHubEventService {
         // Use updated_at for most actions, created_at for new issues
         if (payload.action === 'opened' && payload.issue?.created_at) {
           return payload.issue.created_at;
+        }
+        if (payload.action === 'closed' && payload.issue?.closed_at) {
+          return payload.issue.closed_at;
         }
         if (payload.issue?.updated_at) {
           return payload.issue.updated_at;
@@ -114,9 +123,8 @@ export class GitHubEventService {
         break;
         
       case 'watch':
-        if (payload.starred_at) {
-          return payload.starred_at;
-        }
+        // WatchEvent webhooks never include starred_at
+        // Use StarEvent payload handler or fetch from Stars API for star timestamps
         break;
         
       case 'gollum':
@@ -292,21 +300,34 @@ export class GitHubEventService {
       // Extract canonical timestamp from payload
       const eventTimestamp = this.extractEventTimestamp(eventType, payload);
       
+      // Normalize and validate the event timestamp
+      let date: Date;
+      try {
+        date = new Date(eventTimestamp);
+        if (!isFinite(date.getTime())) {
+          console.warn(`⚠️ Invalid timestamp for event ${deliveryId}: ${eventTimestamp}, falling back to current time`);
+          date = new Date();
+        }
+      } catch {
+        console.warn(`⚠️ Failed to parse timestamp for event ${deliveryId}: ${eventTimestamp}, falling back to current time`);
+        date = new Date();
+      }
+      
+      const normalizedTimestamp = date.toISOString();
       const event: GitHubEvent = {
         id: deliveryId,
         event_type: eventType,
         repository,
-        timestamp: eventTimestamp,
+        timestamp: normalizedTimestamp,
         action: payload.action,
         payload,
         processed: false
       };
 
-      // Store by event date for temporal matching
-      const eventDate = new Date(eventTimestamp);
-      const year = eventDate.getFullYear();
-      const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-      const day = String(eventDate.getDate()).padStart(2, '0');
+      // Store by event date for temporal matching using the same normalized date
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
       
       const key = `github-events/${year}/${month}/${day}/${deliveryId}.json`;
       
@@ -316,7 +337,7 @@ export class GitHubEventService {
         },
       });
 
-      console.log(`✅ Stored GitHub event: ${eventType} (${deliveryId}) for ${repository} at ${eventTimestamp}`);
+      console.log(`✅ Stored GitHub event: ${eventType} (${deliveryId}) for ${repository} at ${normalizedTimestamp}`);
       return true;
     } catch (error) {
       console.error(`❌ Failed to store GitHub event ${deliveryId}:`, error);
