@@ -175,6 +175,7 @@ npx tsx test-twitch.ts      # Twitch credentials and API
 npx tsx test-github.ts      # GitHub credentials and API
 npx tsx test-pipeline.ts    # Daily pipeline functionality
 npx tsx test-audio-pipeline.ts  # Audio processing pipeline integration (uses stored clips)
+npx tsx test-github-events.ts  # GitHub event storage and temporal matching (M8)
 ```
 
 **Test Coverage:**
@@ -183,6 +184,7 @@ npx tsx test-audio-pipeline.ts  # Audio processing pipeline integration (uses st
 - **GitHub Integration** (`test-github.ts`): Credentials, repository access, API connectivity
 - **Pipeline Functionality** (`test-pipeline.ts`): Clip storage, retrieval, validation, and database operations
 - **Audio Processing** (`test-audio-pipeline.ts`): Audio processing pipeline integration using actual stored clips from R2
+- **GitHub Events** (`test-github-events.ts`): Event storage, temporal matching, and clip enhancement (M8)
 
 **Test Results:**
 All tests validate the complete pipeline workflow:
@@ -237,6 +239,16 @@ crons = [
   - Responds 401/403 on invalid or missing signature; 2xx on success (202 if work is queued).
   - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering).
   - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub's webhook timeout.
+  - **Automatically stores events** for temporal matching with Twitch clips (M8 - GitHub Integration)
+
+### GitHub Event Storage (M8 - GitHub Integration)
+- `POST /api/github-events/test` - Test GitHub event storage functionality
+- `GET /api/github-events/list?days=1&repository=org/repo` - List stored GitHub events
+  - `days` (optional): Number of days to look back (default: 1)
+  - `repository` (optional): Filter by specific repository
+- `POST /api/github-events/enhance-clip` - Enhance a clip with GitHub context
+  - Request body: `{"clip": {...}, "repository": "org/repo"}`
+  - Returns clip with linked PRs, commits, and issues based on temporal matching
 
 ## Content Structure
 
