@@ -31,16 +31,16 @@ export async function handleWebhook(
     try {
       if (contentType.includes('application/x-www-form-urlencoded')) {
         // GitHub sends payload as form-encoded data
-        const formData = new TextDecoder().decode(bodyBytes);
-        const payloadMatch = formData.match(/payload=([^&]*)/);
-        if (!payloadMatch) {
+        const bodyString = new TextDecoder().decode(bodyBytes);
+        const params = new URLSearchParams(bodyString);
+        const payloadParam = params.get('payload');
+        
+        if (!payloadParam) {
           console.error('No payload found in form data');
           return new Response('Bad Request: No payload in form data', { status: 400 });
         }
         
-        // URL decode the payload
-        const decodedPayload = decodeURIComponent(payloadMatch[1]);
-        payload = JSON.parse(decodedPayload);
+        payload = JSON.parse(payloadParam);
       } else {
         // Handle raw JSON payload (fallback)
         payload = JSON.parse(new TextDecoder().decode(bodyBytes));

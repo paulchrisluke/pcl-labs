@@ -203,6 +203,7 @@ export interface GitHubPushEvent extends GitHubEvent {
     }>;
     repository: {
       full_name: string;
+      default_branch?: string;
     };
   };
 }

@@ -126,3 +126,19 @@ export function createForbiddenResponse(message: string = 'Forbidden'): Response
     headers: { 'Content-Type': 'application/json' }
   });
 }
+
+/**
+ * Middleware function to require HMAC authentication for endpoints
+ * Returns null if authentication passes, or a Response if it fails
+ */
+export async function requireHmacAuth(
+  request: Request, 
+  env: Environment,
+  body: string = ''
+): Promise<Response | null> {
+  if (!(await verifyHmacSignature(request, env, body))) {
+    console.warn(`🚨 Unauthorized access attempt to ${request.url}`);
+    return createUnauthorizedResponse('HMAC authentication required');
+  }
+  return null; // Continue processing
+}

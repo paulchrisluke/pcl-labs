@@ -170,8 +170,11 @@ export class GitHubEventService {
         
         case 'push': {
           const pushEvent = event as GitHubPushEvent;
-          // Only include pushes to main branch
-          if (pushEvent.payload.ref === 'refs/heads/main') {
+          // Only include pushes to the repository's default branch
+          const defaultBranch = pushEvent.payload.repository?.default_branch;
+          const expectedRef = defaultBranch ? `refs/heads/${defaultBranch}` : 'refs/heads/main';
+          
+          if (pushEvent.payload.ref === expectedRef) {
             for (const commit of pushEvent.payload.commits) {
               commits.push({
                 sha: commit.id,
@@ -318,6 +321,15 @@ export class GitHubEventService {
    * Update configuration
    */
   updateConfig(config: Partial<TemporalMatchingConfig>): void {
+    // Merge top-level properties
     this.config = { ...this.config, ...config };
+    
+    // Explicitly merge confidenceThresholds if provided
+    if (config.confidenceThresholds) {
+      this.config.confidenceThresholds = {
+        ...this.config.confidenceThresholds,
+        ...config.confidenceThresholds
+      };
+    }
   }
 }

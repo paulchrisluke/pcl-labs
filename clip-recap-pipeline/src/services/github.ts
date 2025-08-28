@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import reposConfig from '../config/repos.json';
+import reposConfig from '../config/repos.json' with { type: 'json' };
 
 // Type for GitHub pull request with optional stats
 interface GitHubPullRequest {

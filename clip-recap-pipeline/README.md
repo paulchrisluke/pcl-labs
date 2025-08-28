@@ -225,24 +225,36 @@ crons = [
 All API endpoints require authentication using HMAC SHA-256 signatures with the `HMAC_SHARED_SECRET` environment variable.
 
 **Required Headers:**
-- `Authorization: Bearer <hmac_signature>`
+- `X-Request-Signature: <hex_signature>` (64-character hex string, preferred) or `X-Request-Signature: <base64_signature>`
+- `X-Request-Timestamp: <unix_timestamp>` (Unix timestamp in seconds)
+- `X-Request-Nonce: <alphanumeric_nonce>` (16-64 alphanumeric characters)
 - `Content-Type: application/json` (for POST requests)
-- `X-Request-Timestamp: <unix_timestamp>` (for request replay protection)
+- `Authorization: Bearer <signature>` (optional, alternative to X-Request-Signature)
 
 **HMAC Signature Generation:**
+The signature is computed over the payload: `body + timestamp + nonce`
+
+**Hex Signature (Preferred):**
 ```bash
-# Create signature from request body and timestamp
-echo -n "$request_body$timestamp" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | base64
+# Create hex signature from payload
+echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET"
+```
+
+**Base64 Signature (Alternative):**
+```bash
+# Create base64 signature from payload
+echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | base64
 ```
 
 **Example:**
 ```bash
-# For a GET request with timestamp 1640995200
-echo -n "1640995200" | openssl dgst -sha256 -hmac "your-secret" -binary | base64
-# Result: dGVzdA==
+# For a GET request with timestamp 1640995200 and nonce abc123def456
+echo -n "1640995200abc123def456" | openssl dgst -sha256 -hmac "your-secret"
+# Result: a1b2c3d4e5f6...
 
 # For a POST request with JSON body
-echo -n '{"key":"value"}1640995200' | openssl dgst -sha256 -hmac "your-secret" -binary | base64
+echo -n '{"key":"value"}1640995200abc123def456' | openssl dgst -sha256 -hmac "your-secret"
+# Result: a1b2c3d4e5f6...
 ```
 
 ### Error Codes
@@ -326,11 +338,13 @@ Validate Twitch API credentials and connection.
 **Example:**
 ```bash
 timestamp=$(date +%s)
-signature=$(echo -n "$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-twitch" \
-  -H "Authorization: Bearer $signature" \
-  -H "X-Request-Timestamp: $timestamp"
+  -H "X-Request-Signature: $signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
 ```
 
 #### `GET /api/twitch/clips`
@@ -363,11 +377,13 @@ Fetch recent Twitch clips from the last 24 hours.
 **Example:**
 ```bash
 timestamp=$(date +%s)
-signature=$(echo -n "$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips?hours=24" \
-  -H "Authorization: Bearer $signature" \
-  -H "X-Request-Timestamp: $timestamp"
+  -H "X-Request-Signature: $signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
 ```
 
 #### `POST /api/twitch/clips`
@@ -404,13 +420,15 @@ Store clips data to R2 storage.
 **Example:**
 ```bash
 timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
 body='{"clips":[{"id":"test","url":"https://clips.twitch.tv/test","title":"Test","broadcaster_name":"test","created_at":"2024-01-01T00:00:00.000Z","duration":30,"view_count":1000}]}'
-signature=$(echo -n "$body$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips" \
-  -H "Authorization: Bearer $signature" \
+  -H "X-Request-Signature: $signature" \
   -H "Content-Type: application/json" \
   -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
   -d "$body"
 ```
 
@@ -447,11 +465,13 @@ List all stored clips from R2 storage.
 **Example:**
 ```bash
 timestamp=$(date +%s)
-signature=$(echo -n "$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips/stored?limit=50&offset=0" \
-  -H "Authorization: Bearer $signature" \
-  -H "X-Request-Timestamp: $timestamp"
+  -H "X-Request-Signature: $signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
 ```
 
 ### GitHub Integration
@@ -477,11 +497,13 @@ Validate GitHub API credentials and repository access.
 **Example:**
 ```bash
 timestamp=$(date +%s)
-signature=$(echo -n "$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-github" \
-  -H "Authorization: Bearer $signature" \
-  -H "X-Request-Timestamp: $timestamp"
+  -H "X-Request-Signature: $signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
 ```
 
 #### `GET /api/github/activity`
@@ -518,12 +540,14 @@ Get daily GitHub activity and repository statistics.
 **Example:**
 ```bash
 timestamp=$(date +%s)
-signature=$(echo -n "$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 # Note: URL-encode the repository name (org/repo becomes org%2Frepo)
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github/activity?repository=org%2Frepo&days=7" \
-  -H "Authorization: Bearer $signature" \
-  -H "X-Request-Timestamp: $timestamp"
+  -H "X-Request-Signature: $signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
 ```
 
 #### `POST /webhook/github`
@@ -589,13 +613,15 @@ Test GitHub event storage functionality.
 **Example:**
 ```bash
 timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
 body='{"event_type":"pull_request","repository":"org/repo","payload":{"action":"opened","pull_request":{"number":123,"title":"Test PR","html_url":"https://github.com/org/repo/pull/123"}}}'
-signature=$(echo -n "$body$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/test" \
-  -H "Authorization: Bearer $signature" \
+  -H "X-Request-Signature: $signature" \
   -H "Content-Type: application/json" \
   -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
   -d "$body"
 ```
 
@@ -635,12 +661,14 @@ List stored GitHub events.
 **Example:**
 ```bash
 timestamp=$(date +%s)
-signature=$(echo -n "$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 # List all pull request events from the last 7 days for a specific repository
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/list?days=7&repository=org%2Frepo&event_type=pull_request&limit=50" \
-  -H "Authorization: Bearer $signature" \
-  -H "X-Request-Timestamp: $timestamp"
+  -H "X-Request-Signature: $signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
 ```
 
 #### `POST /api/github-events/enhance-clip`
@@ -700,13 +728,15 @@ Enhance a clip with GitHub context based on temporal matching.
 **Example:**
 ```bash
 timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
 body='{"clip":{"id":"clip_id","created_at":"2024-01-01T00:00:00.000Z","title":"Clip Title","url":"https://clips.twitch.tv/clip_id"},"repository":"org/repo","time_window_hours":2}'
-signature=$(echo -n "$body$timestamp" | openssl dgst -sha256 -hmac "your-secret" -binary | base64)
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
 
 curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/enhance-clip" \
-  -H "Authorization: Bearer $signature" \
+  -H "X-Request-Signature: $signature" \
   -H "Content-Type: application/json" \
   -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
   -d "$body"
 ```
 

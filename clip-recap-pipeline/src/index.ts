@@ -173,6 +173,11 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
           });
         }
         
+        // Authentication check for GET requests
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         // List recent GitHub events
         const searchParams = url.searchParams;
         const daysParam = searchParams.get('days');
@@ -229,8 +234,14 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
           });
         }
         
+        // Authentication check for POST requests (need body for HMAC)
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const rawBody = await request.text();
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         // Test temporal matching with a clip
-        const body = await request.json() as { clip: any; repository?: string };
+        const body = JSON.parse(rawBody) as { clip: any; repository?: string };
         const { clip, repository } = body;
         
         if (!clip || !clip.created_at) {
@@ -371,6 +382,11 @@ export default {
     // Validate Twitch credentials endpoint
     if (url.pathname === '/validate-twitch') {
       try {
+        // Authentication check
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         console.log('🔍 Validating Twitch credentials...');
         // Step 1: Get access token
         const formData = new URLSearchParams();
@@ -482,6 +498,11 @@ export default {
     // Validate GitHub credentials endpoint
     if (url.pathname === '/validate-github') {
       try {
+        // Authentication check
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         console.log('🔍 Validating GitHub credentials...');
         
         // Check if we have any GitHub tokens
@@ -622,11 +643,16 @@ export default {
     // Twitch clips management endpoint
     if (url.pathname === '/api/twitch/clips') {
       try {
-        const { TwitchService } = await import('./services/twitch');
+        const { TwitchService } = await import('./services/twitch.js');
         const twitchService = new TwitchService(env);
         
         switch (request.method) {
           case 'GET': {
+            // Authentication check for GET requests
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const authError = await requireHmacAuth(request, env);
+            if (authError) return authError;
+            
             // Fetch recent clips from Twitch
             console.log('🔍 Fetching recent Twitch clips...');
             const clips = await twitchService.getRecentClips();
@@ -653,6 +679,12 @@ export default {
           }
 
           case 'POST': {
+            // Authentication check for POST requests (need body for HMAC)
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const rawBody = await request.text();
+            const authError = await requireHmacAuth(request, env, rawBody);
+            if (authError) return authError;
+            
             // Store clips data to R2
             console.log('💾 Storing clips data...');
             
@@ -669,7 +701,7 @@ export default {
               });
             }
             
-            const body = await request.json() as { clips?: any[] };
+            const body = JSON.parse(rawBody) as { clips?: any[] };
             const clipsToStore = body.clips || [];
             
             // Validate request size
@@ -849,6 +881,11 @@ export default {
     // Read stored Twitch clips from R2
     if (url.pathname.startsWith('/api/twitch/clips/stored')) {
       try {
+        // Authentication check
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         const clipId = url.searchParams.get('id');
         
         if (clipId) {
@@ -1193,9 +1230,9 @@ export default {
         const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
         
         // Get request body for HMAC verification
-        const body = await request.text();
+        const rawRequestBody = await request.text();
         
-        if (!(await verifyHmacSignature(request, env, body))) {
+        if (!(await verifyHmacSignature(request, env, rawRequestBody))) {
           console.warn(`🚨 Unauthorized force re-transcription attempt for path: ${url.pathname}`);
           return createUnauthorizedResponse('HMAC authentication required for force re-transcription');
         }
@@ -1273,8 +1310,8 @@ export default {
         
         if (url.pathname === '/api/transcribe/clip' && request.method === 'POST') {
           // Transcribe a single clip with validation
-          const body = await request.json() as { clipId?: string };
-          const { clipId } = body;
+          const clipRequestBody = await request.json() as { clipId?: string };
+          const { clipId } = clipRequestBody;
           
           // Step 1: Basic input validation
           if (!clipId) {
@@ -1324,8 +1361,8 @@ export default {
         
         if (url.pathname === '/api/transcribe/batch' && request.method === 'POST') {
           // Transcribe multiple clips with comprehensive validation
-          const body = await request.json() as { clipIds?: string[] };
-          const { clipIds } = body;
+          const batchRequestBody = await request.json() as { clipIds?: string[] };
+          const { clipIds } = batchRequestBody;
           
           // Step 1: Basic input validation
           if (!clipIds || !Array.isArray(clipIds)) {
@@ -1871,9 +1908,9 @@ export default {
         const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
         
         // Get request body for HMAC verification
-        const body = await request.text();
+        const pipelineRawBody = await request.text();
         
-        if (!(await verifyHmacSignature(request, env, body))) {
+        if (!(await verifyHmacSignature(request, env, pipelineRawBody))) {
           console.warn(`🚨 Unauthorized manual transcription pipeline attempt`);
           return createUnauthorizedResponse('HMAC authentication required for manual transcription pipeline');
         }
@@ -1916,8 +1953,8 @@ export default {
         console.log('🧪 Testing Whisper API with real audio...');
         
         // Step 1: Validate request body
-        const body = await request.json() as { clipId?: string };
-        const { clipId } = body;
+        const whisperRequestBody = await request.json() as { clipId?: string };
+        const { clipId } = whisperRequestBody;
         
         if (!clipId) {
           return new Response(JSON.stringify({
@@ -1948,9 +1985,9 @@ export default {
         const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
         
         // Get request body for HMAC verification
-        const body = await request.text();
+        const requestBody = await request.text();
         
-        if (!(await verifyHmacSignature(request, env, body))) {
+        if (!(await verifyHmacSignature(request, env, requestBody))) {
           console.warn(`🚨 Unauthorized Whisper API access attempt for clip: ${clipId}`);
           return createUnauthorizedResponse('HMAC authentication required for Whisper API access');
         }

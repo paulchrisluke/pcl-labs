@@ -123,6 +123,12 @@ export async function handleGitHubRequest(request: Request, env: any): Promise<R
         if (request.method !== 'GET') {
           return createErrorResponse(405, 'Method Not Allowed');
         }
+        
+        // Authentication check
+        const { requireHmacAuth } = await import('../utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         return await handleActivity(githubService);
       }
       

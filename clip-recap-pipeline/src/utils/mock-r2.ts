@@ -121,7 +121,7 @@ export class MockR2Bucket {
     
     // Create a Blob with the stored data
     const contentType = stored.httpMetadata?.contentType || 'application/octet-stream';
-    const blob = new Blob([stored.data], { type: contentType });
+    const blob = new Blob([stored.data.buffer.slice(stored.data.byteOffset, stored.data.byteOffset + stored.data.byteLength) as ArrayBuffer], { type: contentType });
     
     return {
       body: blob,
@@ -143,7 +143,7 @@ export class MockR2Bucket {
         return stored.data.buffer.slice(
           stored.data.byteOffset,
           stored.data.byteOffset + stored.data.byteLength
-        );
+        ) as ArrayBuffer;
       }
     };
   }
