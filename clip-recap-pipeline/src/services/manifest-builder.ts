@@ -131,8 +131,8 @@ export class ManifestBuilderService {
         break;
       }
 
-      // Check hour diversity (max 2 per hour)
-      const hour = new Date(item.clip_created_at).getHours();
+      // Check hour diversity (max 2 per hour) - use UTC for consistent timezone handling
+      const hour = new Date(item.clip_created_at).getUTCHours();
       const hourCount = hourGroups.get(hour) || 0;
       if (hourCount >= 2) {
         continue;
@@ -559,8 +559,8 @@ export class ManifestBuilderService {
     const averageScore = selected.reduce((sum, item) => sum + (this.calculateContentScore(item)), 0) / selectedCount;
     const githubContextCount = selected.filter(item => item.github_context).length;
 
-    // Calculate diversity score (simplified)
-    const uniqueHours = new Set(selected.map(item => new Date(item.clip_created_at).getHours())).size;
+    // Calculate diversity score (simplified) - use UTC for consistent timezone handling
+    const uniqueHours = new Set(selected.map(item => new Date(item.clip_created_at).getUTCHours())).size;
     const diversityScore = (uniqueHours / selectedCount) * 100;
 
     return {

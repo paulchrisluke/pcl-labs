@@ -1,18 +1,17 @@
-// Temporarily disable schema validation for testing
-// import Ajv from 'ajv';
-// import contentItemSchema from '../../schema/content-item.schema.json' assert { type: 'json' };
-// import manifestSchema from '../../schema/manifest.schema.json' assert { type: 'json' };
+import Ajv from 'ajv';
+import contentItemSchema from '../../schema/content-item.schema.json' assert { type: 'json' };
+import manifestSchema from '../../schema/manifest.schema.json' assert { type: 'json' };
 
 // Initialize Ajv
-// const ajv = new Ajv({
-//   allErrors: true,
-//   strict: false,
-//   verbose: true,
-// });
+const ajv = new Ajv({
+  allErrors: true,
+  strict: false,
+  verbose: true,
+});
 
 // Compile validators
-// const contentItemValidator = ajv.compile(contentItemSchema);
-// const manifestValidator = ajv.compile(manifestSchema);
+const contentItemValidator = ajv.compile(contentItemSchema);
+const manifestValidator = ajv.compile(manifestSchema);
 
 export interface ValidationResult {
   isValid: boolean;
@@ -24,10 +23,19 @@ export interface ValidationResult {
  * Validate a ContentItem against the schema
  */
 export function validateContentItem(data: any): ValidationResult {
-  // Temporarily disable validation for testing
+  const isValid = contentItemValidator(data);
+  
+  if (!isValid) {
+    return {
+      isValid: false,
+      errors: contentItemValidator.errors?.map(error => 
+        `${error.instancePath} ${error.message}`.trim()
+      ) || ['Validation failed']
+    };
+  }
+  
   return {
-    isValid: true,
-    sanitizedData: data
+    isValid: true
   };
 }
 
@@ -35,10 +43,19 @@ export function validateContentItem(data: any): ValidationResult {
  * Validate a Manifest against the schema
  */
 export function validateManifest(data: any): ValidationResult {
-  // Temporarily disable validation for testing
+  const isValid = manifestValidator(data);
+  
+  if (!isValid) {
+    return {
+      isValid: false,
+      errors: manifestValidator.errors?.map(error => 
+        `${error.instancePath} ${error.message}`.trim()
+      ) || ['Validation failed']
+    };
+  }
+  
   return {
-    isValid: true,
-    sanitizedData: data
+    isValid: true
   };
 }
 
@@ -47,13 +64,15 @@ export function validateManifest(data: any): ValidationResult {
  * Removes any properties not in the schema
  */
 export function sanitizeContentItem(data: any): ValidationResult {
+  // Validate first - return immediately if validation fails
   const validation = validateContentItem(data);
   
   if (!validation.isValid) {
     return validation;
   }
   
-  // Create a clean object with only schema-defined properties
+  // Only construct sanitized object after successful validation
+  // Map only schema-defined properties
   const sanitized: any = {
     schema_version: data.schema_version,
     clip_id: data.clip_id,
@@ -65,7 +84,7 @@ export function sanitizeContentItem(data: any): ValidationResult {
     processing_status: data.processing_status,
   };
   
-  // Add optional properties if they exist
+  // Conditionally add optional fields only if they exist
   if (data.clip_embed_url !== undefined) sanitized.clip_embed_url = data.clip_embed_url;
   if (data.clip_thumbnail_url !== undefined) sanitized.clip_thumbnail_url = data.clip_thumbnail_url;
   if (data.clip_view_count !== undefined) sanitized.clip_view_count = data.clip_view_count;
@@ -91,13 +110,15 @@ export function sanitizeContentItem(data: any): ValidationResult {
  * Removes any properties not in the schema
  */
 export function sanitizeManifest(data: any): ValidationResult {
+  // Validate first - return immediately if validation fails
   const validation = validateManifest(data);
   
   if (!validation.isValid) {
     return validation;
   }
   
-  // Create a clean object with only schema-defined properties
+  // Only construct sanitized object after successful validation
+  // Map only schema-defined properties
   const sanitized: any = {
     schema_version: data.schema_version,
     post_id: data.post_id,
@@ -114,7 +135,7 @@ export function sanitizeManifest(data: any): ValidationResult {
     status: data.status,
   };
   
-  // Add optional properties if they exist
+  // Conditionally add optional fields only if they exist
   if (data.headline_short !== undefined) sanitized.headline_short = data.headline_short;
   if (data.description !== undefined) sanitized.description = data.description;
   if (data.category !== undefined) sanitized.category = data.category;

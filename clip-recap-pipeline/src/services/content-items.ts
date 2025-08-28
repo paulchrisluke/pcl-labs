@@ -1,6 +1,6 @@
 import type { Environment } from '../types/index.js';
 import type { ContentItem } from '../types/content.js';
-import { validateContentItem, sanitizeContentItem, validateSchemaVersion } from '../utils/schema-validator.js';
+import { sanitizeContentItem, validateSchemaVersion } from '../utils/schema-validator.js';
 
 export interface ContentItemQuery {
   date_range?: {
@@ -10,14 +10,14 @@ export interface ContentItemQuery {
   processing_status?: ContentItem['processing_status'];
   content_category?: ContentItem['content_category'];
   limit?: number;
-  offset?: number;
+  cursor?: string;
 }
 
 export interface ContentItemListResponse {
   items: ContentItem[];
   total: number;
   has_more: boolean;
-  next_offset?: string;
+  next_cursor?: string;
 }
 
 /**
@@ -47,18 +47,24 @@ export class ContentItemService {
    */
   async storeContentItem(contentItem: ContentItem): Promise<boolean> {
     try {
+      // Set stored_at server-side before persisting
+      const itemToStore: ContentItem = {
+        ...contentItem,
+        stored_at: new Date().toISOString()
+      };
+
       // Validate and sanitize the ContentItem
-      const validation = sanitizeContentItem(contentItem);
+      const validation = sanitizeContentItem(itemToStore);
       if (!validation.isValid) {
-        console.error('❌ ContentItem validation failed:', validation.errors);
+        console.error('❌ ContentItem validation failed:', validation.errors || 'Unknown validation error');
         return false;
       }
 
       // Validate schema version
-      validateSchemaVersion(contentItem);
+      validateSchemaVersion(validation.sanitizedData);
 
       // Generate storage key
-      const key = this.generateContentItemKey(contentItem.clip_id, contentItem.clip_created_at);
+      const key = this.generateContentItemKey(validation.sanitizedData.clip_id, validation.sanitizedData.clip_created_at);
       
       // Store in R2
       await this.env.R2_BUCKET.put(key, JSON.stringify(validation.sanitizedData), {
@@ -66,14 +72,14 @@ export class ContentItemService {
           contentType: 'application/json',
         },
         customMetadata: {
-          'schema-version': contentItem.schema_version,
-          'clip-id': contentItem.clip_id,
-          'created-at': contentItem.clip_created_at,
-          'processing-status': contentItem.processing_status,
+          'schema-version': validation.sanitizedData.schema_version,
+          'clip-id': validation.sanitizedData.clip_id,
+          'created-at': validation.sanitizedData.clip_created_at,
+          'processing-status': validation.sanitizedData.processing_status,
         },
       });
 
-      console.log(`✅ Stored ContentItem: ${contentItem.clip_id} at ${key}`);
+      console.log(`✅ Stored ContentItem: ${validation.sanitizedData.clip_id} at ${key}`);
       return true;
     } catch (error) {
       console.error('❌ Failed to store ContentItem:', error);
@@ -95,14 +101,14 @@ export class ContentItemService {
 
       const data = await object.json();
       
-      // Validate the retrieved data
-      const validation = validateContentItem(data);
-      if (!validation.isValid) {
-        console.error('❌ Retrieved ContentItem validation failed:', validation.errors);
+      // Sanitize the retrieved data
+      const sanitized = sanitizeContentItem(data);
+      if (!sanitized.isValid) {
+        console.error('❌ Retrieved ContentItem sanitization failed:', sanitized.errors || 'Unknown sanitization error');
         return null;
       }
 
-      return validation.sanitizedData as ContentItem;
+      return sanitized.sanitizedData as ContentItem;
     } catch (error) {
       console.error('❌ Failed to retrieve ContentItem:', error);
       return null;
@@ -110,67 +116,85 @@ export class ContentItemService {
   }
 
   /**
-   * List ContentItems with filtering and pagination
+   * List ContentItems with filtering and cursor-based pagination
    */
   async listContentItems(query: ContentItemQuery = {}): Promise<ContentItemListResponse> {
     try {
-      const { date_range, processing_status, content_category, limit = 50, offset: initialOffset = 0 } = query;
-      let offset = initialOffset;
+      const { date_range, processing_status, content_category, limit = 50, cursor } = query;
       
       // Build prefix for listing
       let prefix = 'recaps/content-items/';
+      
       if (date_range) {
-        const startDate = new Date(date_range.start);
-        const endDate = new Date(date_range.end);
-        
         // For date range queries, we need to list all relevant year/month folders
         const items: ContentItem[] = [];
         let total = 0;
         let hasMore = false;
+        let nextCursor: string | undefined;
         
         // Iterate through date range
+        const startDate = new Date(date_range.start);
+        const endDate = new Date(date_range.end);
         const currentDate = new Date(startDate);
+        
         while (currentDate <= endDate) {
           const year = currentDate.getFullYear();
           const month = String(currentDate.getMonth() + 1).padStart(2, '0');
           const monthPrefix = `recaps/content-items/${year}/${month}/`;
           
-          const monthObjects = await this.env.R2_BUCKET.list({ prefix: monthPrefix });
+          let monthCursor = cursor;
+          let monthHasMore = true;
           
-          for (const obj of monthObjects.objects) {
-            if (offset > 0) {
-              offset--;
-              continue;
-            }
+          while (monthHasMore && items.length < limit) {
+            const monthObjects = await this.env.R2_BUCKET.list({ 
+              prefix: monthPrefix,
+              limit: Math.min(100, limit - items.length),
+              cursor: monthCursor
+            });
             
-            if (items.length >= limit) {
-              hasMore = true;
-              break;
-            }
-            
-            try {
-              const object = await this.env.R2_BUCKET.get(obj.key);
-              if (object) {
-                const data = await object.json();
-                const validation = validateContentItem(data);
-                
-                if (validation.isValid) {
-                  const item = validation.sanitizedData as ContentItem;
-                  
-                  // Apply filters
-                  if (processing_status && item.processing_status !== processing_status) continue;
-                  if (content_category && item.content_category !== content_category) continue;
-                  if (date_range) {
-                    const itemDate = new Date(item.clip_created_at);
-                    if (itemDate < startDate || itemDate > endDate) continue;
-                  }
-                  
-                  items.push(item);
-                  total++;
-                }
+            for (const obj of monthObjects.objects) {
+              if (items.length >= limit) {
+                hasMore = true;
+                break;
               }
-            } catch (error) {
-              console.warn(`⚠️ Failed to process object ${obj.key}:`, error);
+              
+              try {
+                // Use customMetadata to filter by processing_status without full GET
+                const processingStatus = obj.customMetadata?.processing_status;
+                if (processing_status && processing_status !== processingStatus) {
+                  continue;
+                }
+                
+                const object = await this.env.R2_BUCKET.get(obj.key);
+                if (object) {
+                  const data = await object.json();
+                  const sanitized = sanitizeContentItem(data);
+                  
+                  if (sanitized.isValid) {
+                    const item = sanitized.sanitizedData as ContentItem;
+                    
+                    // Apply filters
+                    if (processing_status && item.processing_status !== processing_status) continue;
+                    if (content_category && item.content_category !== content_category) continue;
+                    if (date_range) {
+                      const itemDate = new Date(item.clip_created_at);
+                      if (itemDate < startDate || itemDate > endDate) continue;
+                    }
+                    
+                    items.push(item);
+                    total++;
+                  }
+                }
+              } catch (error) {
+                console.warn(`⚠️ Failed to process object ${obj.key}:`, error);
+              }
+            }
+            
+            monthHasMore = monthObjects.truncated;
+            monthCursor = monthObjects.cursor;
+            
+            if (monthHasMore && items.length < limit) {
+              nextCursor = monthObjects.cursor;
             }
           }
           
@@ -185,27 +209,34 @@ export class ContentItemService {
           items,
           total,
           has_more: hasMore,
+          next_cursor: nextCursor,
         };
       } else {
-        // Simple listing without date range
+        // Simple listing without date range using cursor-based pagination
         const objects = await this.env.R2_BUCKET.list({ 
           prefix,
-          limit: limit + offset + 1 // Get extra to check if there are more
+          limit,
+          cursor
         });
         
         const items: ContentItem[] = [];
         let total = 0;
         
-        for (let i = offset; i < Math.min(offset + limit, objects.objects.length); i++) {
-          const obj = objects.objects[i];
+        for (const obj of objects.objects) {
           try {
+            // Use customMetadata to filter by processing_status without full GET
+            const processingStatus = obj.customMetadata?.processing_status;
+            if (processing_status && processing_status !== processingStatus) {
+              continue;
+            }
+            
             const object = await this.env.R2_BUCKET.get(obj.key);
             if (object) {
               const data = await object.json();
-              const validation = validateContentItem(data);
+              const sanitized = sanitizeContentItem(data);
               
-              if (validation.isValid) {
-                const item = validation.sanitizedData as ContentItem;
+              if (sanitized.isValid) {
+                const item = sanitized.sanitizedData as ContentItem;
                 
                 // Apply filters
                 if (processing_status && item.processing_status !== processing_status) continue;
@@ -223,7 +254,8 @@ export class ContentItemService {
         return {
           items,
           total,
-          has_more: objects.objects.length > offset + limit,
+          has_more: objects.truncated,
+          next_cursor: objects.cursor,
         };
       }
     } catch (error) {
@@ -311,13 +343,9 @@ export class ContentItemService {
   }
 
   /**
-   * Count ContentItems by processing status
+   * Count ContentItems by processing status using R2 pagination scan
    */
   async getProcessingStatusCounts(): Promise<Record<ContentItem['processing_status'], number>> {
-    const statuses: ContentItem['processing_status'][] = [
-      'pending', 'audio_ready', 'transcribed', 'enhanced', 'ready_for_content'
-    ];
-    
     const counts: Record<ContentItem['processing_status'], number> = {
       pending: 0,
       audio_ready: 0,
@@ -326,9 +354,30 @@ export class ContentItemService {
       ready_for_content: 0,
     };
     
-    for (const status of statuses) {
-      const response = await this.listContentItems({ processing_status: status, limit: 1 });
-      counts[status] = response.total;
+    let cursor: string | undefined;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const objects = await this.env.R2_BUCKET.list({
+        prefix: 'recaps/content-items/',
+        limit: 1000,
+        cursor
+      });
+      
+      for (const obj of objects.objects) {
+        try {
+          // Read processing_status from customMetadata to avoid full GETs
+          const processingStatus = obj.customMetadata?.processing_status as ContentItem['processing_status'];
+          if (processingStatus && Object.prototype.hasOwnProperty.call(counts, processingStatus)) {
+            counts[processingStatus]++;
+          }
+        } catch (error) {
+          console.warn(`⚠️ Failed to process object ${obj.key} for status counting:`, error);
+        }
+      }
+      
+      hasMore = objects.truncated;
+      cursor = objects.cursor;
     }
     
     return counts;

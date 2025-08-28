@@ -2,6 +2,7 @@ import type { Environment } from '../types/index.js';
 import type { ContentItem, Transcript, GitHubContext } from '../types/content.js';
 import { ContentItemService } from './content-items.js';
 import { GitHubEventService } from './github-events.js';
+import { trackContentMigrationError } from '../utils/error-tracking.js';
 
 export interface MigrationResult {
   success: boolean;
@@ -44,22 +45,20 @@ export class ContentMigrationService {
       for (const clip of existingClips) {
         try {
           const contentItem = await this.convertClipToContentItem(clip);
-          if (contentItem) {
-            const success = await this.contentItemService.storeContentItem(contentItem);
-            if (success) {
-              result.migrated++;
-              console.log(`✅ Migrated clip: ${clip.id}`);
-            } else {
-              result.failed++;
-              result.errors.push(`Failed to store ContentItem for clip ${clip.id}`);
-            }
+          const success = await this.contentItemService.storeContentItem(contentItem);
+          if (success) {
+            result.migrated++;
+            console.log(`✅ Migrated clip: ${clip.id || clip.clip_id}`);
           } else {
             result.failed++;
-            result.errors.push(`Failed to convert clip ${clip.id} to ContentItem`);
+            const errorMsg = `Failed to store ContentItem for clip ${clip.id || clip.clip_id}`;
+            result.errors.push(errorMsg);
+            trackContentMigrationError('storage_failed', errorMsg, { clipId: clip.id || clip.clip_id });
           }
         } catch (error) {
           result.failed++;
-          const errorMsg = `Error migrating clip ${clip.id}: ${error}`;
+          const clipId = clip.id || clip.clip_id || 'unknown';
+          const errorMsg = `Error migrating clip ${clipId}: ${error instanceof Error ? error.message : String(error)}`;
           result.errors.push(errorMsg);
           console.error(errorMsg);
         }
@@ -107,14 +106,27 @@ export class ContentMigrationService {
 
   /**
    * Convert existing clip data to ContentItem format
+   * @throws {Error} When clip data is invalid or conversion fails
    */
-  private async convertClipToContentItem(clipData: any): Promise<ContentItem | null> {
+  private async convertClipToContentItem(clipData: any): Promise<ContentItem> {
     try {
       // Extract basic clip information
       const clipId = clipData.id || clipData.clip_id;
       if (!clipId) {
-        console.error('❌ Clip missing ID:', clipData);
-        return null;
+        // Track the error and throw a descriptive error
+        const errorMessage = `Clip data missing required 'id' or 'clip_id' field`;
+        const context = {
+          clipDataKeys: Object.keys(clipData),
+          clipDataSample: {
+            title: clipData.title,
+            url: clipData.url,
+            created_at: clipData.created_at,
+            broadcaster_name: clipData.broadcaster_name
+          }
+        };
+        
+        trackContentMigrationError('missing_clip_id', errorMessage, context);
+        throw new Error(`${errorMessage}. Available fields: ${Object.keys(clipData).join(', ')}. Clip data: ${JSON.stringify(context.clipDataSample)}`);
       }
 
       // Get transcript if available
@@ -157,8 +169,21 @@ export class ContentMigrationService {
 
       return contentItem;
     } catch (error) {
-      console.error('❌ Failed to convert clip to ContentItem:', error);
-      return null;
+      // Track the error and re-throw with additional context
+      const errorMessage = `Failed to convert clip to ContentItem`;
+      const context = {
+        clipId: clipData.id || clipData.clip_id,
+        clipDataKeys: Object.keys(clipData),
+        originalError: error instanceof Error ? error.message : String(error)
+      };
+      
+      trackContentMigrationError('conversion_failed', errorMessage, context);
+      
+      if (error instanceof Error) {
+        throw new Error(`${errorMessage}: ${error.message}. Clip ID: ${context.clipId}`);
+      } else {
+        throw new Error(`${errorMessage}: ${String(error)}. Clip ID: ${context.clipId}`);
+      }
     }
   }
 
@@ -268,6 +293,7 @@ export class ContentMigrationService {
 
   /**
    * Migrate a specific clip by ID
+   * @throws {Error} When clip is not found or migration fails
    */
   async migrateClipById(clipId: string): Promise<boolean> {
     try {
@@ -276,21 +302,29 @@ export class ContentMigrationService {
       const object = await this.env.R2_BUCKET.get(clipKey);
       
       if (!object) {
-        console.error(`❌ Clip not found: ${clipId}`);
-        return false;
+        const errorMessage = `Clip not found in storage`;
+        trackContentMigrationError('missing_clip_id', errorMessage, { clipId, clipKey });
+        throw new Error(`${errorMessage}: ${clipId} (key: ${clipKey})`);
       }
 
       const clipData = await object.json();
       const contentItem = await this.convertClipToContentItem(clipData);
       
-      if (contentItem) {
-        return await this.contentItemService.storeContentItem(contentItem);
+      const success = await this.contentItemService.storeContentItem(contentItem);
+      if (!success) {
+        const errorMessage = `Failed to store ContentItem for clip`;
+        trackContentMigrationError('storage_failed', errorMessage, { clipId });
+        throw new Error(`${errorMessage}: ${clipId}`);
       }
 
-      return false;
+      return true;
     } catch (error) {
-      console.error(`❌ Failed to migrate clip ${clipId}:`, error);
-      return false;
+      // Re-throw the error with additional context
+      if (error instanceof Error) {
+        throw new Error(`Failed to migrate clip ${clipId}: ${error.message}`);
+      } else {
+        throw new Error(`Failed to migrate clip ${clipId}: ${String(error)}`);
+      }
     }
   }
 

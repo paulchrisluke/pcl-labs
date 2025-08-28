@@ -45,7 +45,22 @@
 
 #### **1. ContentItem Schema**
 ```typescript
+import type { 
+  ISODateTimeString, 
+  GitHubContext, 
+  Transcript, 
+  TranscriptSegment 
+} from '../types/index.js';
+
+export type ContentCategory = 'development' | 'gaming' | 'tutorial' | 'review' | 'other';
+export type Platform = 'twitch' | 'youtube' | 'unknown';
+export type ProcessingStatus = 'pending' | 'queued' | 'audio_ready' | 'transcribed' | 'enhanced' | 'ready_for_content' | 'failed';
+
 export interface ContentItem {
+  // Schema versioning
+  schema_version: '1.0.0';
+  content_item_id: string;
+  
   // Core clip data
   clip_id: string;
   clip_title: string;
@@ -57,70 +72,118 @@ export interface ContentItem {
   clip_created_at: ISODateTimeString;
   broadcaster_name: string;
   creator_name: string;
+  platform: Platform;
   
-  // Processing status
-  processing_status: 'pending' | 'audio_ready' | 'transcribed' | 'enhanced' | 'ready_for_content';
+  // Processing status with enhanced states
+  processing_status: ProcessingStatus;
   audio_file_url?: string;
-  transcript?: {
-    text: string;
-    segments: TranscriptSegment[];
-    language: string;
-    redacted: boolean;
-  };
+  transcript?: Transcript;
   
   // GitHub context (enhanced data)
-  github_context?: {
-    linked_prs: LinkedPullRequest[];
-    linked_commits: LinkedCommit[];
-    linked_issues: LinkedIssue[];
-    confidence_score: number;
-    match_reason: MatchReason;
-  };
+  github_context?: GitHubContext;
   
   // Content generation metadata
   content_score?: number;
   content_tags?: string[];
-  content_category?: 'development' | 'gaming' | 'tutorial' | 'review';
+  content_category?: ContentCategory;
+  
+  // Error handling
+  error?: {
+    code: string;
+    message: string;
+    occurred_at: ISODateTimeString;
+  };
   
   // Timestamps
   stored_at: ISODateTimeString;
   enhanced_at?: ISODateTimeString;
   content_ready_at?: ISODateTimeString;
+  updated_at?: ISODateTimeString;
 }
 ```
 
 #### **2. Content Generation API**
 ```typescript
-// Request schema
+import type { ISODateTimeString, ContentCategory } from '../types/index.js';
+
+// Request schema with pagination, sorting, and async support
 export interface ContentGenerationRequest {
+  // Pagination and sorting
+  page?: number; // Default: 1
+  limit?: number; // Default: 20, max: 100
+  sort_by?: 'created_at' | 'view_count' | 'content_score' | 'duration';
+  sort_order?: 'asc' | 'desc'; // Default: 'desc'
+  
+  // Date range
   date_range: {
     start: ISODateTimeString;
     end: ISODateTimeString;
   };
+  
+  // Filters
   filters?: {
     min_views?: number;
     min_duration?: number;
     max_duration?: number;
-    categories?: string[];
+    categories?: ContentCategory[]; // Use shared ContentCategory enum
     min_confidence?: number;
+    platform?: 'twitch' | 'youtube' | 'unknown';
+    processing_status?: ProcessingStatus[];
   };
+  
+  // Content generation parameters
   content_type: 'daily_recap' | 'weekly_summary' | 'topic_focus';
   repository?: string;
+  
+  // Async processing and idempotency
+  mode?: 'sync' | 'async'; // Default: 'sync'
+  idempotency_key?: string; // For replay protection
 }
 
-// Response schema
+// Response schema with structured pagination and async support
 export interface ContentGenerationResponse {
-  content_items: ContentItem[];
+  // Async job information (only present when mode='async')
+  job_id?: string;
+  job_status?: 'queued' | 'processing' | 'completed' | 'failed';
+  
+  // Content items (only present in sync mode or when job_status='completed')
+  content_items?: ContentItem[];
+  
+  // Structured date range
+  date_range: {
+    start: ISODateTimeString;
+    end: ISODateTimeString;
+  };
+  
+  // Pagination metadata
+  pagination: {
+    total_items: number;
+    total_pages: number;
+    current_page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+  
+  // Summary statistics
   summary: {
     total_clips: number;
     total_prs: number;
     total_commits: number;
     total_issues: number;
-    date_range: string;
   };
-  suggested_title: string;
-  suggested_tags: string[];
-  content_score: number;
+  
+  // Content suggestions (only in sync mode or completed async jobs)
+  suggested_title?: string;
+  suggested_tags?: ContentCategory[]; // Align with ContentCategory enum
+  content_score?: number;
+  
+  // Error information (only present on failure)
+  error?: {
+    code: string;
+    message: string;
+    occurred_at: ISODateTimeString;
+  };
 }
 ```
 
@@ -172,6 +235,12 @@ export interface ContentGenerationResponse {
 - **AI Integration**: Workers AI for content scoring and generation
 - **GitHub Integration**: Existing webhook and API infrastructure
 
+#### **Performance & Reliability Requirements**
+- **Indexing**: KV/D1 indexes for efficient queries; avoid R2 list scans
+- **Replay Protection**: Enforce idempotency keys and key rotation
+- **Cost Controls**: Add egress and Workers AI budget caps
+- **Monitoring**: Comprehensive observability for all pipeline stages
+
 ### Files to Create/Modify
 - `src/services/content-items.ts` - New unified data service
 - `src/types/content.ts` - ContentItem and generation types
@@ -184,8 +253,15 @@ export interface ContentGenerationResponse {
 - **Data Organization**: All clips in unified ContentItem format
 - **Content Generation**: Working API endpoint for blog post generation
 - **GitHub Integration**: Enhanced clips with proper GitHub context
-- **Performance**: Real-time processing with <5s response times
 - **Quality**: AI-scored content with confidence metrics
+
+#### **Performance SLOs**
+- **Synchronous Request Acknowledgement**: P95 < 200ms, P99 < 500ms
+- **Async Content Generation**: P95 < 3s, P99 < 6s
+- **Index Lookup Performance**: P95 < 50ms, P99 < 200ms
+- **End-to-End User-Facing**: P95 < 2s, P99 < 5s
+
+**Measurement**: 24-hour rolling window using synthetic + real-user telemetry
 
 ### Migration Strategy
 - **Brand new app**: Can drop existing data if needed

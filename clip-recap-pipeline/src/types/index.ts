@@ -40,6 +40,9 @@ export type ISODateTimeString = string;
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 export type MatchReason = 'temporal_proximity' | 'content_analysis' | 'manual_override';
 
+// Content categorization
+export type ContentCategory = 'development' | 'gaming' | 'tutorial' | 'review' | 'other';
+
 // GitHub event action types
 export type PullRequestAction = 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
 

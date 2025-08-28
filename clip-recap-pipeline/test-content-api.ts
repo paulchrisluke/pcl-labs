@@ -8,25 +8,25 @@
 const WORKER_URL = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
 
 // Test HMAC signature generation
-function generateHmacSignature(body: string, timestamp: string, nonce: string, secret: string): string {
+async function generateHmacSignature(body: string, timestamp: string, nonce: string, secret: string): Promise<string> {
   const payload = `${body}${timestamp}${nonce}`;
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
   const messageData = encoder.encode(payload);
   
-  return crypto.subtle.importKey(
+  const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyData,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
-  ).then(cryptoKey => 
-    crypto.subtle.sign('HMAC', cryptoKey, messageData)
-  ).then(signature => 
-    Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
   );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 async function testContentAPI() {

@@ -174,7 +174,7 @@ export class BlogGeneratorService {
     sections.forEach((section, index) => {
       const sectionNumber = index + 1;
       
-      sectionsContent += `## ${sectionNumber}. ${section.title}\n\n`;
+      sectionsContent += `## ${sectionNumber}. ${section.title} {#section-${sectionNumber}}\n\n`;
 
       // Add clip embed if available
       if (section.clip_url) {
@@ -221,12 +221,14 @@ export class BlogGeneratorService {
 
     const clipId = clipIdMatch[1];
     
-    return `<div class="clip-embed">\n`;
-    return `  <iframe src="https://clips.twitch.tv/embed?clip=${clipId}&parent=paulchrisluke.com" `;
-    return `          width="640" height="360" frameborder="0" scrolling="no" `;
-    return `          allowfullscreen></iframe>\n`;
-    return `  <p><a href="${section.clip_url}" target="_blank">Watch on Twitch</a></p>\n`;
-    return `</div>\n\n`;
+    return `<div class="clip-embed">
+  <iframe src="https://clips.twitch.tv/embed?clip=${clipId}&parent=paulchrisluke.com" 
+          width="640" height="360" frameborder="0" scrolling="no" 
+          allowfullscreen></iframe>
+  <p><a href="${section.clip_url}" target="_blank">Watch on Twitch</a></p>
+</div>
+
+`;
   }
 
   /**
@@ -410,7 +412,7 @@ export class BlogGeneratorService {
   async listBlogPosts(): Promise<string[]> {
     try {
       const objects = await this.env.R2_BUCKET.list({ prefix: 'blog-posts/' });
-      return objects.objects.map(obj => obj.key.replace('blog-posts/', '').replace('.md', ''));
+      return objects.objects.map((obj: any) => obj.key.replace('blog-posts/', '').replace('.md', ''));
     } catch (error) {
       console.error('❌ Failed to list blog posts:', error);
       return [];

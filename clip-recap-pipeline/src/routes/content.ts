@@ -1,4 +1,4 @@
-import type { Environment } from '../types/index.js';
+import type { Environment, ContentCategory } from '../types/index.js';
 import type { ContentGenerationRequest, ContentGenerationResponse, RunStatus } from '../types/content.js';
 import { ContentItemService } from '../services/content-items.js';
 import { ContentMigrationService } from '../services/content-migration.js';
@@ -6,14 +6,18 @@ import { ManifestBuilderService } from '../services/manifest-builder.js';
 import { BlogGeneratorService } from '../services/blog-generator.js';
 import { AIJudgeService } from '../services/ai-judge.js';
 import { requireHmacAuth } from '../utils/auth.js';
+import { errorTracker } from '../utils/error-tracking.js';
+import { ulid } from 'ulid';
 
 /**
  * Generate ULID for run tracking
+ * Uses the 'ulid' library which implements the ULID spec correctly:
+ * - 48-bit timestamp (10 chars) + 80-bit randomness (16 chars)
+ * - Crockford base32 encoding for lexicographic ordering
+ * - Cryptographically strong entropy
  */
 function generateULID(): string {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 15);
-  return `${timestamp.toString(36)}${random}`;
+  return ulid();
 }
 
 /**
@@ -90,6 +94,11 @@ export async function handleContentRoutes(
       return await handleJudgeContent(request, env, aiJudge);
     }
 
+    // Error statistics endpoint
+    if (path === '/api/content/error-stats' && method === 'GET') {
+      return await handleErrorStats(request, env);
+    }
+
     return new Response('Not Found', { status: 404 });
   } catch (error) {
     console.error('❌ Content API error:', error);
@@ -113,13 +122,13 @@ async function handleContentGeneration(
   contentItemService: ContentItemService
 ): Promise<Response> {
   // Check authentication
-  const body = await request.text();
-  const authResponse = await requireHmacAuth(request, env, body);
+  const authResponse = await requireHmacAuth(request, env);
   if (authResponse) {
     return authResponse;
   }
 
   try {
+    const body = await request.text();
     const requestData: ContentGenerationRequest = JSON.parse(body);
 
     // Validate request
@@ -207,16 +216,54 @@ async function handleListContentItems(
 
   try {
     const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get('limit') || '50');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
-    const processingStatus = url.searchParams.get('processing_status') as any;
-    const contentCategory = url.searchParams.get('content_category') as any;
+    
+    // Validate and parse limit parameter
+    const limitParam = url.searchParams.get('limit') || '50';
+    const limit = parseInt(limitParam);
+    if (isNaN(limit) || limit < 1 || limit > 1000) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid limit parameter. Must be a number between 1 and 1000.'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Validate and parse cursor parameter
+    const cursor = url.searchParams.get('cursor') || undefined;
+    
+    // Validate processing_status parameter
+    const processingStatus = url.searchParams.get('processing_status');
+    const validProcessingStatuses = ['pending', 'audio_ready', 'transcribed', 'enhanced', 'ready_for_content'] as const;
+    if (processingStatus && !validProcessingStatuses.includes(processingStatus as any)) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Invalid processing_status. Must be one of: ${validProcessingStatuses.join(', ')}`
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Validate content_category parameter
+    const contentCategory = url.searchParams.get('content_category');
+    const validContentCategories: ContentCategory[] = ['development', 'gaming', 'tutorial', 'review', 'other'];
+    if (contentCategory && !validContentCategories.includes(contentCategory as any)) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Invalid content_category. Must be one of: ${validContentCategories.join(', ')}`
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     const response = await contentItemService.listContentItems({
       limit,
-      offset,
-      processing_status: processingStatus,
-      content_category: contentCategory,
+      cursor,
+      processing_status: processingStatus as typeof validProcessingStatuses[number] | undefined,
+              content_category: contentCategory as ContentCategory | undefined,
     });
 
     return new Response(JSON.stringify({
@@ -316,18 +363,44 @@ async function handleMigration(
 
   try {
     const body = await request.text();
-    const requestData = body ? JSON.parse(body) : {};
+    let requestData: any = {};
+    
+    if (body.trim()) {
+      try {
+        requestData = JSON.parse(body);
+      } catch (parseError) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     let result;
     if (requestData.clip_id) {
       // Migrate specific clip
-      result = await migrationService.migrateClipById(requestData.clip_id);
-      return new Response(JSON.stringify({
-        success: result,
-        data: { migrated: result ? 1 : 0, failed: result ? 0 : 1 }
-      }), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      try {
+        result = await migrationService.migrateClipById(requestData.clip_id);
+        return new Response(JSON.stringify({
+          success: true,
+          data: { migrated: 1, failed: 0 }
+        }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Migration failed: ${errorMessage}`,
+          data: { migrated: 0, failed: 1 }
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     } else {
       // Migrate all clips
       result = await migrationService.migrateExistingClips();
@@ -484,14 +557,36 @@ async function handleBuildManifest(
   manifestBuilder: ManifestBuilderService
 ): Promise<Response> {
   // Check authentication
-  const body = await request.text();
-  const authResponse = await requireHmacAuth(request, env, body);
+  const authResponse = await requireHmacAuth(request, env);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const requestData = JSON.parse(body);
+    const body = await request.text();
+    let requestData: any;
+    
+    if (body.trim()) {
+      try {
+        requestData = JSON.parse(body);
+      } catch (parseError) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Request body is required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Validate request
     if (!requestData.date) {
@@ -538,14 +633,36 @@ async function handleGenerateBlog(
   blogGenerator: BlogGeneratorService
 ): Promise<Response> {
   // Check authentication
-  const body = await request.text();
-  const authResponse = await requireHmacAuth(request, env, body);
+  const authResponse = await requireHmacAuth(request, env);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const requestData = JSON.parse(body);
+    const body = await request.text();
+    let requestData: any;
+    
+    if (body.trim()) {
+      try {
+        requestData = JSON.parse(body);
+      } catch (parseError) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Request body is required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Validate request
     if (!requestData.manifest) {
@@ -594,14 +711,36 @@ async function handleJudgeContent(
   aiJudge: AIJudgeService
 ): Promise<Response> {
   // Check authentication
-  const body = await request.text();
-  const authResponse = await requireHmacAuth(request, env, body);
+  const authResponse = await requireHmacAuth(request, env);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const requestData = JSON.parse(body);
+    const body = await request.text();
+    let requestData: any;
+    
+    if (body.trim()) {
+      try {
+        requestData = JSON.parse(body);
+      } catch (parseError) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Request body is required'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Validate request
     if (!requestData.manifest) {
@@ -635,6 +774,41 @@ async function handleJudgeContent(
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to judge content'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle error statistics request
+ */
+async function handleErrorStats(
+  request: Request,
+  env: Environment
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const stats = errorTracker.getErrorStats();
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: stats
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Error stats error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to get error statistics'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

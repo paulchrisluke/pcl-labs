@@ -1,5 +1,5 @@
 // Content generation types based on JSON schemas
-import type { ISODateTimeString, ConfidenceLevel, MatchReason } from './index.js';
+import type { ISODateTimeString, MatchReason, ContentCategory } from './index.js';
 
 // Transcript segment type
 export interface TranscriptSegment {
@@ -10,7 +10,7 @@ export interface TranscriptSegment {
 
 // Transcript type
 export interface Transcript {
-  text: string | null;
+  text?: string | null;
   language: string;
   redacted: boolean;
   segments: TranscriptSegment[];
@@ -22,7 +22,7 @@ export interface GitHubContext {
   linked_commits: string[];
   linked_issues: string[];
   confidence_score: number; // 0-1
-  match_reason: string;
+  match_reason: MatchReason;
 }
 
 // ContentItem - row-level truth (one per clip)
@@ -31,27 +31,27 @@ export interface ContentItem {
   clip_id: string;
   clip_title: string;
   clip_url: string;
-  clip_embed_url?: string;
-  clip_thumbnail_url?: string;
+  clip_embed_url?: string | null;
+  clip_thumbnail_url?: string | null;
   clip_duration: number;
-  clip_view_count?: number;
+  clip_view_count?: number | null;
   clip_created_at: ISODateTimeString;
-  broadcaster_name?: string;
-  creator_name?: string;
+  broadcaster_name?: string | null;
+  creator_name?: string | null;
 
   processing_status: 'pending' | 'audio_ready' | 'transcribed' | 'enhanced' | 'ready_for_content';
-  audio_file_url?: string;
+  audio_file_url?: string | null;
 
-  transcript?: Transcript;
-  github_context?: GitHubContext;
+  transcript?: Transcript | null;
+  github_context?: GitHubContext | null;
 
-  content_score?: number;
-  content_tags?: string[];
-  content_category?: 'development' | 'gaming' | 'tutorial' | 'review';
+  content_score?: number | null;
+  content_tags?: string[] | null;
+  content_category?: ContentCategory | null;
 
   stored_at: ISODateTimeString;
-  enhanced_at?: ISODateTimeString;
-  content_ready_at?: ISODateTimeString;
+  enhanced_at?: ISODateTimeString | null;
+  content_ready_at?: ISODateTimeString | null;
 }
 
 // Section type for manifest
@@ -62,27 +62,27 @@ export interface ManifestSection {
   bullets: string[]; // 2-4 items, max 140 chars each
   paragraph: string;
   score: number;
-  repo?: string;
-  pr_links?: string[]; // URIs
-  clip_url?: string;
-  vod_jump?: string; // URI
+  repo?: string | null;
+  pr_links?: string[] | null; // URIs
+  clip_url?: string | null;
+  vod_jump?: string | null; // URI
   alignment_status: 'exact' | 'estimated' | 'missing';
   start_s: number;
   end_s: number;
-  entities?: string[];
+  entities?: string[] | null;
 }
 
 // Judge result type
 export interface JudgeResult {
-  overall?: number;
-  per_axis?: Record<string, number>;
-  version?: string;
+  overall?: number | null;
+  per_axis?: Record<string, number> | null;
+  version?: string | null;
 }
 
 // Social blurbs type
 export interface SocialBlurbs {
-  bluesky?: string; // max 260 chars
-  threads?: string; // max 260 chars
+  bluesky?: string | null; // max 260 chars
+  threads?: string | null; // max 260 chars
 }
 
 // Manifest - day-level composition
@@ -92,13 +92,13 @@ export interface Manifest {
   date_utc: ISODateTimeString;
   tz: string;
   title: string;
-  headline_short: string; // max 60 chars
+  headline_short?: string; // max 60 chars
   summary: string; // max 180 chars
-  description?: string;
-  category: 'development';
+  description?: string | null;
+  category: ContentCategory;
   tags: string[];
-  repos?: string[];
-  keywords?: string;
+  repos?: string[] | null;
+  keywords?: string | null;
   clip_ids: string[];
 
   sections: ManifestSection[];
@@ -122,7 +122,7 @@ export interface ContentGenerationRequest {
     min_views?: number;
     min_duration?: number;
     max_duration?: number;
-    categories?: string[];
+    categories?: ContentCategory[];
     min_confidence?: number;
   };
   content_type: 'daily_recap' | 'weekly_summary' | 'topic_focus';

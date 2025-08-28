@@ -131,19 +131,35 @@ export function createForbiddenResponse(message: string = 'Forbidden'): Response
 /**
  * HMAC authentication middleware
  * Rejects requests with Authorization header before any HMAC validation
+ * 
+ * @param request - The request to authenticate
+ * @param env - Environment variables
+ * @param body - Optional body string. If not provided, will read from request
+ * @returns Response if authentication failed, null if successful
  */
 export async function requireHmacAuth(
   request: Request,
   env: Environment,
-  body: string = ''
+  body?: string
 ): Promise<Response | null> {
   // Check for Authorization header first - reject immediately if present
   if (request.headers.has('authorization')) {
     return createUnauthorizedResponse('Authorization header not allowed with HMAC authentication');
   }
   
+  // If body is not provided, read it from a cloned request to avoid consuming the stream
+  let requestBody = body || '';
+  if (!body) {
+    try {
+      const clonedRequest = request.clone();
+      requestBody = await clonedRequest.text();
+    } catch (error) {
+      return createUnauthorizedResponse('Failed to read request body for authentication');
+    }
+  }
+  
   // Proceed with HMAC validation
-  const isValid = await verifyHmacSignature(request, env, body);
+  const isValid = await verifyHmacSignature(request, env, requestBody);
   if (!isValid) {
     return createUnauthorizedResponse('HMAC authentication required');
   }
