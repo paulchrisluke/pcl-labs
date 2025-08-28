@@ -1,6 +1,40 @@
 import type { Environment } from '../types/index.js';
 
 /**
+ * Constant-time byte comparison to prevent timing attacks
+ * Returns true only if both arrays have the same length and all bytes match
+ */
+function constantTimeCompare(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  
+  return result === 0;
+}
+
+/**
+ * Convert hex string to Uint8Array
+ */
+function hexToBytes(hex: string): Uint8Array {
+  const normalized = hex.toLowerCase();
+  if (normalized.length % 2 !== 0) {
+    throw new Error('Hex string must have even length');
+  }
+  
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < normalized.length; i += 2) {
+    bytes[i / 2] = parseInt(normalized.substr(i, 2), 16);
+  }
+  
+  return bytes;
+}
+
+/**
  * Verify admin authentication using Bearer token
  * Uses constant-time comparison for security
  */
@@ -20,10 +54,10 @@ export function verifyAdminAuth(request: Request, env: Environment): boolean {
   }
   
   // Use constant-time comparison to prevent timing attacks
-  return crypto.subtle.timingSafeEqual(
-    new TextEncoder().encode(token),
-    new TextEncoder().encode(adminToken)
-  );
+  const tokenBytes = new TextEncoder().encode(token);
+  const adminTokenBytes = new TextEncoder().encode(adminToken);
+  
+  return constantTimeCompare(tokenBytes, adminTokenBytes);
 }
 
 /**
@@ -77,11 +111,40 @@ export async function verifyHmacSignature(
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
   
-  // Constant-time comparison
-  return crypto.subtle.timingSafeEqual(
-    new TextEncoder().encode(signature),
-    new TextEncoder().encode(expectedHex)
-  );
+  // Normalize both signatures to lowercase and convert to bytes for constant-time comparison
+  try {
+    const signatureBytes = hexToBytes(signature.toLowerCase());
+    const expectedBytes = hexToBytes(expectedHex.toLowerCase());
+    
+    return constantTimeCompare(signatureBytes, expectedBytes);
+  } catch {
+    // If hex conversion fails, return false
+    return false;
+  }
+}
+
+/**
+ * Verify admin authentication using either Bearer token or X-API-Key
+ * Uses constant-time comparison for security
+ */
+export function verifyAdminAuthWithApiKey(request: Request, env: Environment): boolean {
+  const authHeader = request.headers.get('authorization');
+  const apiKey = request.headers.get('x-api-key');
+  
+  // Check Bearer token first
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return verifyAdminAuth(request, env);
+  }
+  
+  // Check X-API-Key with constant-time comparison
+  if (apiKey && env.ADMIN_KEY) {
+    const apiKeyBytes = new TextEncoder().encode(apiKey);
+    const adminKeyBytes = new TextEncoder().encode(env.ADMIN_KEY);
+    
+    return constantTimeCompare(apiKeyBytes, adminKeyBytes);
+  }
+  
+  return false;
 }
 
 /**

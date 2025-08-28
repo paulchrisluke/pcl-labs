@@ -1693,11 +1693,9 @@ export default {
         const authHeader = request.headers.get('authorization');
         const apiKey = request.headers.get('x-api-key');
         
-        // Check for valid authorization (admin key or Bearer token)
-        const isAuthorized = (
-          (apiKey && apiKey === env.ADMIN_KEY) ||
-          (authHeader && authHeader.startsWith('Bearer '))
-        );
+        // Check for valid authorization using centralized verification
+        const { verifyAdminAuthWithApiKey } = await import('./utils/auth.js');
+        const isAuthorized = verifyAdminAuthWithApiKey(request, env);
         
         if (!isAuthorized) {
           console.warn(`🚨 Unauthorized Whisper API access attempt for clip: ${clipId}`);
