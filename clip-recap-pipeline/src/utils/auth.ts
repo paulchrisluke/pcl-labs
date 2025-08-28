@@ -148,8 +148,8 @@ export async function requireHmacAuth(
   }
   
   // If body is not provided, read it from a cloned request to avoid consuming the stream
-  let requestBody = body || '';
-  if (!body) {
+  let requestBody = body ?? '';
+  if (body === undefined) {
     try {
       const clonedRequest = request.clone();
       requestBody = await clonedRequest.text();
