@@ -29,7 +29,7 @@ export class TranscriptionService {
       // IP addresses (validated octets 0-255)
       .replace(/\b(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b/g, '[ip]')
       // API keys/tokens (20+ chars with at least one digit and one letter, allowing common punctuation)
-      .replace(/\b(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9\-_.]{20,}\b/g, '[token]')
+      .replace(/\b(?=[A-Za-z0-9._-]{20,}\b)(?=[A-Za-z0-9._-]*[A-Za-z])(?=[A-Za-z0-9._-]*\d)[A-Za-z0-9._-]+\b/g, '[token]')
       // URLs with sensitive data
       .replace(/https?:\/\/[^\s]+(?:password|token|key|secret)[^\s]*/gi, '[url]')
       // Database connection strings
