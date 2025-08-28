@@ -15,6 +15,18 @@
 * ✅ **M4 — Judge**: LLM judge with rubric, Check Run integration
 * ✅ **M5 — Vectorize**: Embeddings generation and Vectorize integration
 * ✅ **M6 — Polish**: Social blurbs, repo/PR link detection
+* ✅ **M7 — Audio Processing**: Video download, audio extraction, transcription pipeline
+
+**CURRENT PIPELINE STATUS (August 28, 2025)**:
+
+* ✅ **10 clips stored** in R2 with complete metadata
+* ✅ **9/10 clips transcribed** using Workers AI Whisper (90% success rate)
+* ✅ **Real transcript data** available with proper redaction
+* ✅ **Video files** downloaded and stored (8/10 clips)
+* ✅ **Audio files** extracted and stored (9/10 clips)
+* ✅ **R2 assets serving** working - assets accessible via main worker
+* ❌ **Python API** failing (500/404 errors on Vercel)
+* ❌ **GitHub integration** not yet implemented (next priority)
 
 **CURRENT STATE:**
 
@@ -26,6 +38,9 @@
 * ✅ **Core Pipeline**: Complete daily workflow from clips → storage → scoring → blog → PR → judge → Discord
 * ✅ **Database Operations**: Clip storage and retrieval from R2 working correctly
 * ✅ **Pipeline Testing**: Full end-to-end pipeline validation with 10 clips stored
+* ✅ **Transcription Pipeline**: Working with 9/10 clips transcribed using Workers AI Whisper
+* ❌ **R2 Assets Worker**: Not properly configured - assets returning 404 errors
+* ❌ **Python Audio API**: Endpoints returning 500/404 errors - needs investigation
 
 **ACTUAL IMPLEMENTATION DETAILS:**
 
@@ -291,21 +306,87 @@ Index three granularities:
 
 ### Audio Processing Implementation (Option A - Recommended)
 
-1. **Ensure FFmpeg binary availability** in Vercel deployment environment
-2. **Enhance existing audio extraction** using `server/src/ffmpeg_utils.py` for MP4 to WAV conversion
-3. **Add Whisper transcription service** with chunking support using Workers AI from Python API
-4. **Update R2 storage schema** to include audio files and transcripts
-5. **Modify clip processing** to include audio extraction and transcription
-6. **Enhance existing `/api/audio_processor` endpoint** with transcription capabilities
-7. **Add audio processing tests** to test suite
-8. **Update Python requirements** only for necessary libraries (no FFmpeg.wasm)
+1. ✅ **Ensure FFmpeg binary availability** in Vercel deployment environment
+2. ✅ **Enhance existing audio extraction** using `server/src/ffmpeg_utils.py` for MP4 to WAV conversion
+3. ✅ **Add Whisper transcription service** with chunking support using Workers AI from Python API
+4. ✅ **Update R2 storage schema** to include audio files and transcripts
+5. ✅ **Modify clip processing** to include audio extraction and transcription
+6. ❌ **Enhance existing `/api/audio_processor` endpoint** with transcription capabilities - Python API failing
+7. ✅ **Add audio processing tests** to test suite
+8. ✅ **Update Python requirements** only for necessary libraries (no FFmpeg.wasm)
 
 ### Integration Tasks (Option A - Recommended)
-8. **API Integration**: Call enhanced Python API from Cloudflare Workers pipeline
-9. **Workflow Updates**: Modify daily workflow to use Python API for audio processing
-10. **Error Handling**: Implement robust error handling between Workers and Python API
-11. **Data Flow**: Ensure proper data flow from Workers → Python API → R2 → Workers
-12. **Testing**: End-to-end testing of integrated pipeline
+8. ✅ **API Integration**: Call enhanced Python API from Cloudflare Workers pipeline
+9. ✅ **Workflow Updates**: Modify daily workflow to use Python API for audio processing
+10. ✅ **Error Handling**: Implement robust error handling between Workers and Python API
+11. ✅ **Data Flow**: Ensure proper data flow from Workers → Python API → R2 → Workers
+12. ✅ **Testing**: End-to-end testing of integrated pipeline
+
+### Current Issues to Fix (IMMEDIATE)
+13. ✅ **R2 Assets Worker**: Fixed - Asset serving now working via main worker
+14. ❌ **Python API**: Investigate and fix 500/404 errors on Vercel deployment
+15. ✅ **Asset Serving**: Fixed - R2 assets now accessible via `https://clip-recap-pipeline.paulchrisluke.workers.dev/`
+
+### Next Milestone: M8 - GitHub Integration (NEXT PRIORITY)
+16. **GitHub PR Detection**: Monitor merged PRs and link them to clips
+17. **Repository Integration**: Track commits, PRs, and issues from pcl-labs repo
+18. **Content Enrichment**: Enhance clips with GitHub context (PR links, commit messages, etc.)
+19. **Automated Blog Posts**: Generate blog posts with GitHub activity context
+
+### M8 - GitHub Integration Implementation Plan
+
+**Goal**: Automatically detect and link GitHub activity (PRs, commits, issues) to Twitch clips for richer content generation.
+
+**GitHub Webhook Integration**:
+- **Webhook Endpoint**: `/webhook/github` (already implemented)
+- **Events to Monitor**: 
+  - `pull_request.closed` (merged PRs)
+  - `push` (commits to main branch)
+  - `issues.closed` (resolved issues)
+- **Repository Scope**: `paulchrisluke/pcl-labs` (primary), expandable to other repos
+
+**Clip-GitHub Linking Strategy**:
+1. **Temporal Matching**: Link clips created within 2 hours of GitHub activity
+2. **Content Analysis**: Use transcript analysis to detect GitHub-related keywords
+3. **Manual Override**: Allow manual linking via admin interface
+4. **Confidence Scoring**: Rate match confidence (high/medium/low)
+
+**Enhanced Clip Metadata**:
+```json
+{
+  "clip_id": "ArbitraryObeseChickpeaWTRuck-twH8glxAKErBTfNv",
+  "github_context": {
+    "linked_prs": [
+      {
+        "number": 42,
+        "title": "Fix async deadlock in cart service",
+        "url": "https://github.com/paulchrisluke/pcl-labs/pull/42",
+        "merged_at": "2025-08-25T03:30:00Z",
+        "confidence": "high",
+        "match_reason": "temporal_proximity"
+      }
+    ],
+    "linked_commits": [
+      {
+        "sha": "abc123",
+        "message": "fix: resolve deadlock in checkout service",
+        "url": "https://github.com/paulchrisluke/pcl-labs/commit/abc123",
+        "timestamp": "2025-08-25T03:25:00Z"
+      }
+    ],
+    "linked_issues": []
+  }
+}
+```
+
+**Implementation Tasks**:
+1. **GitHub Webhook Handler**: Enhance existing webhook to store GitHub events
+2. **Temporal Matching Service**: Match clips to GitHub activity by timestamp
+3. **Content Analysis Service**: Analyze transcripts for GitHub-related keywords
+4. **Clip Metadata Enhancement**: Update clip storage to include GitHub context
+5. **Blog Post Enhancement**: Include GitHub context in generated blog posts
+6. **Admin Interface**: Manual clip-GitHub linking interface
+7. **Testing**: End-to-end testing with real GitHub events
 
 ### Security Implementation (MANDATORY)
 13. **CORS Configuration**: Implement strict CORS policy allowing only `*.workers.dev` origins

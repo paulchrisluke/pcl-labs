@@ -74,30 +74,6 @@ async function getClipAudioStatus(clipId: string, env: Environment) {
 
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
-    // Validate required environment variables for security
-    if (!env.HMAC_SHARED_SECRET) {
-      console.error('🚨 HMAC_SHARED_SECRET environment variable is required');
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Server configuration error'
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Validate admin authentication tokens (at least one must be present)
-    if (!env.ADMIN_FORCE_TRANSCRIBE_TOKEN && !env.ADMIN_KEY) {
-      console.error('🚨 Either ADMIN_FORCE_TRANSCRIBE_TOKEN or ADMIN_KEY environment variable is required');
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Server configuration error'
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
     const url = new URL(request.url);
     
     // Health check endpoint
@@ -115,6 +91,51 @@ export default {
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    // Asset serving endpoints (clips, audio, transcripts) - MUST come before API routes
+    if (url.pathname.startsWith('/clips/') || url.pathname.startsWith('/audio/') || url.pathname.startsWith('/transcripts/')) {
+      try {
+        const filePath = url.pathname.substring(1); // Remove leading slash
+        console.log(`📁 Serving asset: ${filePath}`);
+        
+        // Basic path validation to prevent directory traversal
+        if (filePath.includes('..') || filePath.includes('//')) {
+          return new Response('Invalid path', { status: 400 });
+        }
+        
+        const fileObj = await env.R2_BUCKET.get(filePath);
+        
+        if (!fileObj) {
+          return new Response('File not found', { status: 404 });
+        }
+        
+        // Determine content type based on file extension
+        let contentType = 'application/octet-stream';
+        if (filePath.endsWith('.mp4')) contentType = 'video/mp4';
+        else if (filePath.endsWith('.wav')) contentType = 'audio/wav';
+        else if (filePath.endsWith('.raw')) contentType = 'audio/raw';
+        else if (filePath.endsWith('.json')) contentType = 'application/json';
+        else if (filePath.endsWith('.txt')) contentType = 'text/plain';
+        else if (filePath.endsWith('.vtt')) contentType = 'text/vtt';
+        
+        return new Response(fileObj.body, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Length': fileObj.size.toString(),
+            'Cache-Control': 'public, max-age=3600',
+            'Accept-Ranges': 'bytes',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD',
+            'Access-Control-Allow-Headers': 'Range'
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error serving asset:', error);
+        return new Response('Internal server error', { status: 500 });
+      }
+    }
     
 
     
@@ -124,6 +145,33 @@ export default {
     
 
     
+    // Environment variable validation for API routes
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/validate-') || url.pathname.startsWith('/webhook/')) {
+      // Validate required environment variables for security
+      if (!env.HMAC_SHARED_SECRET) {
+        console.error('🚨 HMAC_SHARED_SECRET environment variable is required');
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server configuration error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Validate admin authentication tokens (at least one must be present)
+      if (!env.ADMIN_FORCE_TRANSCRIBE_TOKEN && !env.ADMIN_KEY) {
+        console.error('🚨 Either ADMIN_FORCE_TRANSCRIBE_TOKEN or ADMIN_KEY environment variable is required');
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Server configuration error'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Validate Twitch credentials endpoint
     if (url.pathname === '/validate-twitch') {
       try {
@@ -690,7 +738,7 @@ export default {
                     size: videoFile.size,
                     uploaded: videoFile.uploaded,
                     last_modified: videoFile.lastModified,
-                    url: `https://clip-recap-assets.paulchrisluke.workers.dev/clips/${clipId}.mp4`
+                    url: `https://clip-recap-pipeline.paulchrisluke.workers.dev/clips/${clipId}.mp4`
                   } : {
                     exists: false
                   },
@@ -699,7 +747,7 @@ export default {
                     size: audioFile.size,
                     uploaded: audioFile.uploaded,
                     last_modified: audioFile.lastModified,
-                    url: `https://clip-recap-assets.paulchrisluke.workers.dev/audio/${clipId}.${audioFormat}`
+                    url: `https://clip-recap-pipeline.paulchrisluke.workers.dev/audio/${clipId}.${audioFormat}`
                   } : {
                     exists: false
                   },
@@ -709,21 +757,21 @@ export default {
                       size: transcriptJson.size,
                       uploaded: transcriptJson.uploaded,
                       last_modified: transcriptJson.lastModified,
-                      url: `https://clip-recap-assets.paulchrisluke.workers.dev/transcripts/${clipId}.json`
+                      url: `https://clip-recap-pipeline.paulchrisluke.workers.dev/transcripts/${clipId}.json`
                     } : { exists: false },
                     txt: transcriptTxt ? {
                       exists: true,
                       size: transcriptTxt.size,
                       uploaded: transcriptTxt.uploaded,
                       last_modified: transcriptTxt.lastModified,
-                      url: `https://clip-recap-assets.paulchrisluke.workers.dev/transcripts/${clipId}.txt`
+                      url: `https://clip-recap-pipeline.paulchrisluke.workers.dev/transcripts/${clipId}.txt`
                     } : { exists: false },
                     vtt: transcriptVtt ? {
                       exists: true,
                       size: transcriptVtt.size,
                       uploaded: transcriptVtt.uploaded,
                       last_modified: transcriptVtt.lastModified,
-                      url: `https://clip-recap-assets.paulchrisluke.workers.dev/transcripts/${clipId}.vtt`
+                      url: `https://clip-recap-pipeline.paulchrisluke.workers.dev/transcripts/${clipId}.vtt`
                     } : { exists: false }
                   }
                 };
@@ -1815,7 +1863,9 @@ export default {
       }
     }
 
-    // Audio file serving endpoint
+
+
+    // Audio file serving endpoint (legacy)
     if (url.pathname.startsWith('/api/audio/file/') && request.method === 'GET') {
       try {
         const clipId = url.pathname.replace('/api/audio/file/', '');
