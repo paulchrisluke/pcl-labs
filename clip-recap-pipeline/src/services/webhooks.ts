@@ -24,12 +24,30 @@ export async function handleWebhook(
     if (!event) {
       return new Response('Bad Request: Missing x-github-event', { status: 400 });
     }
+    
     let payload: any;
+    const contentType = request.headers.get('content-type') || '';
+    
     try {
-      payload = JSON.parse(new TextDecoder().decode(bodyBytes));
+      if (contentType.includes('application/x-www-form-urlencoded')) {
+        // GitHub sends payload as form-encoded data
+        const formData = new TextDecoder().decode(bodyBytes);
+        const payloadMatch = formData.match(/payload=([^&]*)/);
+        if (!payloadMatch) {
+          console.error('No payload found in form data');
+          return new Response('Bad Request: No payload in form data', { status: 400 });
+        }
+        
+        // URL decode the payload
+        const decodedPayload = decodeURIComponent(payloadMatch[1]);
+        payload = JSON.parse(decodedPayload);
+      } else {
+        // Handle raw JSON payload (fallback)
+        payload = JSON.parse(new TextDecoder().decode(bodyBytes));
+      }
     } catch (e) {
-      console.error('Invalid JSON payload', e);
-      return new Response('Bad Request: Invalid JSON', { status: 400 });
+      console.error('Invalid payload parsing', e);
+      return new Response('Bad Request: Invalid payload', { status: 400 });
     }
 
     const delivery = request.headers.get('x-github-delivery');

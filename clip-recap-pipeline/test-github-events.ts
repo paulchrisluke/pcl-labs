@@ -11,25 +11,10 @@
 
 import { GitHubEventService } from './src/services/github-events.js';
 import type { TwitchClip } from './src/types/index.js';
+import { createMockEnvironment } from './src/utils/mock-r2.js';
 
 // Mock environment for testing
-const mockEnv = {
-  R2_BUCKET: {
-    put: async (key: string, data: string | Uint8Array, options?: any) => {
-      console.log(`📤 Mock R2 put: ${key}`);
-      console.log(`📄 Data size: ${typeof data === 'string' ? data.length : data.length} bytes`);
-      return { ok: true };
-    },
-    get: async (key: string) => {
-      console.log(`📥 Mock R2 get: ${key}`);
-      return null; // No existing data for this test
-    },
-    list: async (options: any) => {
-      console.log(`📋 Mock R2 list: ${options.prefix}`);
-      return { objects: [] }; // No existing objects for this test
-    }
-  }
-} as any;
+const mockEnv = createMockEnvironment();
 
 // Sample Twitch clip for testing
 const sampleClip: TwitchClip = {
@@ -53,7 +38,7 @@ const sampleClip: TwitchClip = {
 
 async function testGitHubEventStorage() {
   console.log('🧪 Testing GitHub Event Storage and Temporal Matching');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
   
   const githubEventService = new GitHubEventService(mockEnv);
   
@@ -127,11 +112,12 @@ async function testGitHubEventStorage() {
   console.log('\n⚙️  Test 4: Configuration');
   console.log('-'.repeat(40));
   
+  const config = githubEventService.getConfig();
   console.log('Current configuration:');
-  console.log(`   - Time window: ${githubEventService['config'].timeWindowHours} hours`);
-  console.log(`   - High confidence threshold: ${githubEventService['config'].confidenceThresholds.high} minutes`);
-  console.log(`   - Medium confidence threshold: ${githubEventService['config'].confidenceThresholds.medium} minutes`);
-  console.log(`   - Low confidence threshold: ${githubEventService['config'].confidenceThresholds.low} minutes`);
+  console.log(`   - Time window: ${config.timeWindowHours} hours`);
+  console.log(`   - High confidence threshold: ${config.confidenceThresholds.high} minutes`);
+  console.log(`   - Medium confidence threshold: ${config.confidenceThresholds.medium} minutes`);
+  console.log(`   - Low confidence threshold: ${config.confidenceThresholds.low} minutes`);
   
   // Test 5: Update configuration
   console.log('\n🔄 Test 5: Configuration Update');
@@ -146,11 +132,12 @@ async function testGitHubEventStorage() {
     }
   });
   
+  const updatedConfig = githubEventService.getConfig();
   console.log('Updated configuration:');
-  console.log(`   - Time window: ${githubEventService['config'].timeWindowHours} hours`);
-  console.log(`   - High confidence threshold: ${githubEventService['config'].confidenceThresholds.high} minutes`);
-  console.log(`   - Medium confidence threshold: ${githubEventService['config'].confidenceThresholds.medium} minutes`);
-  console.log(`   - Low confidence threshold: ${githubEventService['config'].confidenceThresholds.low} minutes`);
+  console.log(`   - Time window: ${updatedConfig.timeWindowHours} hours`);
+  console.log(`   - High confidence threshold: ${updatedConfig.confidenceThresholds.high} minutes`);
+  console.log(`   - Medium confidence threshold: ${updatedConfig.confidenceThresholds.medium} minutes`);
+  console.log(`   - Low confidence threshold: ${updatedConfig.confidenceThresholds.low} minutes`);
   
   console.log('\n🎉 All tests completed successfully!');
   console.log('=' .repeat(60));

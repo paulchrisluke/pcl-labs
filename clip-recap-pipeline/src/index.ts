@@ -108,6 +108,17 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
           });
         }
         
+        // Step 1: Authentication check - must come before any operations
+        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
+        
+        // Get request body for HMAC verification
+        const body = await request.text();
+        
+        if (!(await verifyHmacSignature(request, env, body))) {
+          console.warn(`🚨 Unauthorized test event creation attempt`);
+          return createUnauthorizedResponse('HMAC authentication required for test event creation');
+        }
+        
         // Test endpoint to simulate storing a GitHub event
         const testEvent = {
           deliveryId: `test-${Date.now()}`,
@@ -1159,11 +1170,14 @@ export default {
     if (url.pathname.startsWith('/api/transcribe/force/') && request.method === 'POST') {
       try {
         // Step 1: Authentication check - must come before any destructive operations
-        const { verifyAdminAuth, createUnauthorizedResponse } = await import('./utils/auth.js');
+        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
         
-        if (!verifyAdminAuth(request, env)) {
+        // Get request body for HMAC verification
+        const body = await request.text();
+        
+        if (!(await verifyHmacSignature(request, env, body))) {
           console.warn(`🚨 Unauthorized force re-transcription attempt for path: ${url.pathname}`);
-          return createUnauthorizedResponse('Admin authentication required for force re-transcription');
+          return createUnauthorizedResponse('HMAC authentication required for force re-transcription');
         }
         
         const clipId = url.pathname.replace('/api/transcribe/force/', '');
@@ -1834,11 +1848,14 @@ export default {
     if (url.pathname === '/api/transcription-pipeline' && request.method === 'POST') {
       try {
         // Step 1: Admin authentication check
-        const { verifyAdminAuth, createUnauthorizedResponse } = await import('./utils/auth.js');
+        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
         
-        if (!verifyAdminAuth(request, env)) {
+        // Get request body for HMAC verification
+        const body = await request.text();
+        
+        if (!(await verifyHmacSignature(request, env, body))) {
           console.warn(`🚨 Unauthorized manual transcription pipeline attempt`);
-          return createUnauthorizedResponse('Admin authentication required for manual transcription pipeline');
+          return createUnauthorizedResponse('HMAC authentication required for manual transcription pipeline');
         }
         
         console.log('🎤 Manual transcription pipeline for all stored clips...');
@@ -1907,27 +1924,19 @@ export default {
           });
         }
         
-        // Step 3: Authorization check - require admin key or Bearer token
-        const authHeader = request.headers.get('authorization');
-        const apiKey = request.headers.get('x-api-key');
+        // Step 3: Authorization check - require HMAC authentication
+        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
         
-        // Check for valid authorization using centralized verification
-        const { verifyAdminAuthWithApiKey } = await import('./utils/auth.js');
-        const isAuthorized = verifyAdminAuthWithApiKey(request, env);
+        // Get request body for HMAC verification
+        const body = await request.text();
         
-        if (!isAuthorized) {
+        if (!(await verifyHmacSignature(request, env, body))) {
           console.warn(`🚨 Unauthorized Whisper API access attempt for clip: ${clipId}`);
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Unauthorized access'
-          }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-          });
+          return createUnauthorizedResponse('HMAC authentication required for Whisper API access');
         }
         
         // Step 4: Rate limiting check (simple logging for now)
-        const clientId = apiKey || authHeader || 'unknown';
+        const clientId = 'hmac-authenticated';
         
         // For now, just log the request for monitoring
         // In production, you'd want to use a proper rate limiting service

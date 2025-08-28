@@ -27,6 +27,13 @@ export class GitHubEventService {
   }
 
   /**
+   * Get a shallow copy of the current configuration
+   */
+  getConfig(): TemporalMatchingConfig {
+    return { ...this.config };
+  }
+
+  /**
    * Store a GitHub webhook event in R2
    */
   async storeEvent(
