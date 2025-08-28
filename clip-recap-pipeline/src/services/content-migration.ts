@@ -1,7 +1,7 @@
 import type { Environment } from '../types/index.js';
 import type { ContentItem, Transcript, GitHubContext } from '../types/content.js';
 import { ContentItemService } from './content-items.js';
-import { getGitHubEventsForDateRange } from './github-events.js';
+import { GitHubEventService } from './github-events.js';
 
 export interface MigrationResult {
   success: boolean;
@@ -201,10 +201,11 @@ export class ContentMigrationService {
       const startDate = new Date(clipDate.getTime() - 2 * 60 * 60 * 1000); // 2 hours before
       const endDate = new Date(clipDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours after
 
-      const githubEvents = await getGitHubEventsForDateRange(
-        this.env,
-        startDate.toISOString(),
-        endDate.toISOString()
+      const githubEventService = new GitHubEventService(this.env);
+      const githubEvents = await githubEventService.getEventsForDateRange(
+        startDate,
+        endDate,
+        undefined
       );
 
       if (githubEvents.length === 0) {

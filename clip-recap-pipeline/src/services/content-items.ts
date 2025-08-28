@@ -114,7 +114,8 @@ export class ContentItemService {
    */
   async listContentItems(query: ContentItemQuery = {}): Promise<ContentItemListResponse> {
     try {
-      const { date_range, processing_status, content_category, limit = 50, offset = 0 } = query;
+      const { date_range, processing_status, content_category, limit = 50, offset: initialOffset = 0 } = query;
+      let offset = initialOffset;
       
       // Build prefix for listing
       let prefix = 'recaps/content-items/';

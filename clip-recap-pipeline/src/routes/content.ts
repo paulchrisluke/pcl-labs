@@ -113,13 +113,13 @@ async function handleContentGeneration(
   contentItemService: ContentItemService
 ): Promise<Response> {
   // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
+  const body = await request.text();
+  const authResponse = await requireHmacAuth(request, env, body);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const body = await request.text();
     const requestData: ContentGenerationRequest = JSON.parse(body);
 
     // Validate request
@@ -484,13 +484,13 @@ async function handleBuildManifest(
   manifestBuilder: ManifestBuilderService
 ): Promise<Response> {
   // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
+  const body = await request.text();
+  const authResponse = await requireHmacAuth(request, env, body);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const body = await request.text();
     const requestData = JSON.parse(body);
 
     // Validate request
@@ -538,13 +538,13 @@ async function handleGenerateBlog(
   blogGenerator: BlogGeneratorService
 ): Promise<Response> {
   // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
+  const body = await request.text();
+  const authResponse = await requireHmacAuth(request, env, body);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const body = await request.text();
     const requestData = JSON.parse(body);
 
     // Validate request
@@ -594,13 +594,13 @@ async function handleJudgeContent(
   aiJudge: AIJudgeService
 ): Promise<Response> {
   // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
+  const body = await request.text();
+  const authResponse = await requireHmacAuth(request, env, body);
   if (authResponse) {
     return authResponse;
   }
 
   try {
-    const body = await request.text();
     const requestData = JSON.parse(body);
 
     // Validate request
