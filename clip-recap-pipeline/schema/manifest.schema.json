@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pcl-labs/schema/manifest.schema.json",
+  "title": "Daily Recap Manifest",
+  "type": "object",
+  "required": ["schema_version","post_id","date_utc","tz","title","summary","tags","clip_ids","sections","canonical_vod","md_path","target_branch","status"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "post_id": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "date_utc": { "type": "string", "format": "date-time" },
+    "tz": { "type": "string" },
+    "title": { "type": "string" },
+    "headline_short": { "type": "string", "maxLength": 60 },
+    "summary": { "type": "string", "maxLength": 180 },
+    "description": { "type": "string", "nullable": true },
+    "category": { "type": "string", "const": "development" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "repos": { "type": "array", "items": { "type": "string" }, "nullable": true },
+    "keywords": { "type": "string", "nullable": true },
+    "clip_ids": { "type": "array", "items": { "type": "string" } },
+
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["section_id","clip_id","title","bullets","paragraph","start_s","end_s"],
+        "properties": {
+          "section_id": { "type": "string" },
+          "clip_id": { "type": "string" },
+          "title": { "type": "string", "maxLength": 80 },
+          "bullets": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "type": "string", "maxLength": 140 } },
+          "paragraph": { "type": "string" },
+          "score": { "type": "number" },
+          "repo": { "type": "string", "nullable": true },
+          "pr_links": { "type": "array", "items": { "type": "string", "format": "uri" }, "nullable": true },
+          "clip_url": { "type": "string", "format": "uri", "nullable": true },
+          "vod_jump": { "type": "string", "format": "uri", "nullable": true },
+          "alignment_status": { "type": "string", "enum": ["exact","estimated","missing"], "default": "exact" },
+          "start_s": { "type": "number" },
+          "end_s": { "type": "number" },
+          "entities": { "type": "array", "items": { "type": "string" }, "nullable": true }
+        },
+        "additionalProperties": false
+      }
+    },
+
+    "canonical_vod": { "type": "string", "format": "uri" },
+    "md_path": { "type": "string", "pattern": "^content/blog/development/.+\\.md$" },
+    "target_branch": { "type": "string", "enum": ["staging","main"] },
+    "status": { "type": "string", "enum": ["draft","pr_open","approved","merged","published"] },
+
+    "judge": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "overall": { "type": "number", "nullable": true },
+        "per_axis": { "type": "object", "nullable": true },
+        "version": { "type": "string", "nullable": true }
+      }
+    },
+
+    "social_blurbs": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "bluesky": { "type": "string", "maxLength": 260, "nullable": true },
+        "threads": { "type": "string", "maxLength": 260, "nullable": true }
+      }
+    }
+  },
+  "additionalProperties": false
+}

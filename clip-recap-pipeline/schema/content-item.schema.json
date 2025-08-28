@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pcl-labs/schema/content-item.schema.json",
+  "title": "ContentItem",
+  "type": "object",
+  "required": ["schema_version","clip_id","clip_title","clip_url","clip_duration","clip_created_at","stored_at","processing_status"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "clip_id": { "type": "string" },
+    "clip_title": { "type": "string" },
+    "clip_url": { "type": "string", "format": "uri" },
+    "clip_embed_url": { "type": "string", "format": "uri", "nullable": true },
+    "clip_thumbnail_url": { "type": "string", "format": "uri", "nullable": true },
+    "clip_duration": { "type": "number" },
+    "clip_view_count": { "type": "integer", "nullable": true },
+    "clip_created_at": { "type": "string", "format": "date-time" },
+    "broadcaster_name": { "type": "string", "nullable": true },
+    "creator_name": { "type": "string", "nullable": true },
+
+    "processing_status": { "type": "string", "enum": ["pending","audio_ready","transcribed","enhanced","ready_for_content"] },
+    "audio_file_url": { "type": "string", "format": "uri", "nullable": true },
+
+    "transcript": {
+      "type": "object",
+      "nullable": true,
+      "required": ["language","redacted","segments"],
+      "properties": {
+        "text": { "type": "string", "nullable": true },
+        "language": { "type": "string" },
+        "redacted": { "type": "boolean" },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["start_s","end_s","text"],
+            "properties": {
+              "start_s": { "type": "number" },
+              "end_s": { "type": "number" },
+              "text": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "github_context": {
+      "type": "object",
+      "nullable": true,
+      "properties": {
+        "linked_prs": { "type": "array", "items": { "type": "string", "format": "uri" } },
+        "linked_commits": { "type": "array", "items": { "type": "string" } },
+        "linked_issues": { "type": "array", "items": { "type": "string" } },
+        "confidence_score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "match_reason": { "type": "string" }
+      }
+    },
+
+    "content_score": { "type": "number", "nullable": true },
+    "content_tags": { "type": "array", "items": { "type": "string" }, "nullable": true },
+    "content_category": { "type": "string", "enum": ["development","gaming","tutorial","review"], "nullable": true },
+
+    "stored_at": { "type": "string", "format": "date-time" },
+    "enhanced_at": { "type": "string", "format": "date-time", "nullable": true },
+    "content_ready_at": { "type": "string", "format": "date-time", "nullable": true }
+  },
+  "additionalProperties": false
+}
