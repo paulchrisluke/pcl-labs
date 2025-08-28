@@ -25,6 +25,93 @@
 - **Authentication**: ✅ All endpoints protected
 - **GitHub Events**: ✅ Temporal matching working
 
+## Security Specification: HMAC Authentication System
+
+### **Required Security Headers**
+All authenticated API endpoints require the following headers:
+
+- **X-Signature**: HMAC-SHA256 signature of the request
+- **X-Timestamp**: RFC3339 timestamp (e.g., `2025-01-15T10:30:00Z`)
+- **X-Nonce**: Unique random string for replay protection
+- **X-Key-Id** (optional): Key identifier for key rotation
+- **X-Idempotency-Key** (optional): For idempotent request handling
+
+### **Signature Base String Format**
+The signature is computed over the following canonical string:
+```
+METHOD\nPATH\nQUERY\nsha256(body)\nX-Timestamp\nX-Nonce
+```
+
+**Components:**
+- **METHOD**: HTTP method (GET, POST, PUT, DELETE, etc.)
+- **PATH**: Request path without query parameters (e.g., `/api/content/generate`)
+- **QUERY**: URL-encoded query string (empty string if no query params)
+- **sha256(body)**: SHA256 hash of request body (empty string hash for GET requests)
+- **X-Timestamp**: RFC3339 timestamp from header
+- **X-Nonce**: Nonce value from header
+
+### **Request Body Hashing**
+- **POST/PUT/PATCH requests**: Compute SHA256 hash of raw request body
+- **GET/DELETE requests**: Use empty string hash (`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`)
+- **Content-Type**: Must be `application/json` for requests with bodies
+
+### **Clock Skew Protection**
+- **Maximum skew**: 300 seconds (5 minutes)
+- **Rejection**: Requests with timestamp difference > 300s are rejected with HTTP 401
+- **Server time**: All timestamps compared against server's UTC time
+
+### **Nonce Replay Protection**
+- **Storage**: Recent nonces stored per API key in KV/D1 with TTL
+- **TTL window**: 300 seconds (matches clock skew limit)
+- **Rejection**: Duplicate nonces within TTL window rejected with HTTP 401
+- **Cleanup**: Automatic cleanup of expired nonces
+
+### **Key Rotation Semantics**
+- **Active keys**: Current valid API keys for signature verification
+- **Previous keys**: Recently rotated keys still valid for grace period
+- **Grace period**: 24 hours for key rotation (allows for client updates)
+- **X-Key-Id**: Optional header to specify which key was used
+- **Key lookup**: If X-Key-Id provided, verify against specific key; otherwise try all active keys
+
+### **Error Handling**
+- **Missing headers**: HTTP 400 Bad Request for any required header
+- **Invalid signature**: HTTP 401 Unauthorized with error details
+- **Clock skew**: HTTP 401 Unauthorized with "Clock skew too large" message
+- **Replay attack**: HTTP 401 Unauthorized with "Nonce already used" message
+- **Invalid key**: HTTP 401 Unauthorized with "Invalid API key" message
+
+### **Signature Generation Example**
+```bash
+# Example for POST /api/content/generate
+METHOD="POST"
+PATH="/api/content/generate"
+QUERY=""
+BODY='{"date_range":{"start":"2025-01-01T00:00:00Z","end":"2025-01-02T00:00:00Z"},"content_type":"daily_recap"}'
+BODY_HASH=$(echo -n "$BODY" | openssl dgst -sha256 -binary | xxd -p -c 64)
+TIMESTAMP="2025-01-15T10:30:00Z"
+NONCE="abc123def456ghi789"
+
+# Create signature base string
+SIGNATURE_STRING="${METHOD}\n${PATH}\n${QUERY}\n${BODY_HASH}\n${TIMESTAMP}\n${NONCE}"
+
+# Generate HMAC signature
+SIGNATURE=$(echo -e "$SIGNATURE_STRING" | openssl dgst -sha256 -hmac "$API_SECRET" -binary | xxd -p -c 64)
+
+# Headers
+X-Signature: $SIGNATURE
+X-Timestamp: $TIMESTAMP
+X-Nonce: $NONCE
+X-Key-Id: key_2025_01
+X-Idempotency-Key: req_123456789
+```
+
+### **Implementation Requirements**
+- **Web Crypto API**: Use `crypto.subtle.importKey()` and `crypto.subtle.sign()` for HMAC
+- **Key storage**: Secure storage of API keys in Cloudflare Workers environment variables
+- **Nonce storage**: KV or D1 for nonce tracking with automatic TTL
+- **Clock synchronization**: Use Cloudflare Workers' built-in time functions
+- **Logging**: Log all authentication attempts (success/failure) for security monitoring
+
 ## Next Milestone: Content Generation Schema (CURRENT PRIORITY)
 
 ### Problem Analysis
@@ -77,10 +164,15 @@ export interface ContentItem {
   // Processing status with enhanced states
   processing_status: ProcessingStatus;
   audio_file_url?: string;
-  transcript?: Transcript;
   
-  // GitHub context (enhanced data)
-  github_context?: GitHubContext;
+  // Lightweight references instead of full objects
+  transcript_url?: string; // R2 URL to full transcript
+  transcript_summary?: string; // Small summary retained in item
+  transcript_size_bytes?: number; // Size of transcript object in R2
+  
+  github_context_url?: string; // R2 URL to full GitHub context
+  github_summary?: string; // Small summary retained in item
+  github_context_size_bytes?: number; // Size of GitHub context object in R2
   
   // Content generation metadata
   content_score?: number;
@@ -104,7 +196,7 @@ export interface ContentItem {
 
 #### **2. Content Generation API**
 ```typescript
-import type { ISODateTimeString, ContentCategory } from '../types/index.js';
+import type { ISODateTimeString, ContentCategory, ProcessingStatus, ContentItem } from '../types/index.js';
 
 // Request schema with pagination, sorting, and async support
 export interface ContentGenerationRequest {
@@ -140,11 +232,39 @@ export interface ContentGenerationRequest {
   idempotency_key?: string; // For replay protection
 }
 
-// Response schema with structured pagination and async support
+// Job status types
+export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+// Job progress information
+export interface JobProgress {
+  step: string;
+  current: number;
+  total: number;
+}
+
+// Job state stored in D1
+export interface JobState {
+  job_id: string;
+  status: JobStatus;
+  created_at: ISODateTimeString;
+  updated_at: ISODateTimeString;
+  expires_at: ISODateTimeString;
+  progress?: JobProgress;
+  request_data: string; // JSON string of original request
+  results?: string; // JSON string of results (when completed)
+  error_message?: string; // Error details (when failed)
+  worker_id?: string; // ID of worker processing the job
+  started_at?: ISODateTimeString; // When processing started
+  completed_at?: ISODateTimeString; // When processing completed
+}
+
+// Response schema with enhanced job management
 export interface ContentGenerationResponse {
-  // Async job information (only present when mode='async')
-  job_id?: string;
-  job_status?: 'queued' | 'processing' | 'completed' | 'failed';
+  // Job information (always present)
+  job_id: string;
+  job_status: JobStatus;
+  status_url: string; // Absolute URL for polling job status
+  expires_at: ISODateTimeString; // ISO8601 timestamp when job expires
   
   // Content items (only present in sync mode or when job_status='completed')
   content_items?: ContentItem[];
@@ -185,7 +305,115 @@ export interface ContentGenerationResponse {
     occurred_at: ISODateTimeString;
   };
 }
+
+// Job status response for the status endpoint
+export interface JobStatusResponse {
+  job_id: string;
+  status: JobStatus;
+  status_url: string;
+  expires_at: ISODateTimeString;
+  progress?: JobProgress;
+  results?: any; // Parsed results when completed
+  error?: {
+    code: string;
+    message: string;
+    occurred_at: ISODateTimeString;
+  };
+  created_at: ISODateTimeString;
+  updated_at: ISODateTimeString;
+  started_at?: ISODateTimeString;
+  completed_at?: ISODateTimeString;
+}
+
+// Queue message for background job processing
+export interface JobQueueMessage {
+  job_id: string;
+  request_data: ContentGenerationRequest;
+  worker_id?: string;
+}
 ```
+
+### Job Management System
+
+The pipeline now includes a comprehensive job management system that provides:
+
+#### **Persistent Job State Management**
+- **D1 Database**: Stores job state, progress, results, and expiry information
+- **Job Lifecycle**: queued → processing → completed/failed
+- **Progress Tracking**: Step-by-step progress with current/total counters
+- **Expiry Management**: Automatic cleanup of expired jobs (24-hour default)
+
+#### **Background Processing**
+- **Cloudflare Queues**: Asynchronous job processing off the request path
+- **Worker Processing**: Dedicated job processor service handles content generation
+- **Error Handling**: Comprehensive error tracking and retry mechanisms
+- **Status Updates**: Real-time progress updates during processing
+
+#### **API Endpoints**
+- **POST /api/content/generate**: Creates jobs and returns job information
+- **GET /api/jobs/{jobId}/status**: Poll job status and retrieve results
+- **GET /api/jobs**: List jobs with cursor-based pagination
+- **GET /api/jobs/stats**: Get job statistics and system health
+- **POST /api/jobs/cleanup**: Manual cleanup of expired jobs
+
+#### **Job Response Schema**
+```typescript
+{
+  job_id: string;           // ULID for unique job identification
+  job_status: JobStatus;    // Current job state
+  status_url: string;       // Absolute URL for polling status
+  expires_at: string;       // ISO8601 timestamp when job expires
+  // ... other response fields
+}
+```
+
+#### **Cursor-Based Pagination**
+The system uses cursor-based pagination for efficient cloud storage queries:
+
+```typescript
+// Pagination interface
+interface PaginationCursor {
+  next_cursor?: string; // ULID for next page
+  prev_cursor?: string; // ULID for previous page
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+// Job listing response
+{
+  jobs: JobStatusResponse[];
+  pagination: PaginationCursor;
+  timestamp: string;
+}
+```
+
+**Benefits:**
+- **Efficient**: No expensive COUNT queries or full table scans
+- **Scalable**: Works well with distributed systems and cloud storage
+- **Consistent**: Handles concurrent updates gracefully
+- **Flexible**: Supports both forward and backward navigation
+
+#### **Status Endpoint Response**
+```typescript
+{
+  job_id: string;
+  status: JobStatus;
+  status_url: string;
+  expires_at: string;
+  progress?: JobProgress;   // Current processing step
+  results?: any;           // Final results when completed
+  error?: ErrorInfo;       // Error details if failed
+  created_at: string;
+  updated_at: string;
+  started_at?: string;
+  completed_at?: string;
+}
+```
+
+#### **Cleanup and Maintenance**
+- **Automatic Cleanup**: Cron job runs every 12 hours to remove expired jobs
+- **Statistics**: Track job counts by status for monitoring
+- **Discord Notifications**: Alert on significant cleanup events
 
 ### Implementation Plan
 
@@ -231,13 +459,14 @@ export interface ContentGenerationResponse {
 ### Technical Requirements
 - **Storage**: R2 for ContentItem objects (unified schema)
 - **Real-time**: Primary processing with batch fallback
-- **Authentication**: HMAC signatures for all endpoints
+- **Authentication**: HMAC signatures for all endpoints (see Security Specification above)
 - **AI Integration**: Workers AI for content scoring and generation
 - **GitHub Integration**: Existing webhook and API infrastructure
 
 #### **Performance & Reliability Requirements**
 - **Indexing**: KV/D1 indexes for efficient queries; avoid R2 list scans
-- **Replay Protection**: Enforce idempotency keys and key rotation
+- **Security**: HMAC signature verification with nonce replay protection and key rotation
+- **Replay Protection**: Enforce idempotency keys and key rotation (see Security Specification)
 - **Cost Controls**: Add egress and Workers AI budget caps
 - **Monitoring**: Comprehensive observability for all pipeline stages
 
