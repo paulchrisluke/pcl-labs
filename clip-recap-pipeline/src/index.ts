@@ -3,6 +3,7 @@ import { validateClipId, validateClipData, validateClipObject } from './utils/va
 import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
 import { handleGitHubRequest } from './routes/github.js';
+import { handleContentRoutes } from './routes/content.js';
 import { generateStatusPage } from './status-page.js';
 import { calculateUptime } from './utils/uptime.js';
 
@@ -1916,6 +1917,11 @@ export default {
     // GitHub Event Storage endpoints (M8 - GitHub Integration)
     if (url.pathname.startsWith('/api/github-events/')) {
       return handleGitHubEventsRequest(request, env);
+    }
+
+    // Content generation endpoints
+    if (url.pathname.startsWith('/api/content/') || url.pathname.startsWith('/api/runs/')) {
+      return handleContentRoutes(request, env, url);
     }
 
     // Webhook endpoints
