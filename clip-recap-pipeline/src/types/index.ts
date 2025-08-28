@@ -64,8 +64,6 @@ export interface TwitchTokenResponse {
   token_type: string;
 }
 
-
-
 // Content generation types
 export interface ClipSection {
   clip_id: string;
@@ -134,5 +132,143 @@ export interface CompletedGitHubCheckRun extends Omit<GitHubCheckRun, 'status' |
     title: string;
     summary: string;
     text?: string;
+  };
+}
+
+// GitHub Event Storage Types (M8 - GitHub Integration)
+export interface GitHubEvent {
+  id: string; // x-github-delivery UUID
+  event_type: string; // x-github-event
+  repository: string; // org/repo
+  timestamp: ISODateTimeString;
+  action?: string; // For events with actions (pull_request, issues, etc.)
+  payload: any; // Full webhook payload
+  processed: boolean; // Whether this event has been processed for clip linking
+}
+
+export interface GitHubPullRequestEvent extends GitHubEvent {
+  event_type: 'pull_request';
+  action: 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
+  payload: {
+    action: string;
+    pull_request: {
+      number: number;
+      title: string;
+      body: string;
+      html_url: string;
+      state: string;
+      merged: boolean;
+      merged_at: string | null;
+      created_at: string;
+      updated_at: string;
+      closed_at: string | null;
+      user: {
+        login: string;
+      };
+      head: {
+        ref: string;
+        sha: string;
+      };
+      base: {
+        ref: string;
+        sha: string;
+      };
+    };
+    repository: {
+      full_name: string;
+    };
+  };
+}
+
+export interface GitHubPushEvent extends GitHubEvent {
+  event_type: 'push';
+  payload: {
+    ref: string;
+    before: string;
+    after: string;
+    commits: Array<{
+      id: string;
+      message: string;
+      timestamp: string;
+      url: string;
+      author: {
+        name: string;
+        email: string;
+      };
+    }>;
+    repository: {
+      full_name: string;
+    };
+  };
+}
+
+export interface GitHubIssueEvent extends GitHubEvent {
+  event_type: 'issues';
+  action: 'opened' | 'edited' | 'deleted' | 'pinned' | 'unpinned' | 'closed' | 'reopened' | 'assigned' | 'unassigned' | 'labeled' | 'unlabeled' | 'locked' | 'unlocked' | 'transferred' | 'milestoned' | 'demilestoned';
+  payload: {
+    action: string;
+    issue: {
+      number: number;
+      title: string;
+      body: string;
+      html_url: string;
+      state: string;
+      created_at: string;
+      updated_at: string;
+      closed_at: string | null;
+      user: {
+        login: string;
+      };
+    };
+    repository: {
+      full_name: string;
+    };
+  };
+}
+
+// Clip-GitHub Linking Types
+export interface GitHubContext {
+  linked_prs: LinkedPullRequest[];
+  linked_commits: LinkedCommit[];
+  linked_issues: LinkedIssue[];
+}
+
+export interface LinkedPullRequest {
+  number: number;
+  title: string;
+  url: string;
+  merged_at: ISODateTimeString;
+  confidence: 'high' | 'medium' | 'low';
+  match_reason: 'temporal_proximity' | 'content_analysis' | 'manual_override';
+}
+
+export interface LinkedCommit {
+  sha: string;
+  message: string;
+  url: string;
+  timestamp: ISODateTimeString;
+}
+
+export interface LinkedIssue {
+  number: number;
+  title: string;
+  url: string;
+  closed_at: ISODateTimeString;
+  confidence: 'high' | 'medium' | 'low';
+  match_reason: 'temporal_proximity' | 'content_analysis' | 'manual_override';
+}
+
+// Enhanced Clip Metadata with GitHub Context
+export interface EnhancedTwitchClip extends TwitchClip {
+  github_context?: GitHubContext;
+}
+
+// Temporal Matching Configuration
+export interface TemporalMatchingConfig {
+  timeWindowHours: number; // Default: 2 hours
+  confidenceThresholds: {
+    high: number; // Minutes
+    medium: number; // Minutes
+    low: number; // Minutes
   };
 }

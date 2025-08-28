@@ -72,6 +72,181 @@ async function getClipAudioStatus(clipId: string, env: Environment) {
   }
 }
 
+async function handleGitHubRequestInternal(request: Request, env: Environment): Promise<Response> {
+  try {
+    const { handleGitHubRequest } = await import('./routes/github.js');
+    return await handleGitHubRequest(request, env);
+  } catch (error) {
+    console.error('GitHub route error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+async function handleGitHubEventsRequest(request: Request, env: Environment): Promise<Response> {
+  try {
+    const { GitHubEventService } = await import('./services/github-events.js');
+    const githubEventService = new GitHubEventService(env);
+    
+    const url = new URL(request.url);
+    const path = url.pathname;
+    
+    switch (path) {
+      case '/api/github-events/test': {
+        if (request.method !== 'POST') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Test endpoint to simulate storing a GitHub event
+        const testEvent = {
+          deliveryId: `test-${Date.now()}`,
+          eventType: 'pull_request',
+          payload: {
+            action: 'closed',
+            pull_request: {
+              number: 42,
+              title: 'Test PR for temporal matching',
+              html_url: 'https://github.com/paulchrisluke/pcl-labs/pull/42',
+              merged: true,
+              merged_at: new Date().toISOString(),
+              created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+              updated_at: new Date().toISOString(),
+              closed_at: new Date().toISOString(),
+              user: { login: 'testuser' },
+              head: { ref: 'feature/test', sha: 'abc123' },
+              base: { ref: 'main', sha: 'def456' }
+            },
+            repository: {
+              full_name: 'paulchrisluke/pcl-labs'
+            }
+          },
+          repository: 'paulchrisluke/pcl-labs'
+        };
+        
+        const stored = await githubEventService.storeEvent(
+          testEvent.deliveryId,
+          testEvent.eventType,
+          testEvent.payload,
+          testEvent.repository
+        );
+        
+        return new Response(JSON.stringify({
+          success: stored,
+          message: stored ? 'Test event stored successfully' : 'Failed to store test event',
+          event: testEvent
+        }), {
+          status: stored ? 200 : 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      case '/api/github-events/list': {
+        if (request.method !== 'GET') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // List recent GitHub events
+        const searchParams = url.searchParams;
+        const days = parseInt(searchParams.get('days') || '1');
+        const repository = searchParams.get('repository') || undefined;
+        
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        
+        const events = await githubEventService.getEventsForDateRange(startDate, endDate, repository);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          events,
+          count: events.length,
+          dateRange: {
+            start: startDate.toISOString(),
+            end: endDate.toISOString()
+          }
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      case '/api/github-events/enhance-clip': {
+        if (request.method !== 'POST') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Test temporal matching with a clip
+        const body = await request.json() as { clip: any; repository?: string };
+        const { clip, repository } = body;
+        
+        if (!clip || !clip.created_at) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid clip data - missing created_at'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(clip, repository);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          clip: enhancedClip,
+          hasGitHubContext: !!enhancedClip.github_context,
+          githubContext: enhancedClip.github_context
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      default: {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Endpoint not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('GitHub Events route error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -1554,7 +1729,12 @@ export default {
 
     // GitHub endpoints
     if (url.pathname.startsWith('/api/github/')) {
-      return handleGitHubRequest(request, env);
+      return handleGitHubRequestInternal(request, env);
+    }
+
+    // GitHub Event Storage endpoints (M8 - GitHub Integration)
+    if (url.pathname.startsWith('/api/github-events/')) {
+      return handleGitHubEventsRequest(request, env);
     }
 
     // Webhook endpoints

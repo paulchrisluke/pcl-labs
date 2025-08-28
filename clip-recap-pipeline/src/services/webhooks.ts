@@ -1,4 +1,5 @@
 import type { Environment } from '../types/index.js';
+import { GitHubEventService } from './github-events.js';
 
 export async function handleWebhook(
   request: Request,
@@ -34,12 +35,38 @@ export async function handleWebhook(
     const delivery = request.headers.get('x-github-delivery');
     console.log(`Received GitHub webhook: ${event} (delivery: ${delivery})`);
 
+    // Store the event for temporal matching (M8 - GitHub Integration)
+    if (delivery && payload.repository?.full_name) {
+      const githubEventService = new GitHubEventService(env);
+      const stored = await githubEventService.storeEvent(
+        delivery,
+        event,
+        payload,
+        payload.repository.full_name
+      );
+      
+      if (!stored) {
+        console.warn(`Failed to store GitHub event: ${event} (${delivery})`);
+      }
+    }
+
     switch (event) {
       case 'pull_request': {
         return await handlePullRequestEvent(payload, env);
       }
+      case 'push': {
+        return await handlePushEvent(payload, env);
+      }
+      case 'issues': {
+        return await handleIssueEvent(payload, env);
+      }
       case 'check_run': {
         return await handleCheckRunEvent(payload, env);
+      }
+      case 'ping': {
+        // GitHub sends ping events to test webhook connectivity
+        console.log('Received GitHub ping event - webhook is working!');
+        return new Response('Pong', { status: 200 });
       }
       default: {
         console.log(`Unhandled event type: ${event}`);
@@ -106,6 +133,34 @@ async function handlePullRequestEvent(payload: any, env: Environment): Promise<R
   // Handle PR events (merged, closed, etc.)
   if (action === 'closed' && pull_request.merged) {
     console.log(`PR #${pull_request.number} was merged`);
+    // Could trigger additional actions here
+  }
+  
+  return new Response('OK', { status: 200 });
+}
+
+async function handlePushEvent(payload: any, env: Environment): Promise<Response> {
+  const { ref, commits, repository } = payload;
+  
+  console.log(`Push to ${ref}: ${commits.length} commits`);
+  
+  // Only process pushes to main branch
+  if (ref === 'refs/heads/main') {
+    console.log(`Main branch push with ${commits.length} commits`);
+    // Could trigger additional actions here
+  }
+  
+  return new Response('OK', { status: 200 });
+}
+
+async function handleIssueEvent(payload: any, env: Environment): Promise<Response> {
+  const { action, issue } = payload;
+  
+  console.log(`Issue ${action}: #${issue.number} - ${issue.title}`);
+  
+  // Handle issue events (closed, reopened, etc.)
+  if (action === 'closed') {
+    console.log(`Issue #${issue.number} was closed`);
     // Could trigger additional actions here
   }
   
