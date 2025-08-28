@@ -799,7 +799,29 @@ export default {
           case 'PUT': {
             // Update specific clip data
             console.log('🔄 Updating clip data...');
-            const updateBody = await request.json() as { clipId?: string; data?: any };
+            
+            // Get raw body first to avoid double-consume issues
+            const rawBody = await request.text();
+            
+            // HMAC authentication required for data modification operations
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const authError = await requireHmacAuth(request, env, rawBody);
+            if (authError) return authError;
+            
+            // Parse JSON body after authentication
+            let updateBody: { clipId?: string; data?: any };
+            try {
+              updateBody = JSON.parse(rawBody);
+            } catch {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid JSON in request body'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
             const { clipId, data } = updateBody;
             
             if (!clipId || !data) {
@@ -1049,6 +1071,14 @@ export default {
     // Audio processing test endpoint
     if (url.pathname === '/api/test-audio-processing' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🧪 Testing audio processing...');
         
         // Get stored clips
@@ -1103,6 +1133,14 @@ export default {
     // Test transcription endpoint - Real pipeline test
     if (url.pathname === '/api/test-transcription' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🧪 Testing real transcription pipeline...');
 
         // Step 1: Get a real clip ID from stored clips
@@ -1309,8 +1347,28 @@ export default {
         const transcriptionService = new TranscriptionService(env);
         
         if (url.pathname === '/api/transcribe/clip' && request.method === 'POST') {
-          // Transcribe a single clip with validation
-          const clipRequestBody = await request.json() as { clipId?: string };
+          // Get raw body first to avoid double-consume issues
+          const rawBody = await request.text();
+          
+          // HMAC authentication required for compute-intensive operations
+          const { requireHmacAuth } = await import('./utils/auth.js');
+          const authError = await requireHmacAuth(request, env, rawBody);
+          if (authError) return authError;
+          
+          // Parse JSON body after authentication
+          let clipRequestBody: { clipId?: string };
+          try {
+            clipRequestBody = JSON.parse(rawBody);
+          } catch {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid JSON in request body'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
           const { clipId } = clipRequestBody;
           
           // Step 1: Basic input validation
@@ -1360,8 +1418,28 @@ export default {
         }
         
         if (url.pathname === '/api/transcribe/batch' && request.method === 'POST') {
-          // Transcribe multiple clips with comprehensive validation
-          const batchRequestBody = await request.json() as { clipIds?: string[] };
+          // Get raw body first to avoid double-consume issues
+          const rawBody = await request.text();
+          
+          // HMAC authentication required for compute-intensive operations
+          const { requireHmacAuth } = await import('./utils/auth.js');
+          const authError = await requireHmacAuth(request, env, rawBody);
+          if (authError) return authError;
+          
+          // Parse JSON body after authentication
+          let batchRequestBody: { clipIds?: string[] };
+          try {
+            batchRequestBody = JSON.parse(rawBody);
+          } catch {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid JSON in request body'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
           const { clipIds } = batchRequestBody;
           
           // Step 1: Basic input validation
@@ -1630,7 +1708,28 @@ export default {
         
         switch (request.method) {
           case 'POST': {
-            const body = await request.json() as { clip_ids?: string[] };
+            // Get raw body first to avoid double-consume issues
+            const rawBody = await request.text();
+            
+            // HMAC authentication required for compute-intensive operations
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const authError = await requireHmacAuth(request, env, rawBody);
+            if (authError) return authError;
+            
+            // Parse JSON body after authentication
+            let body: { clip_ids?: string[] };
+            try {
+              body = JSON.parse(rawBody);
+            } catch {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid JSON in request body'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
             const clipIds = body.clip_ids || [];
             
             if (clipIds.length === 0) {
@@ -1816,6 +1915,14 @@ export default {
     // Manual pipeline trigger endpoint
     if (url.pathname === '/api/trigger-pipeline' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🚀 Manual pipeline trigger activated...');
         
         // Import the scheduler function
@@ -1851,6 +1958,14 @@ export default {
     // Manual audio processing endpoint (processes all stored clips)
     if (url.pathname === '/api/process-all-clips' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🎵 Manual audio processing for all stored clips...');
         
         // Get all stored clips
@@ -1952,8 +2067,31 @@ export default {
       try {
         console.log('🧪 Testing Whisper API with real audio...');
         
-        // Step 1: Validate request body
-        const whisperRequestBody = await request.json() as { clipId?: string };
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // Step 1: HMAC authentication required for compute-intensive operations
+        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
+        
+        if (!(await verifyHmacSignature(request, env, rawBody))) {
+          console.warn(`🚨 Unauthorized Whisper API access attempt`);
+          return createUnauthorizedResponse('HMAC authentication required for Whisper API access');
+        }
+        
+        // Step 2: Parse and validate request body
+        let whisperRequestBody: { clipId?: string };
+        try {
+          whisperRequestBody = JSON.parse(rawBody);
+        } catch {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid JSON in request body'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
         const { clipId } = whisperRequestBody;
         
         if (!clipId) {
@@ -1966,7 +2104,7 @@ export default {
           });
         }
         
-        // Step 2: Validate clipId format and length
+        // Step 3: Validate clipId format and length
         const { validateClipId } = await import('./utils/validation.js');
         const validation = validateClipId(clipId);
         
@@ -1979,17 +2117,6 @@ export default {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
           });
-        }
-        
-        // Step 3: Authorization check - require HMAC authentication
-        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        // Get request body for HMAC verification
-        const requestBody = await request.text();
-        
-        if (!(await verifyHmacSignature(request, env, requestBody))) {
-          console.warn(`🚨 Unauthorized Whisper API access attempt for clip: ${clipId}`);
-          return createUnauthorizedResponse('HMAC authentication required for Whisper API access');
         }
         
         // Step 4: Rate limiting check (simple logging for now)

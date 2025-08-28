@@ -16,6 +16,68 @@ function validateEnvironment(): void {
   console.log('🔧 Testing against deployed worker with built-in secrets - no local environment needed');
 }
 
+/**
+ * Create HMAC signature for request authentication
+ */
+async function createSignature(body: string, timestamp: string, nonce: string): Promise<string> {
+  const hmacSecret = process.env.HMAC_SHARED_SECRET;
+  if (!hmacSecret) {
+    throw new Error('HMAC_SHARED_SECRET not configured');
+  }
+
+  // Create signature payload: body + timestamp + nonce
+  const payload = `${body}${timestamp}${nonce}`;
+  
+  // Create HMAC signature using Web Crypto API
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(hmacSecret);
+  const messageData = encoder.encode(payload);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  
+  // Convert to hex string
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Create security headers for API requests
+ */
+async function createSecurityHeaders(body: string = ''): Promise<Record<string, string>> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  
+  // Generate cryptographically secure nonce (16-64 alphanumeric characters)
+  const randomBytes = new Uint8Array(32);
+  crypto.getRandomValues(randomBytes);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let nonce = '';
+  for (let i = 0; i < 32; i++) {
+    nonce += chars[randomBytes[i] % chars.length];
+  }
+  
+  // Generate UUIDv4 for idempotency key
+  const idempotencyKey = crypto.randomUUID();
+  
+  const signature = await createSignature(body, timestamp, nonce);
+  
+  return {
+    'X-Request-Signature': signature,
+    'X-Request-Timestamp': timestamp,
+    'X-Request-Nonce': nonce,
+    'X-Idempotency-Key': idempotencyKey,
+    'Content-Type': 'application/json',
+  };
+}
+
 // Initialize SecurityService once at module level
 let securityService: any = null
 
@@ -25,16 +87,21 @@ async function initializeSecurityService(): Promise<any> {
     console.log('🔧 Using direct fetch for worker testing');
     securityService = {
       securePost: async (url: string, data: any) => {
+        const body = JSON.stringify(data);
+        const headers = await createSecurityHeaders(body);
+        
         return fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+          headers,
+          body
         });
       },
       secureGet: async (url: string) => {
+        const headers = await createSecurityHeaders();
+        
         return fetch(url, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers
         });
       }
     };
@@ -141,12 +208,15 @@ async function testHealthEndpoints(): Promise<TestResult[]> {
     console.log('🔍 Testing worker audio processing capability...')
 
     // Test the worker's process-all-clips endpoint
+    const processBody = JSON.stringify({ dry_run: true }); // Use dry run to test without actually processing
+    const processHeaders = await createSecurityHeaders(processBody);
+    
     const processResponse = await fetchWithTimeout(
       `${WORKER_URL}/api/process-all-clips`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dry_run: true }) // Use dry run to test without actually processing
+        headers: processHeaders,
+        body: processBody
       }
     )
 
@@ -231,15 +301,18 @@ async function testClipProcessing(): Promise<TestResult[]> {
     console.log(`🎵 Testing worker clip processing for ${testClipId}...`)
 
     // Test worker's clip processing endpoint
+    const processBody = JSON.stringify({ 
+      clip_ids: [testClipId],
+      dry_run: true // Use dry run to test without actually processing
+    });
+    const processHeaders = await createSecurityHeaders(processBody);
+    
     const processResponse = await fetchWithTimeout(
       `${WORKER_URL}/api/process-all-clips`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          clip_ids: [testClipId],
-          dry_run: true // Use dry run to test without actually processing
-        })
+        headers: processHeaders,
+        body: processBody
       }
     )
 
@@ -257,16 +330,15 @@ async function testClipProcessing(): Promise<TestResult[]> {
       await new Promise((resolve) => setTimeout(resolve, 10000))
 
       // Test transcription
+      const transcribeBody = JSON.stringify({ clipId: testClipId });
+      const transcribeHeaders = await createSecurityHeaders(transcribeBody);
+      
       const transcribeResponse = await fetch(
         `${WORKER_URL}/api/transcribe/clip`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            clipId: testClipId,
-          }),
+          headers: transcribeHeaders,
+          body: transcribeBody,
         },
       )
 

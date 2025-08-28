@@ -27,6 +27,252 @@ export class GitHubEventService {
   }
 
   /**
+   * Get the R2 bucket safely, throwing an error if not available
+   */
+  private getBucket() {
+    if (!this.env.R2_BUCKET) {
+      throw new Error('R2_BUCKET is not available in this environment');
+    }
+    return this.env.R2_BUCKET;
+  }
+
+  /**
+   * Extract canonical timestamp from GitHub webhook payload
+   * Prioritizes event-specific timestamps, falls back to delivery time, then current time
+   */
+  private extractEventTimestamp(eventType: string, payload: any): string {
+    // Try event-specific timestamp fields first
+    switch (eventType) {
+      case 'push':
+        // Use the most recent commit timestamp
+        if (payload.head_commit?.timestamp) {
+          return payload.head_commit.timestamp;
+        }
+        // Fall back to first commit if no head_commit
+        if (payload.commits?.[0]?.timestamp) {
+          return payload.commits[0].timestamp;
+        }
+        break;
+        
+      case 'pull_request':
+        // Use updated_at for most actions, created_at for new PRs
+        if (payload.action === 'opened' && payload.pull_request?.created_at) {
+          return payload.pull_request.created_at;
+        }
+        if (payload.pull_request?.updated_at) {
+          return payload.pull_request.updated_at;
+        }
+        if (payload.pull_request?.created_at) {
+          return payload.pull_request.created_at;
+        }
+        break;
+        
+      case 'issues':
+        // Use updated_at for most actions, created_at for new issues
+        if (payload.action === 'opened' && payload.issue?.created_at) {
+          return payload.issue.created_at;
+        }
+        if (payload.issue?.updated_at) {
+          return payload.issue.updated_at;
+        }
+        if (payload.issue?.created_at) {
+          return payload.issue.created_at;
+        }
+        break;
+        
+      case 'release':
+        if (payload.release?.published_at) {
+          return payload.release.published_at;
+        }
+        if (payload.release?.created_at) {
+          return payload.release.created_at;
+        }
+        break;
+        
+      case 'create':
+        if (payload.created_at) {
+          return payload.created_at;
+        }
+        break;
+        
+      case 'delete':
+        if (payload.deleted_at) {
+          return payload.deleted_at;
+        }
+        break;
+        
+      case 'fork':
+        if (payload.forkee?.created_at) {
+          return payload.forkee.created_at;
+        }
+        break;
+        
+      case 'star':
+        if (payload.starred_at) {
+          return payload.starred_at;
+        }
+        break;
+        
+      case 'watch':
+        if (payload.starred_at) {
+          return payload.starred_at;
+        }
+        break;
+        
+      case 'gollum':
+        if (payload.pages?.[0]?.updated_at) {
+          return payload.pages[0].updated_at;
+        }
+        break;
+        
+      case 'page_build':
+        if (payload.build?.created_at) {
+          return payload.build.created_at;
+        }
+        break;
+        
+      case 'public':
+        if (payload.repository?.created_at) {
+          return payload.repository.created_at;
+        }
+        break;
+        
+      case 'repository':
+        if (payload.repository?.created_at) {
+          return payload.repository.created_at;
+        }
+        if (payload.repository?.updated_at) {
+          return payload.repository.updated_at;
+        }
+        break;
+        
+      case 'deployment':
+        if (payload.deployment?.created_at) {
+          return payload.deployment.created_at;
+        }
+        break;
+        
+      case 'deployment_status':
+        if (payload.deployment_status?.created_at) {
+          return payload.deployment_status.created_at;
+        }
+        break;
+        
+      case 'discussion':
+        if (payload.discussion?.created_at) {
+          return payload.discussion.created_at;
+        }
+        if (payload.discussion?.updated_at) {
+          return payload.discussion.updated_at;
+        }
+        break;
+        
+      case 'discussion_comment':
+        if (payload.comment?.created_at) {
+          return payload.comment.created_at;
+        }
+        if (payload.comment?.updated_at) {
+          return payload.comment.updated_at;
+        }
+        break;
+        
+      case 'commit_comment':
+        if (payload.comment?.created_at) {
+          return payload.comment.created_at;
+        }
+        if (payload.comment?.updated_at) {
+          return payload.comment.updated_at;
+        }
+        break;
+        
+      case 'issue_comment':
+        if (payload.comment?.created_at) {
+          return payload.comment.created_at;
+        }
+        if (payload.comment?.updated_at) {
+          return payload.comment.updated_at;
+        }
+        break;
+        
+      case 'pull_request_review':
+        if (payload.review?.submitted_at) {
+          return payload.review.submitted_at;
+        }
+        break;
+        
+      case 'pull_request_review_comment':
+        if (payload.comment?.created_at) {
+          return payload.comment.created_at;
+        }
+        if (payload.comment?.updated_at) {
+          return payload.comment.updated_at;
+        }
+        break;
+        
+      case 'workflow_run':
+        if (payload.workflow_run?.created_at) {
+          return payload.workflow_run.created_at;
+        }
+        break;
+        
+      case 'check_run':
+        if (payload.check_run?.started_at) {
+          return payload.check_run.started_at;
+        }
+        if (payload.check_run?.completed_at) {
+          return payload.check_run.completed_at;
+        }
+        break;
+        
+      case 'check_suite':
+        if (payload.check_suite?.created_at) {
+          return payload.check_suite.created_at;
+        }
+        break;
+        
+      case 'code_scanning_alert':
+        if (payload.alert?.created_at) {
+          return payload.alert.created_at;
+        }
+        if (payload.alert?.updated_at) {
+          return payload.alert.updated_at;
+        }
+        break;
+        
+      case 'dependabot_alert':
+        if (payload.alert?.created_at) {
+          return payload.alert.created_at;
+        }
+        if (payload.alert?.updated_at) {
+          return payload.alert.updated_at;
+        }
+        break;
+        
+      case 'secret_scanning_alert':
+        if (payload.alert?.created_at) {
+          return payload.alert.created_at;
+        }
+        if (payload.alert?.updated_at) {
+          return payload.alert.updated_at;
+        }
+        break;
+    }
+    
+    // Fall back to delivery time if available
+    if (payload.delivery_time) {
+      return payload.delivery_time;
+    }
+    
+    // Fall back to generic timestamp field
+    if (payload.timestamp) {
+      return payload.timestamp;
+    }
+    
+    // Last resort: current time
+    return new Date().toISOString();
+  }
+
+  /**
    * Get a shallow copy of the current configuration
    */
   getConfig(): TemporalMatchingConfig {
@@ -43,31 +289,34 @@ export class GitHubEventService {
     repository: string
   ): Promise<boolean> {
     try {
+      // Extract canonical timestamp from payload
+      const eventTimestamp = this.extractEventTimestamp(eventType, payload);
+      
       const event: GitHubEvent = {
         id: deliveryId,
         event_type: eventType,
         repository,
-        timestamp: new Date().toISOString(),
+        timestamp: eventTimestamp,
         action: payload.action,
         payload,
         processed: false
       };
 
-      // Store by date for easy querying
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      // Store by event date for temporal matching
+      const eventDate = new Date(eventTimestamp);
+      const year = eventDate.getFullYear();
+      const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+      const day = String(eventDate.getDate()).padStart(2, '0');
       
       const key = `github-events/${year}/${month}/${day}/${deliveryId}.json`;
       
-      await this.env.R2_BUCKET.put(key, JSON.stringify(event, null, 2), {
+      await this.getBucket().put(key, JSON.stringify(event, null, 2), {
         httpMetadata: {
           contentType: 'application/json',
         },
       });
 
-      console.log(`✅ Stored GitHub event: ${eventType} (${deliveryId}) for ${repository}`);
+      console.log(`✅ Stored GitHub event: ${eventType} (${deliveryId}) for ${repository} at ${eventTimestamp}`);
       return true;
     } catch (error) {
       console.error(`❌ Failed to store GitHub event ${deliveryId}:`, error);
@@ -90,11 +339,11 @@ export class GitHubEventService {
       const dateKeys = this.generateDateKeys(startDate, endDate);
       
       for (const dateKey of dateKeys) {
-        const objects = await this.env.R2_BUCKET.list({ prefix: `github-events/${dateKey}/` });
+        const objects = await this.getBucket().list({ prefix: `github-events/${dateKey}/` });
         
         for (const obj of objects.objects) {
           try {
-            const response = await this.env.R2_BUCKET.get(obj.key);
+            const response = await this.getBucket().get(obj.key);
             if (response) {
               const event = await response.json() as GitHubEvent;
               
@@ -242,12 +491,12 @@ export class GitHubEventService {
         const eventKey = await this.findEventKey(eventId);
         
         if (eventKey) {
-          const response = await this.env.R2_BUCKET.get(eventKey);
+          const response = await this.getBucket().get(eventKey);
           if (response) {
             const event = await response.json() as GitHubEvent;
             event.processed = true;
             
-            await this.env.R2_BUCKET.put(eventKey, JSON.stringify(event, null, 2), {
+            await this.getBucket().put(eventKey, JSON.stringify(event, null, 2), {
               httpMetadata: {
                 contentType: 'application/json',
               },
@@ -278,7 +527,7 @@ export class GitHubEventService {
           listOptions.cursor = continuationToken;
         }
         
-        const objects = await this.env.R2_BUCKET.list(listOptions);
+        const objects = await this.getBucket().list(listOptions);
         
         // Look for the event file
         for (const obj of objects.objects) {

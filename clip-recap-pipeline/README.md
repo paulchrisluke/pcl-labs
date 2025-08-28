@@ -237,7 +237,7 @@ The signature is computed over the payload: `body + timestamp + nonce`
 **Hex Signature (Preferred):**
 ```bash
 # Create hex signature from payload
-echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET"
+echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p -c 64
 ```
 
 **Base64 Signature (Alternative):**
@@ -249,11 +249,11 @@ echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHAR
 **Example:**
 ```bash
 # For a GET request with timestamp 1640995200 and nonce abc123def456
-echo -n "1640995200abc123def456" | openssl dgst -sha256 -hmac "your-secret"
+echo -n "1640995200abc123def456" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64
 # Result: a1b2c3d4e5f6...
 
 # For a POST request with JSON body
-echo -n '{"key":"value"}1640995200abc123def456' | openssl dgst -sha256 -hmac "your-secret"
+echo -n '{"key":"value"}1640995200abc123def456' | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64
 # Result: a1b2c3d4e5f6...
 ```
 
@@ -339,7 +339,7 @@ Validate Twitch API credentials and connection.
 ```bash
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-twitch" \
   -H "X-Request-Signature: $signature" \
@@ -378,7 +378,7 @@ Fetch recent Twitch clips from the last 24 hours.
 ```bash
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips?hours=24" \
   -H "X-Request-Signature: $signature" \
@@ -422,7 +422,7 @@ Store clips data to R2 storage.
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
 body='{"clips":[{"id":"test","url":"https://clips.twitch.tv/test","title":"Test","broadcaster_name":"test","created_at":"2024-01-01T00:00:00.000Z","duration":30,"view_count":1000}]}'
-signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips" \
   -H "X-Request-Signature: $signature" \
@@ -466,7 +466,7 @@ List all stored clips from R2 storage.
 ```bash
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips/stored?limit=50&offset=0" \
   -H "X-Request-Signature: $signature" \
@@ -498,7 +498,7 @@ Validate GitHub API credentials and repository access.
 ```bash
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-github" \
   -H "X-Request-Signature: $signature" \
@@ -541,7 +541,7 @@ Get daily GitHub activity and repository statistics.
 ```bash
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 # Note: URL-encode the repository name (org/repo becomes org%2Frepo)
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github/activity?repository=org%2Frepo&days=7" \
@@ -615,7 +615,7 @@ Test GitHub event storage functionality.
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
 body='{"event_type":"pull_request","repository":"org/repo","payload":{"action":"opened","pull_request":{"number":123,"title":"Test PR","html_url":"https://github.com/org/repo/pull/123"}}}'
-signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/test" \
   -H "X-Request-Signature: $signature" \
@@ -662,7 +662,7 @@ List stored GitHub events.
 ```bash
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 # List all pull request events from the last 7 days for a specific repository
 curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/list?days=7&repository=org%2Frepo&event_type=pull_request&limit=50" \
@@ -730,7 +730,7 @@ Enhance a clip with GitHub context based on temporal matching.
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
 body='{"clip":{"id":"clip_id","created_at":"2024-01-01T00:00:00.000Z","title":"Clip Title","url":"https://clips.twitch.tv/clip_id"},"repository":"org/repo","time_window_hours":2}'
-signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret")
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
 
 curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/enhance-clip" \
   -H "X-Request-Signature: $signature" \
