@@ -55,7 +55,8 @@ def validate_clip_ids(clip_ids: List[str]) -> None:
 app = FastAPI(
     title="Audio Processor API",
     description="Service for downloading and processing Twitch clips",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/api"
 )
 
 # Initialize audio processor
