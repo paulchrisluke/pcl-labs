@@ -9,59 +9,98 @@
     "clip_id": { "type": "string" },
     "clip_title": { "type": "string" },
     "clip_url": { "type": "string", "format": "uri" },
-    "clip_embed_url": { "type": "string", "format": "uri", "nullable": true },
-    "clip_thumbnail_url": { "type": "string", "format": "uri", "nullable": true },
-    "clip_duration": { "type": "number" },
-    "clip_view_count": { "type": "integer", "nullable": true },
+    "clip_embed_url": { "type": ["string", "null"], "format": "uri" },
+    "clip_thumbnail_url": { "type": ["string", "null"], "format": "uri" },
+    "clip_duration": { "type": "number", "minimum": 0 },
+    "clip_view_count": { "type": ["integer", "null"], "minimum": 0 },
     "clip_created_at": { "type": "string", "format": "date-time" },
-    "broadcaster_name": { "type": "string", "nullable": true },
-    "creator_name": { "type": "string", "nullable": true },
+    "broadcaster_name": { "type": ["string", "null"] },
+    "creator_name": { "type": ["string", "null"] },
 
     "processing_status": { "type": "string", "enum": ["pending","audio_ready","transcribed","enhanced","ready_for_content"] },
-    "audio_file_url": { "type": "string", "format": "uri", "nullable": true },
+    "audio_file_url": { "type": ["string", "null"], "format": "uri" },
 
-    "transcript": {
-      "type": "object",
-      "nullable": true,
-      "required": ["language","redacted","segments"],
-      "properties": {
-        "text": { "type": "string", "nullable": true },
-        "language": { "type": "string" },
-        "redacted": { "type": "boolean" },
-        "segments": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["start_s","end_s","text"],
-            "properties": {
-              "start_s": { "type": "number" },
-              "end_s": { "type": "number" },
-              "text": { "type": "string" }
-            }
-          }
+    "transcript_url": { "type": ["string", "null"], "format": "uri" },
+    "transcript_summary": { "type": ["string", "null"] },
+    "transcript_size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+
+    "github_context_url": { "type": ["string", "null"], "format": "uri" },
+    "github_summary": { "type": ["string", "null"] },
+    "github_context_size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+
+    "content_score": { "type": ["number", "null"] },
+    "content_tags": { "type": ["array", "null"], "items": { "type": "string" } },
+    "content_category": { "type": ["string", "null"], "enum": ["development","gaming","tutorial","review"] },
+
+    "stored_at": { "type": "string", "format": "date-time" },
+    "enhanced_at": { "type": ["string", "null"], "format": "date-time" },
+    "content_ready_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "audio_ready" }
+        }
+      },
+      "then": {
+        "required": ["audio_file_url"],
+        "properties": {
+          "audio_file_url": { "type": "string", "format": "uri" }
         }
       }
     },
-
-    "github_context": {
-      "type": "object",
-      "nullable": true,
-      "properties": {
-        "linked_prs": { "type": "array", "items": { "type": "string", "format": "uri" } },
-        "linked_commits": { "type": "array", "items": { "type": "string" } },
-        "linked_issues": { "type": "array", "items": { "type": "string" } },
-        "confidence_score": { "type": "number", "minimum": 0, "maximum": 1 },
-        "match_reason": { "type": "string" }
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "transcribed" }
+        }
+      },
+      "then": {
+        "required": ["audio_file_url", "transcript_url", "transcript_summary"],
+        "properties": {
+          "audio_file_url": { "type": "string", "format": "uri" },
+          "transcript_url": { "type": "string", "format": "uri" },
+          "transcript_summary": { "type": "string" }
+        }
       }
     },
-
-    "content_score": { "type": "number", "nullable": true },
-    "content_tags": { "type": "array", "items": { "type": "string" }, "nullable": true },
-    "content_category": { "type": "string", "enum": ["development","gaming","tutorial","review"], "nullable": true },
-
-    "stored_at": { "type": "string", "format": "date-time" },
-    "enhanced_at": { "type": "string", "format": "date-time", "nullable": true },
-    "content_ready_at": { "type": "string", "format": "date-time", "nullable": true }
-  },
-  "additionalProperties": false
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "enhanced" }
+        }
+      },
+      "then": {
+        "required": ["audio_file_url", "transcript_url", "transcript_summary", "github_context_url", "github_summary"],
+        "properties": {
+          "audio_file_url": { "type": "string", "format": "uri" },
+          "transcript_url": { "type": "string", "format": "uri" },
+          "transcript_summary": { "type": "string" },
+          "github_context_url": { "type": "string", "format": "uri" },
+          "github_summary": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "ready_for_content" }
+        }
+      },
+      "then": {
+        "required": ["audio_file_url", "transcript_url", "transcript_summary", "github_context_url", "github_summary", "content_score", "content_tags"],
+        "properties": {
+          "audio_file_url": { "type": "string", "format": "uri" },
+          "transcript_url": { "type": "string", "format": "uri" },
+          "transcript_summary": { "type": "string" },
+          "github_context_url": { "type": "string", "format": "uri" },
+          "github_summary": { "type": "string" },
+          "content_score": { "type": "number" },
+          "content_tags": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  ]
 }

@@ -4,6 +4,7 @@ import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
 import { handleGitHubRequest } from './routes/github.js';
 import { handleContentRoutes } from './routes/content.js';
+import { handleJobRoutes } from './routes/jobs.js';
 import { generateStatusPage } from './status-page.js';
 import { calculateUptime } from './utils/uptime.js';
 
@@ -251,13 +252,13 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
           });
         }
         
-        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(clip, repository);
+        const enhancedClipMetadata = await githubEventService.enhanceClipWithGitHubContext(clip, repository);
         
         return new Response(JSON.stringify({
           success: true,
-          clip: enhancedClip,
-          hasGitHubContext: !!enhancedClip.github_context,
-          githubContext: enhancedClip.github_context
+          clip: clip,
+          hasGitHubContext: !!enhancedClipMetadata,
+          githubContextMetadata: enhancedClipMetadata
         }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
@@ -1919,6 +1920,11 @@ export default {
       return handleGitHubEventsRequest(request, env);
     }
 
+    // Job management endpoints
+    if (url.pathname.startsWith('/api/jobs/')) {
+      return handleJobRoutes(request, env, url);
+    }
+
     // Content generation endpoints
     if (url.pathname.startsWith('/api/content/') || url.pathname.startsWith('/api/runs/')) {
       return handleContentRoutes(request, env, url);
@@ -2306,5 +2312,26 @@ export default {
 
   async scheduled(event: ScheduledEvent, env: Environment, ctx: ExecutionContext): Promise<void> {
     await handleScheduled(event, env, ctx);
+  },
+
+  async queue(batch: MessageBatch<any>, env: Environment): Promise<void> {
+    console.log(`🔄 Processing ${batch.messages.length} queue messages`);
+    
+    try {
+      const { JobProcessorService } = await import('./services/job-processor.js');
+      const processor = new JobProcessorService(env);
+      
+      // Process all messages in the batch
+      const messages = batch.messages.map(msg => msg.body);
+      await processor.processJobs(messages);
+      
+      console.log(`✅ Successfully processed ${batch.messages.length} queue messages`);
+      
+    } catch (error) {
+      console.error('❌ Queue processing error:', error);
+      
+      // Mark all messages as retryable
+      batch.retryAll();
+    }
   }
 };

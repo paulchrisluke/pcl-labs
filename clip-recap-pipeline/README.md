@@ -785,6 +785,91 @@ The `requireHmacAuth` middleware enforces HMAC-based authentication for protecte
 - **Security**: Prevents mixed authentication methods and ensures consistent HMAC-only authentication flow
 - **Testing**: Unit tests in `test-auth.ts` verify Authorization header rejection and HMAC validation behavior
 
+## Content Migration and Failure Tracking
+
+The pipeline includes a robust content migration system that tracks failed clips during the migration process from legacy clip format to the new ContentItem format.
+
+### Migration Failure Tracking
+
+The system uses Cloudflare KV storage to track migration failures across sessions:
+
+- **Persistent Storage**: Failures are stored in KV namespace `MIGRATION_FAILURES`
+- **Session Management**: Each migration session has a unique ID for tracking
+- **Failure Types**: Tracks various failure types (storage_failed, conversion_failed, validation_failed, etc.)
+- **Detailed Context**: Stores error messages, timestamps, and contextual data
+
+### Migration Endpoints
+
+#### `GET /api/content/migration-status`
+Get current migration status including failure count.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_clips": 150,
+    "migrated_clips": 120,
+    "pending_clips": 25,
+    "failed_clips": 5
+  }
+}
+```
+
+#### `GET /api/content/migration-failures`
+Get detailed failure information for the current migration session.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "failures": [
+      {
+        "clipId": "clip123",
+        "errorType": "storage_failed",
+        "errorMessage": "Failed to store ContentItem for clip",
+        "context": { "clipId": "clip123" },
+        "timestamp": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+#### `POST /api/content/migration-session/start`
+Start a new migration session and clear previous failure tracking.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "sessionId": "migration_1704067200000_abc123",
+    "message": "New migration session started. Previous failure tracking has been cleared."
+  }
+}
+```
+
+### Migration Service Methods
+
+The `ContentMigrationService` provides these methods for failure tracking:
+
+- `startNewMigrationSession()`: Start a new session and clear previous failures
+- `getMigrationFailures()`: Get detailed failure information
+- `getMigrationStatus()`: Get overall migration status with accurate failure count
+
+### Failure Tracking Integration
+
+Failures are automatically tracked in these scenarios:
+
+- **Storage Failures**: When ContentItem storage fails
+- **Conversion Failures**: When clip data conversion fails
+- **Validation Failures**: When clip metadata validation fails
+- **JSON Parse Failures**: When clip metadata JSON parsing fails
+- **Read Failures**: When clip metadata cannot be read from R2
+
 ## Content Structure
 
 Generated posts follow the existing blog structure:

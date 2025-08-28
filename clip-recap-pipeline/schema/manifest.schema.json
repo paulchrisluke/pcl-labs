@@ -12,12 +12,12 @@
     "title": { "type": "string" },
     "headline_short": { "type": "string", "maxLength": 60 },
     "summary": { "type": "string", "maxLength": 180 },
-    "description": { "type": "string", "nullable": true },
+    "description": { "type": ["string","null"] },
     "category": { "type": "string", "const": "development" },
-    "tags": { "type": "array", "items": { "type": "string" } },
-    "repos": { "type": "array", "items": { "type": "string" }, "nullable": true },
-    "keywords": { "type": "string", "nullable": true },
-    "clip_ids": { "type": "array", "items": { "type": "string" } },
+    "tags": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+    "repos": { "type": ["array","null"], "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+    "keywords": { "type": ["string","null"] },
+    "clip_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
 
     "sections": {
       "type": "array",
@@ -28,17 +28,17 @@
           "section_id": { "type": "string" },
           "clip_id": { "type": "string" },
           "title": { "type": "string", "maxLength": 80 },
-          "bullets": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "type": "string", "maxLength": 140 } },
+          "bullets": { "type": "array", "minItems": 2, "maxItems": 4, "uniqueItems": true, "items": { "type": "string", "maxLength": 140 } },
           "paragraph": { "type": "string" },
           "score": { "type": "number" },
-          "repo": { "type": "string", "nullable": true },
-          "pr_links": { "type": "array", "items": { "type": "string", "format": "uri" }, "nullable": true },
-          "clip_url": { "type": "string", "format": "uri", "nullable": true },
-          "vod_jump": { "type": "string", "format": "uri", "nullable": true },
+          "repo": { "type": ["string","null"] },
+          "pr_links": { "type": ["array","null"], "items": { "type": "string", "format": "uri" }, "minItems": 1, "uniqueItems": true },
+          "clip_url": { "type": ["string","null"], "format": "uri" },
+          "vod_jump": { "type": ["string","null"], "format": "uri" },
           "alignment_status": { "type": "string", "enum": ["exact","estimated","missing"], "default": "exact" },
           "start_s": { "type": "number" },
           "end_s": { "type": "number" },
-          "entities": { "type": "array", "items": { "type": "string" }, "nullable": true }
+          "entities": { "type": ["array","null"], "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
         },
         "additionalProperties": false
       }
@@ -50,21 +50,19 @@
     "status": { "type": "string", "enum": ["draft","pr_open","approved","merged","published"] },
 
     "judge": {
-      "type": "object",
-      "nullable": true,
+      "type": ["object","null"],
       "properties": {
-        "overall": { "type": "number", "nullable": true },
-        "per_axis": { "type": "object", "nullable": true },
-        "version": { "type": "string", "nullable": true }
+        "overall": { "type": ["number","null"] },
+        "per_axis": { "type": ["object","null"] },
+        "version": { "type": ["string","null"] }
       }
     },
 
     "social_blurbs": {
-      "type": "object",
-      "nullable": true,
+      "type": ["object","null"],
       "properties": {
-        "bluesky": { "type": "string", "maxLength": 260, "nullable": true },
-        "threads": { "type": "string", "maxLength": 260, "nullable": true }
+        "bluesky": { "type": ["string","null"], "maxLength": 260 },
+        "threads": { "type": ["string","null"], "maxLength": 260 }
       }
     }
   },

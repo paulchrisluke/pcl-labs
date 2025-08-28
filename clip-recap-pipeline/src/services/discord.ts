@@ -24,11 +24,11 @@ export class DiscordService {
     const embed: DiscordEmbed = {
       title: '🎬 Daily Dev Recap Ready for Review',
       description: `A new daily development recap has been generated and is ready for review!`,
-      color: judgeResult.overall >= 80 ? 0x00ff00 : 0xffa500, // Green if good, orange if needs review
+      color: judgeResult.overall >= 0.8 ? 0x00ff00 : 0xffa500, // Green if good, orange if needs review
       fields: [
         {
           name: '📊 Quality Score',
-          value: `${judgeResult.overall}/100`,
+          value: `${Math.round(judgeResult.overall * 100)}/100`,
           inline: true
         },
         {

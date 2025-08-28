@@ -1,9 +1,9 @@
 import Ajv from 'ajv';
-import contentItemSchema from '../../schema/content-item.schema.json' assert { type: 'json' };
-import manifestSchema from '../../schema/manifest.schema.json' assert { type: 'json' };
+import contentItemSchema from '../../schema/content-item.schema.json' with { type: 'json' };
+import manifestSchema from '../../schema/manifest.schema.json' with { type: 'json' };
 
 // Initialize Ajv
-const ajv = new Ajv({
+const ajv = new (Ajv as any)({
   allErrors: true,
   strict: false,
   verbose: true,
@@ -20,6 +20,31 @@ export interface ValidationResult {
 }
 
 /**
+ * Helper function to sanitize data using schema introspection
+ * Builds a sanitized object by including each property if it's required or if data[prop] !== undefined
+ * Handles absence of properties/required arrays and preserves original values for included keys
+ */
+function sanitizeUsingSchema(data: any, schema: any): any {
+  const sanitized: any = {};
+  
+  // Get schema properties and required fields, with fallbacks for safety
+  const properties = schema.properties || {};
+  const required = schema.required || [];
+  
+  // Include all properties that are either required or present in the data
+  for (const [propName, propSchema] of Object.entries(properties)) {
+    const isRequired = required.includes(propName);
+    const hasValue = data[propName] !== undefined;
+    
+    if (isRequired || hasValue) {
+      sanitized[propName] = data[propName];
+    }
+  }
+  
+  return sanitized;
+}
+
+/**
  * Validate a ContentItem against the schema
  */
 export function validateContentItem(data: any): ValidationResult {
@@ -28,7 +53,7 @@ export function validateContentItem(data: any): ValidationResult {
   if (!isValid) {
     return {
       isValid: false,
-      errors: contentItemValidator.errors?.map(error => 
+      errors: contentItemValidator.errors?.map((error: any) => 
         `${error.instancePath} ${error.message}`.trim()
       ) || ['Validation failed']
     };
@@ -48,7 +73,7 @@ export function validateManifest(data: any): ValidationResult {
   if (!isValid) {
     return {
       isValid: false,
-      errors: manifestValidator.errors?.map(error => 
+      errors: manifestValidator.errors?.map((error: any) => 
         `${error.instancePath} ${error.message}`.trim()
       ) || ['Validation failed']
     };
@@ -71,37 +96,12 @@ export function sanitizeContentItem(data: any): ValidationResult {
     return validation;
   }
   
-  // Only construct sanitized object after successful validation
-  // Map only schema-defined properties
-  const sanitized: any = {
-    schema_version: data.schema_version,
-    clip_id: data.clip_id,
-    clip_title: data.clip_title,
-    clip_url: data.clip_url,
-    clip_duration: data.clip_duration,
-    clip_created_at: data.clip_created_at,
-    stored_at: data.stored_at,
-    processing_status: data.processing_status,
-  };
-  
-  // Conditionally add optional fields only if they exist
-  if (data.clip_embed_url !== undefined) sanitized.clip_embed_url = data.clip_embed_url;
-  if (data.clip_thumbnail_url !== undefined) sanitized.clip_thumbnail_url = data.clip_thumbnail_url;
-  if (data.clip_view_count !== undefined) sanitized.clip_view_count = data.clip_view_count;
-  if (data.broadcaster_name !== undefined) sanitized.broadcaster_name = data.broadcaster_name;
-  if (data.creator_name !== undefined) sanitized.creator_name = data.creator_name;
-  if (data.audio_file_url !== undefined) sanitized.audio_file_url = data.audio_file_url;
-  if (data.transcript !== undefined) sanitized.transcript = data.transcript;
-  if (data.github_context !== undefined) sanitized.github_context = data.github_context;
-  if (data.content_score !== undefined) sanitized.content_score = data.content_score;
-  if (data.content_tags !== undefined) sanitized.content_tags = data.content_tags;
-  if (data.content_category !== undefined) sanitized.content_category = data.content_category;
-  if (data.enhanced_at !== undefined) sanitized.enhanced_at = data.enhanced_at;
-  if (data.content_ready_at !== undefined) sanitized.content_ready_at = data.content_ready_at;
+  // Use schema-based introspection to sanitize the data
+  const sanitizedData = sanitizeUsingSchema(data, contentItemSchema);
   
   return {
     isValid: true,
-    sanitizedData: sanitized
+    sanitizedData
   };
 }
 
@@ -117,36 +117,12 @@ export function sanitizeManifest(data: any): ValidationResult {
     return validation;
   }
   
-  // Only construct sanitized object after successful validation
-  // Map only schema-defined properties
-  const sanitized: any = {
-    schema_version: data.schema_version,
-    post_id: data.post_id,
-    date_utc: data.date_utc,
-    tz: data.tz,
-    title: data.title,
-    summary: data.summary,
-    tags: data.tags,
-    clip_ids: data.clip_ids,
-    sections: data.sections,
-    canonical_vod: data.canonical_vod,
-    md_path: data.md_path,
-    target_branch: data.target_branch,
-    status: data.status,
-  };
-  
-  // Conditionally add optional fields only if they exist
-  if (data.headline_short !== undefined) sanitized.headline_short = data.headline_short;
-  if (data.description !== undefined) sanitized.description = data.description;
-  if (data.category !== undefined) sanitized.category = data.category;
-  if (data.repos !== undefined) sanitized.repos = data.repos;
-  if (data.keywords !== undefined) sanitized.keywords = data.keywords;
-  if (data.judge !== undefined) sanitized.judge = data.judge;
-  if (data.social_blurbs !== undefined) sanitized.social_blurbs = data.social_blurbs;
+  // Use schema-based introspection to sanitize the data
+  const sanitizedData = sanitizeUsingSchema(data, manifestSchema);
   
   return {
     isValid: true,
-    sanitizedData: sanitized
+    sanitizedData
   };
 }
 

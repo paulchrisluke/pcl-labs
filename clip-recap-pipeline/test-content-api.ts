@@ -34,13 +34,13 @@ async function testContentAPI() {
   console.log(`📡 Testing against: ${WORKER_URL}`);
   console.log('');
 
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = Math.random().toString(36).substring(2, 18);
   const secret = process.env.HMAC_SHARED_SECRET || 'test-secret';
 
   // Test 1: Content Status
   console.log('1️⃣ Testing content status endpoint...');
   try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
     const statusBody = '';
     const statusSignature = await generateHmacSignature(statusBody, timestamp, nonce, secret);
     
@@ -68,6 +68,8 @@ async function testContentAPI() {
   // Test 2: Migration Status
   console.log('2️⃣ Testing migration status endpoint...');
   try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
     const migrationBody = '';
     const migrationSignature = await generateHmacSignature(migrationBody, timestamp, nonce, secret);
     
@@ -95,13 +97,18 @@ async function testContentAPI() {
   // Test 3: Content Generation Request
   console.log('3️⃣ Testing content generation endpoint...');
   try {
-    const today = new Date();
-    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
+    
+    // Create UTC-based dates for timezone-independent date ranges
+    const todayUtc = new Date();
+    todayUtc.setUTCHours(0, 0, 0, 0);
+    const yesterdayUtc = new Date(todayUtc.getTime() - 24 * 60 * 60 * 1000);
     
     const generationRequest = {
       date_range: {
-        start: yesterday.toISOString(),
-        end: today.toISOString(),
+        start: yesterdayUtc.toISOString(),
+        end: todayUtc.toISOString(),
       },
       filters: {
         min_views: 1,
@@ -132,6 +139,8 @@ async function testContentAPI() {
       // Test 4: Run Status (if we got a run_id)
       if (generationData.data?.run_id) {
         console.log('4️⃣ Testing run status endpoint...');
+        const timestamp = Math.floor(Date.now() / 1000).toString();
+        const nonce = Math.random().toString(36).substring(2, 18);
         const runId = generationData.data.run_id;
         const runBody = '';
         const runSignature = await generateHmacSignature(runBody, timestamp, nonce, secret);
@@ -166,6 +175,8 @@ async function testContentAPI() {
   // Test 5: List Content Items
   console.log('5️⃣ Testing content items listing endpoint...');
   try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
     const listBody = '';
     const listSignature = await generateHmacSignature(listBody, timestamp, nonce, secret);
     
@@ -193,6 +204,8 @@ async function testContentAPI() {
   // Test 6: Manifest Builder
   console.log('6️⃣ Testing manifest builder endpoint...');
   try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
     const manifestRequest = {
       date: '2024-01-01',
       timezone: 'UTC'
@@ -227,6 +240,8 @@ async function testContentAPI() {
   // Test 7: Blog Generator
   console.log('7️⃣ Testing blog generator endpoint...');
   try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
     const blogRequest = {
       manifest: {
         schema_version: '1.0.0',
@@ -285,6 +300,8 @@ async function testContentAPI() {
   // Test 8: AI Judge
   console.log('8️⃣ Testing AI judge endpoint...');
   try {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = Math.random().toString(36).substring(2, 18);
     const judgeRequest = {
       manifest: {
         schema_version: '1.0.0',
@@ -342,5 +359,43 @@ async function testContentAPI() {
   console.log('🎉 Content API testing complete!');
 }
 
-// Run the test
-testContentAPI().catch(console.error);
+// CI-friendly error handling
+function handleError(error: Error | unknown, context: string = 'Unknown') {
+  console.error(`❌ ${context}:`, error);
+  if (error instanceof Error) {
+    console.error('Stack trace:', error.stack);
+  }
+  process.exitCode = 1;
+}
+
+function handleUnhandledRejection(reason: unknown, promise: Promise<unknown>) {
+  console.error('❌ Unhandled Promise Rejection:');
+  console.error('Promise:', promise);
+  console.error('Reason:', reason);
+  if (reason instanceof Error) {
+    console.error('Stack trace:', reason.stack);
+  }
+  process.exitCode = 1;
+}
+
+function handleUncaughtException(error: Error) {
+  console.error('❌ Uncaught Exception:');
+  console.error('Error:', error.message);
+  console.error('Stack trace:', error.stack);
+  process.exitCode = 1;
+  process.exit(1);
+}
+
+// Set up global error handlers
+process.on('unhandledRejection', handleUnhandledRejection);
+process.on('uncaughtException', handleUncaughtException);
+
+// Run the test with proper error handling
+testContentAPI()
+  .then(() => {
+    console.log('✅ All tests completed successfully');
+  })
+  .catch((error) => {
+    handleError(error, 'Test execution failed');
+    process.exit(1);
+  });

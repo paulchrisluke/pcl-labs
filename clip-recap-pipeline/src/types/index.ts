@@ -3,6 +3,9 @@ export interface Environment {
   ai: any; // Workers AI binding
   VECTORIZE: any; // Vectorize binding
   R2_BUCKET: any; // R2 bucket binding
+  MIGRATION_FAILURES: KVNamespace; // KV namespace for tracking migration failures
+  JOB_STORE: D1Database; // D1 database for job state management
+  JOB_QUEUE: Queue; // Queue for background job processing
   TWITCH_CLIENT_ID: string;
   TWITCH_CLIENT_SECRET: string;
   TWITCH_BROADCASTER_ID: string;
@@ -42,6 +45,9 @@ export type MatchReason = 'temporal_proximity' | 'content_analysis' | 'manual_ov
 
 // Content categorization
 export type ContentCategory = 'development' | 'gaming' | 'tutorial' | 'review' | 'other';
+
+// Score type for 0-1 scale values
+export type Score01 = number;
 
 // GitHub event action types
 export type PullRequestAction = 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
@@ -95,14 +101,14 @@ export interface BlogPost {
 
 // Judge evaluation types
 export interface JudgeResult {
-  overall: number;
+  overall: Score01;
   per_axis: {
-    coherence: number;
-    correctness: number;
-    dev_signal: number;
-    narrative_flow: number;
-    length: number;
-    safety: number;
+    coherence: Score01;
+    correctness: Score01;
+    dev_signal: Score01;
+    narrative_flow: Score01;
+    length: Score01;
+    safety: Score01;
   };
   reasons: string[];
   action: 'approve' | 'needs-polish';
@@ -237,9 +243,11 @@ export interface GitHubIssueEvent extends GitHubEvent {
 
 // Clip-GitHub Linking Types
 export interface GitHubContext {
-  linked_prs: LinkedPullRequest[];
-  linked_commits: LinkedCommit[];
-  linked_issues: LinkedIssue[];
+  linked_prs?: LinkedPullRequest[];
+  linked_commits?: LinkedCommit[];
+  linked_issues?: LinkedIssue[];
+  confidence_score?: number; // 0-1
+  match_reason?: MatchReason;
 }
 
 export interface LinkedPullRequest {

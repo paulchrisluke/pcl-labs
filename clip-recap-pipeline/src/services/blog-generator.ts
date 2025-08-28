@@ -1,5 +1,7 @@
 import type { Environment } from '../types/index.js';
 import type { Manifest, ManifestSection } from '../types/content.js';
+import { validateClipId } from '../utils/validation.js';
+import { stringify } from 'yaml';
 
 export interface BlogPostResult {
   markdown: string;
@@ -63,7 +65,7 @@ export class BlogGeneratorService {
       description: manifest.summary,
       category: manifest.category,
       tags: manifest.tags,
-      image: this.generateCoverImageUrl(manifest),
+      image: this.generateCoverImageUrl(),
       canonical: this.generateCanonicalUrl(manifest),
       layout: 'post',
       published: false, // Will be set to true after approval
@@ -131,7 +133,7 @@ export class BlogGeneratorService {
 
     // Add clip count and GitHub context info
     const clipCount = manifest.clip_ids.length;
-    const githubContextCount = manifest.sections.filter(s => s.pr_links && s.pr_links.length > 0).length;
+    const githubContextCount = manifest.sections.filter(s => Array.isArray(s.pr_links) && s.pr_links.length > 0).length;
 
     intro += `## Overview\n\n`;
     intro += `Today's development session included **${clipCount} clips** covering various development topics.`;
@@ -174,7 +176,7 @@ export class BlogGeneratorService {
     sections.forEach((section, index) => {
       const sectionNumber = index + 1;
       
-      sectionsContent += `## ${sectionNumber}. ${section.title} {#section-${sectionNumber}}\n\n`;
+      sectionsContent += `<a id="section-${sectionNumber}"></a>\n## ${sectionNumber}. ${section.title}\n\n`;
 
       // Add clip embed if available
       if (section.clip_url) {
@@ -196,7 +198,7 @@ export class BlogGeneratorService {
       }
 
       // Add GitHub context if available
-      if (section.pr_links && section.pr_links.length > 0) {
+      if (Array.isArray(section.pr_links) && section.pr_links.length > 0) {
         sectionsContent += this.generateGitHubContext(section);
       }
 
@@ -210,19 +212,72 @@ export class BlogGeneratorService {
   }
 
   /**
+   * Securely parse and validate clip URL
+   * Validates URL format, checks trusted domains, and extracts clip ID safely
+   */
+  private parseClipUrl(clipUrl: string): string {
+    if (!clipUrl || typeof clipUrl !== 'string') {
+      return '';
+    }
+
+    try {
+      // Parse URL using URL constructor for proper validation
+      const url = new URL(clipUrl);
+      
+      // Validate hostname against trusted domains
+      const trustedDomains = [
+        'clips.twitch.tv',
+        'www.twitch.tv',
+        'twitch.tv'
+      ];
+      
+      if (!trustedDomains.includes(url.hostname)) {
+        console.warn(`Untrusted domain for clip URL: ${url.hostname}`);
+        return '';
+      }
+      
+      // Extract clip ID from pathname
+      const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
+      
+      // Look for 'clip' segment followed by the clip ID
+      const clipIndex = pathSegments.findIndex(segment => segment === 'clip');
+      if (clipIndex === -1 || clipIndex >= pathSegments.length - 1) {
+        console.warn('No valid clip ID found in URL path');
+        return '';
+      }
+      
+      const clipId = pathSegments[clipIndex + 1];
+      
+      // Validate the extracted clip ID using existing validation function
+      const validation = validateClipId(clipId);
+      if (!validation.isValid) {
+        console.warn(`Invalid clip ID: ${validation.error}`);
+        return '';
+      }
+      
+      return clipId;
+      
+    } catch (error) {
+      console.warn(`Failed to parse clip URL: ${error}`);
+      return '';
+    }
+  }
+
+  /**
    * Generate clip embed
    */
   private generateClipEmbed(section: ManifestSection): string {
     if (!section.clip_url) return '';
 
-    // Extract clip ID from URL
-    const clipIdMatch = section.clip_url.match(/clip\/([^\/\?]+)/);
-    if (!clipIdMatch) return '';
+    // Securely extract and validate clip ID
+    const clipId = this.parseClipUrl(section.clip_url);
+    if (!clipId) return '';
 
-    const clipId = clipIdMatch[1];
+    // URL-encode the clip ID for safe embedding
+    const encodedClipId = encodeURIComponent(clipId);
     
     return `<div class="clip-embed">
-  <iframe src="https://clips.twitch.tv/embed?clip=${clipId}&parent=paulchrisluke.com" 
+  <iframe src="https://clips.twitch.tv/embed?clip=${encodedClipId}&parent=paulchrisluke.com" 
           width="640" height="360" frameborder="0" scrolling="no" 
           allowfullscreen></iframe>
   <p><a href="${section.clip_url}" target="_blank">Watch on Twitch</a></p>
@@ -235,7 +290,7 @@ export class BlogGeneratorService {
    * Generate GitHub context section
    */
   private generateGitHubContext(section: ManifestSection): string {
-    if (!section.pr_links || section.pr_links.length === 0) return '';
+    if (!Array.isArray(section.pr_links) || section.pr_links.length === 0) return '';
 
     let context = '### Related GitHub Activity\n\n';
 
@@ -255,7 +310,7 @@ export class BlogGeneratorService {
     let conclusion = '## Summary\n\n';
 
     const clipCount = manifest.clip_ids.length;
-    const githubContextCount = manifest.sections.filter(s => s.pr_links && s.pr_links.length > 0).length;
+    const githubContextCount = manifest.sections.filter(s => Array.isArray(s.pr_links) && s.pr_links.length > 0).length;
 
     conclusion += `Today's development session was productive with ${clipCount} clips covering various topics.`;
 
@@ -305,29 +360,23 @@ export class BlogGeneratorService {
   }
 
   /**
-   * Convert object to YAML (simplified)
+   * Convert object to YAML using proper YAML library
    */
   private objectToYaml(obj: Record<string, any>): string {
-    let yaml = '';
-
-    for (const [key, value] of Object.entries(obj)) {
-      if (value === undefined || value === null) continue;
-
-      if (Array.isArray(value)) {
-        yaml += `${key}:\n`;
-        value.forEach(item => {
-          yaml += `  - ${item}\n`;
-        });
-      } else if (typeof value === 'string') {
-        // Escape quotes and special characters
-        const escaped = value.replace(/"/g, '\\"');
-        yaml += `${key}: "${escaped}"\n`;
-      } else {
-        yaml += `${key}: ${value}\n`;
-      }
-    }
-
-    return yaml;
+    // Filter out undefined values to avoid YAML serialization issues
+    const filteredObj = Object.fromEntries(
+      Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null)
+    );
+    
+    // Use the yaml library to safely serialize the object
+    // This handles all edge cases: multiline strings, special characters, booleans, numbers, nested objects, etc.
+    return stringify(filteredObj, {
+      indent: 2,
+      lineWidth: 0, // Disable line wrapping to keep it simple
+      minContentWidth: 0, // Disable content width restrictions
+      doubleQuotedAsJSON: false, // Use YAML-style quoting instead of JSON-style
+      doubleQuotedMinMultiLineLength: 40, // Use block scalars for longer strings
+    });
   }
 
   /**
@@ -347,7 +396,7 @@ export class BlogGeneratorService {
   /**
    * Generate cover image URL
    */
-  private generateCoverImageUrl(manifest: Manifest): string {
+  private generateCoverImageUrl(): string {
     // For now, use a default cover image
     // In the future, this could generate a custom image based on the content
     return '/img/blog/default-cover.jpg';

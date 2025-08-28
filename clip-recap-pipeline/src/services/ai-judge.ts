@@ -1,5 +1,18 @@
 import type { Environment } from '../types/index.js';
-import type { Manifest, JudgeResult } from '../types/content.js';
+import type { Manifest } from '../types/content.js';
+
+// AI evaluation result interface for type safety
+export interface AiEvaluationResult {
+  overall: number; // 0-100
+  per_axis: {
+    coherence: number; // 0-100
+    correctness: number; // 0-100
+    dev_signal: number; // 0-100
+    narrative_flow: number; // 0-100
+  };
+  reasoning: string;
+  recommendations: string[];
+}
 
 export interface JudgeEvaluation {
   overall: number; // 0-100
@@ -82,11 +95,14 @@ export class AIJudgeService {
   private prepareContentForEvaluation(manifest: Manifest): string {
     let content = '';
 
-    // Add manifest metadata
+    // Add manifest metadata with defensive handling for potentially undefined arrays
+    const safeTags = Array.isArray(manifest.tags) ? manifest.tags : [];
+    const safeCount = Array.isArray(manifest.clip_ids) ? manifest.clip_ids.length : 0;
+    
     content += `Title: ${manifest.title}\n`;
     content += `Summary: ${manifest.summary}\n`;
-    content += `Tags: ${manifest.tags.join(', ')}\n`;
-    content += `Clips: ${manifest.clip_ids.length}\n\n`;
+    content += `Tags: ${safeTags.join(', ')}\n`;
+    content += `Clips: ${safeCount}\n\n`;
 
     // Add sections content
     content += 'Sections:\n';
@@ -94,7 +110,7 @@ export class AIJudgeService {
       content += `\n${index + 1}. ${section.title}\n`;
       content += `   Bullets: ${section.bullets.join('; ')}\n`;
       content += `   Paragraph: ${section.paragraph}\n`;
-      if (section.pr_links) {
+      if (Array.isArray(section.pr_links)) {
         content += `   GitHub PRs: ${section.pr_links.length}\n`;
       }
     });
@@ -105,7 +121,7 @@ export class AIJudgeService {
   /**
    * Run AI evaluation using Workers AI
    */
-  private async runAIEvaluation(content: string): Promise<any> {
+  private async runAIEvaluation(content: string): Promise<AiEvaluationResult> {
     const prompt = this.buildEvaluationPrompt(content);
 
     try {
@@ -133,13 +149,25 @@ export class AIJudgeService {
   }
 
   /**
+   * Sanitize content for prompt injection prevention
+   */
+  private sanitizeForPrompt(content: string): string {
+    // Remove potential prompt injection patterns
+    return content
+      .replace(/\n{3,}/g, '\n\n')    // Limit consecutive newlines
+      .replace(/[`]{3,}/g, '')       // Remove code block markers
+      .slice(0, 4000);               // Limit content length
+  }
+
+  /**
    * Build evaluation prompt
    */
   private buildEvaluationPrompt(content: string): string {
+    const sanitizedContent = this.sanitizeForPrompt(content);
     return `Please evaluate the following development blog post content and provide scores in JSON format.
 
 Content to evaluate:
-${content}
+${sanitizedContent}
 
 Evaluation criteria:
 1. **Coherence** (0-100): How well do the sections flow together? Is the narrative logical?
@@ -166,7 +194,7 @@ Only return valid JSON, no additional text.`;
   /**
    * Parse AI response
    */
-  private parseAIResponse(response: string): any {
+  private parseAIResponse(response: string): AiEvaluationResult {
     try {
       // Extract JSON from response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -176,20 +204,14 @@ Only return valid JSON, no additional text.`;
 
       const parsed = JSON.parse(jsonMatch[0]);
       
-      // Validate required fields
-      if (typeof parsed.overall !== 'number') {
-        throw new Error('Missing or invalid overall score');
-      }
-      if (!parsed.per_axis || typeof parsed.per_axis !== 'object') {
-        throw new Error('Missing or invalid per_axis scores');
-      }
-
-      return parsed;
+      // Validate and type-check the response
+      const validatedResult = this.validateAiResponse(parsed);
+      return validatedResult;
     } catch (error) {
       console.error('❌ Failed to parse AI response:', error);
       console.log('Raw response:', response);
       
-      // Return default evaluation
+      // Return default evaluation with proper typing
       return {
         overall: 50,
         per_axis: {
@@ -205,9 +227,64 @@ Only return valid JSON, no additional text.`;
   }
 
   /**
+   * Validate AI response and ensure it matches AiEvaluationResult interface
+   */
+  private validateAiResponse(parsed: unknown): AiEvaluationResult {
+    // Type guard to validate the structure
+    if (!this.isValidAiEvaluationResult(parsed)) {
+      throw new Error('Invalid AI response structure');
+    }
+
+    return parsed;
+  }
+
+  /**
+   * Type guard to validate AiEvaluationResult structure
+   */
+  private isValidAiEvaluationResult(obj: unknown): obj is AiEvaluationResult {
+    if (!obj || typeof obj !== 'object') {
+      return false;
+    }
+
+    const candidate = obj as Record<string, unknown>;
+
+    // Check overall score
+    if (typeof candidate.overall !== 'number' || candidate.overall < 0 || candidate.overall > 100) {
+      return false;
+    }
+
+    // Check per_axis object
+    if (!candidate.per_axis || typeof candidate.per_axis !== 'object') {
+      return false;
+    }
+
+    const perAxis = candidate.per_axis as Record<string, unknown>;
+    const requiredAxes = ['coherence', 'correctness', 'dev_signal', 'narrative_flow'];
+
+    for (const axis of requiredAxes) {
+      if (typeof perAxis[axis] !== 'number' || perAxis[axis] < 0 || perAxis[axis] > 100) {
+        return false;
+      }
+    }
+
+    // Check reasoning
+    if (typeof candidate.reasoning !== 'string') {
+      return false;
+    }
+
+    // Check recommendations
+    if (!Array.isArray(candidate.recommendations) || 
+        !candidate.recommendations.every((rec: unknown) => typeof rec === 'string')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Normalize and validate scores
    */
-  private normalizeScores(evaluation: any): JudgeEvaluation {
+  private normalizeScores(evaluation: AiEvaluationResult): JudgeEvaluation {
     // Ensure scores are within 0-100 range
     const overall = Math.max(0, Math.min(100, evaluation.overall || 50));
     
@@ -324,23 +401,13 @@ Only return valid JSON, no additional text.`;
     approvalRate: number;
     commonIssues: string[];
   }> {
-    try {
-      // This would query stored judge results
-      // For now, return placeholder statistics
-      return {
-        totalEvaluations: 0,
-        averageOverallScore: 0,
-        approvalRate: 0,
-        commonIssues: [],
-      };
-    } catch (error) {
-      console.error('❌ Failed to get judge statistics:', error);
-      return {
-        totalEvaluations: 0,
-        averageOverallScore: 0,
-        approvalRate: 0,
-        commonIssues: ['Unable to retrieve statistics'],
-      };
-    }
+    // This would query stored judge results
+    // For now, return placeholder statistics
+    return {
+      totalEvaluations: 0,
+      averageOverallScore: 0,
+      approvalRate: 0,
+      commonIssues: [],
+    };
   }
 }

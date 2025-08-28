@@ -120,7 +120,7 @@ export const errorTracker = new ErrorTracker();
  * Helper function to track content migration errors
  */
 export function trackContentMigrationError(
-  errorType: 'missing_clip_id' | 'conversion_failed' | 'storage_failed',
+  errorType: 'missing_clip_id' | 'conversion_failed' | 'storage_failed' | 'json_parse_failed' | 'clip_validation_failed' | 'clip_read_failed' | 'clip_not_found_in_storage',
   message: string,
   context?: Record<string, any>
 ): void {

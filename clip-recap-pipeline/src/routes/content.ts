@@ -1,10 +1,25 @@
 import type { Environment, ContentCategory } from '../types/index.js';
 import type { ContentGenerationRequest, ContentGenerationResponse, RunStatus } from '../types/content.js';
+
+// Processing status type definition
+type ProcessingStatus = 'pending' | 'audio_ready' | 'transcribed' | 'enhanced' | 'ready_for_content';
+
+// Type guard functions for validation
+const isProcessingStatus = (s: string): s is ProcessingStatus => {
+  const validProcessingStatuses: readonly ProcessingStatus[] = ['pending', 'audio_ready', 'transcribed', 'enhanced', 'ready_for_content'];
+  return validProcessingStatuses.includes(s as ProcessingStatus);
+};
+
+const isContentCategory = (s: string): s is ContentCategory => {
+  const validContentCategories: readonly ContentCategory[] = ['development', 'gaming', 'tutorial', 'review', 'other'];
+  return validContentCategories.includes(s as ContentCategory);
+};
 import { ContentItemService } from '../services/content-items.js';
 import { ContentMigrationService } from '../services/content-migration.js';
 import { ManifestBuilderService } from '../services/manifest-builder.js';
 import { BlogGeneratorService } from '../services/blog-generator.js';
 import { AIJudgeService } from '../services/ai-judge.js';
+import { JobManagerService } from '../services/job-manager.js';
 import { requireHmacAuth } from '../utils/auth.js';
 import { errorTracker } from '../utils/error-tracking.js';
 import { ulid } from 'ulid';
@@ -20,6 +35,56 @@ function generateULID(): string {
   return ulid();
 }
 
+// Lazy service factory functions with memoization
+let contentItemServiceInstance: ContentItemService | null = null;
+let migrationServiceInstance: ContentMigrationService | null = null;
+let manifestBuilderInstance: ManifestBuilderService | null = null;
+let blogGeneratorInstance: BlogGeneratorService | null = null;
+let aiJudgeInstance: AIJudgeService | null = null;
+let jobManagerInstance: JobManagerService | null = null;
+
+function getContentItemService(env: Environment): ContentItemService {
+  if (!contentItemServiceInstance) {
+    contentItemServiceInstance = new ContentItemService(env);
+  }
+  return contentItemServiceInstance;
+}
+
+function getMigrationService(env: Environment): ContentMigrationService {
+  if (!migrationServiceInstance) {
+    migrationServiceInstance = new ContentMigrationService(env);
+  }
+  return migrationServiceInstance;
+}
+
+function getManifestBuilder(env: Environment): ManifestBuilderService {
+  if (!manifestBuilderInstance) {
+    manifestBuilderInstance = new ManifestBuilderService(env);
+  }
+  return manifestBuilderInstance;
+}
+
+function getBlogGenerator(env: Environment): BlogGeneratorService {
+  if (!blogGeneratorInstance) {
+    blogGeneratorInstance = new BlogGeneratorService(env);
+  }
+  return blogGeneratorInstance;
+}
+
+function getAIJudge(env: Environment): AIJudgeService {
+  if (!aiJudgeInstance) {
+    aiJudgeInstance = new AIJudgeService(env);
+  }
+  return aiJudgeInstance;
+}
+
+function getJobManager(env: Environment): JobManagerService {
+  if (!jobManagerInstance) {
+    jobManagerInstance = new JobManagerService(env);
+  }
+  return jobManagerInstance;
+}
+
 /**
  * Content generation API routes
  */
@@ -31,39 +96,40 @@ export async function handleContentRoutes(
   const path = url.pathname;
   const method = request.method;
 
-  // Initialize services
-  const contentItemService = new ContentItemService(env);
-  const migrationService = new ContentMigrationService(env);
-  const manifestBuilder = new ManifestBuilderService(env);
-  const blogGenerator = new BlogGeneratorService(env);
-  const aiJudge = new AIJudgeService(env);
-
   try {
     // Content generation endpoint
     if (path === '/api/content/generate' && method === 'POST') {
-      return await handleContentGeneration(request, env, contentItemService);
+      return await handleContentGeneration(request, env);
     }
 
     // Content items listing endpoint
     if (path === '/api/content/items' && method === 'GET') {
-      return await handleListContentItems(request, env, contentItemService);
+      return await handleListContentItems(request, env);
     }
 
     // Content item detail endpoint
     if (path.startsWith('/api/content/items/') && method === 'GET') {
       const clipId = path.split('/').pop();
       if (clipId) {
-        return await handleGetContentItem(request, env, contentItemService, clipId);
+        return await handleGetContentItem(request, env, clipId);
       }
     }
 
     // Migration endpoints
     if (path === '/api/content/migrate' && method === 'POST') {
-      return await handleMigration(request, env, migrationService);
+      return await handleMigration(request, env);
     }
 
     if (path === '/api/content/migration-status' && method === 'GET') {
-      return await handleMigrationStatus(request, env, migrationService);
+      return await handleMigrationStatus(request, env);
+    }
+
+    if (path === '/api/content/migration-failures' && method === 'GET') {
+      return await handleMigrationFailures(request, env);
+    }
+
+    if (path === '/api/content/migration-session/start' && method === 'POST') {
+      return await handleStartMigrationSession(request, env);
     }
 
     // Run status endpoint
@@ -76,22 +142,22 @@ export async function handleContentRoutes(
 
     // Content processing status endpoint
     if (path === '/api/content/status' && method === 'GET') {
-      return await handleContentStatus(request, env, contentItemService);
+      return await handleContentStatus(request, env);
     }
 
     // Manifest builder endpoints
     if (path === '/api/content/manifest' && method === 'POST') {
-      return await handleBuildManifest(request, env, manifestBuilder);
+      return await handleBuildManifest(request, env);
     }
 
     // Blog generation endpoints
     if (path === '/api/content/blog' && method === 'POST') {
-      return await handleGenerateBlog(request, env, blogGenerator);
+      return await handleGenerateBlog(request, env);
     }
 
     // AI judge endpoints
     if (path === '/api/content/judge' && method === 'POST') {
-      return await handleJudgeContent(request, env, aiJudge);
+      return await handleJudgeContent(request, env);
     }
 
     // Error statistics endpoint
@@ -118,8 +184,7 @@ export async function handleContentRoutes(
  */
 async function handleContentGeneration(
   request: Request,
-  env: Environment,
-  contentItemService: ContentItemService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -142,43 +207,33 @@ async function handleContentGeneration(
       });
     }
 
-    // Generate run ID for tracking
-    const runId = generateULID();
+    // Create job using job manager
+    const jobManager = getJobManager(env);
+    const { jobId, statusUrl, expiresAt } = await jobManager.createJob(requestData, 24); // 24 hour expiry
 
-    // For now, return immediate response with run ID
-    // In the future, this would kick off a Workflow job
+    // Enqueue job for background processing
+    await jobManager.enqueueJob(jobId, requestData);
+
+    // Prepare response with job information
     const response: ContentGenerationResponse = {
-      run_id: runId,
-      status: 'queued',
-      content_items: [],
+      job_id: jobId,
+      job_status: 'queued',
+      status_url: statusUrl,
+      expires_at: expiresAt,
+      date_range: requestData.date_range,
+      pagination: {
+        has_next: false,
+        has_prev: false
+      },
       summary: {
         total_clips: 0,
         total_prs: 0,
         total_commits: 0,
-        total_issues: 0,
-        date_range: `${requestData.date_range.start} to ${requestData.date_range.end}`
-      },
-      suggested_title: '',
-      suggested_tags: [],
-      content_score: 0
-    };
-
-    // Store run status in R2 for tracking
-    const runStatus: RunStatus = {
-      run_id: runId,
-      status: 'queued',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      progress: {
-        step: 'initialized',
-        current: 0,
-        total: 0
+        total_issues: 0
       }
     };
 
-    await env.R2_BUCKET.put(`runs/${runId}.json`, JSON.stringify(runStatus));
-
-    console.log(`🚀 Content generation queued: ${runId}`);
+    console.log(`🚀 Content generation job created: ${jobId}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -190,6 +245,13 @@ async function handleContentGeneration(
 
   } catch (error) {
     console.error('❌ Content generation error:', error);
+    
+    // Track error
+    await errorTracker.trackError('content_generation_error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to process content generation request'
@@ -205,8 +267,7 @@ async function handleContentGeneration(
  */
 async function handleListContentItems(
   request: Request,
-  env: Environment,
-  contentItemService: ContentItemService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -215,6 +276,7 @@ async function handleListContentItems(
   }
 
   try {
+    const contentItemService = getContentItemService(env);
     const url = new URL(request.url);
     
     // Validate and parse limit parameter
@@ -235,8 +297,8 @@ async function handleListContentItems(
     
     // Validate processing_status parameter
     const processingStatus = url.searchParams.get('processing_status');
-    const validProcessingStatuses = ['pending', 'audio_ready', 'transcribed', 'enhanced', 'ready_for_content'] as const;
-    if (processingStatus && !validProcessingStatuses.includes(processingStatus as any)) {
+    if (processingStatus && !isProcessingStatus(processingStatus)) {
+      const validProcessingStatuses: readonly ProcessingStatus[] = ['pending', 'audio_ready', 'transcribed', 'enhanced', 'ready_for_content'];
       return new Response(JSON.stringify({
         success: false,
         error: `Invalid processing_status. Must be one of: ${validProcessingStatuses.join(', ')}`
@@ -248,8 +310,8 @@ async function handleListContentItems(
     
     // Validate content_category parameter
     const contentCategory = url.searchParams.get('content_category');
-    const validContentCategories: ContentCategory[] = ['development', 'gaming', 'tutorial', 'review', 'other'];
-    if (contentCategory && !validContentCategories.includes(contentCategory as any)) {
+    if (contentCategory && !isContentCategory(contentCategory)) {
+      const validContentCategories: readonly ContentCategory[] = ['development', 'gaming', 'tutorial', 'review', 'other'];
       return new Response(JSON.stringify({
         success: false,
         error: `Invalid content_category. Must be one of: ${validContentCategories.join(', ')}`
@@ -262,8 +324,8 @@ async function handleListContentItems(
     const response = await contentItemService.listContentItems({
       limit,
       cursor,
-      processing_status: processingStatus as typeof validProcessingStatuses[number] | undefined,
-              content_category: contentCategory as ContentCategory | undefined,
+      processing_status: processingStatus as ProcessingStatus | undefined,
+      content_category: contentCategory as ContentCategory | undefined,
     });
 
     return new Response(JSON.stringify({
@@ -291,7 +353,6 @@ async function handleListContentItems(
 async function handleGetContentItem(
   request: Request,
   env: Environment,
-  contentItemService: ContentItemService,
   clipId: string
 ): Promise<Response> {
   // Check authentication
@@ -301,6 +362,7 @@ async function handleGetContentItem(
   }
 
   try {
+    const contentItemService = getContentItemService(env);
     // For now, we need to know the creation date to get the item
     // In the future, we could add a lookup index
     const url = new URL(request.url);
@@ -352,8 +414,7 @@ async function handleGetContentItem(
  */
 async function handleMigration(
   request: Request,
-  env: Environment,
-  migrationService: ContentMigrationService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -362,6 +423,7 @@ async function handleMigration(
   }
 
   try {
+    const migrationService = getMigrationService(env);
     const body = await request.text();
     let requestData: any = {};
     
@@ -429,8 +491,7 @@ async function handleMigration(
  */
 async function handleMigrationStatus(
   request: Request,
-  env: Environment,
-  migrationService: ContentMigrationService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -439,6 +500,7 @@ async function handleMigrationStatus(
   }
 
   try {
+    const migrationService = getMigrationService(env);
     const status = await migrationService.getMigrationStatus();
 
     return new Response(JSON.stringify({
@@ -453,6 +515,84 @@ async function handleMigrationStatus(
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to get migration status'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle getting migration failures
+ */
+async function handleMigrationFailures(
+  request: Request,
+  env: Environment
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const migrationService = getMigrationService(env);
+    const failures = await migrationService.getMigrationFailures();
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        failures,
+        count: failures.length
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Migration failures error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to get migration failures'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle starting a new migration session
+ */
+async function handleStartMigrationSession(
+  request: Request,
+  env: Environment
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const migrationService = getMigrationService(env);
+    const sessionId = await migrationService.startNewMigrationSession();
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        sessionId,
+        message: 'New migration session started. Previous failure tracking has been cleared.'
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Start migration session error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to start new migration session'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
@@ -513,8 +653,7 @@ async function handleGetRunStatus(
  */
 async function handleContentStatus(
   request: Request,
-  env: Environment,
-  contentItemService: ContentItemService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -523,6 +662,7 @@ async function handleContentStatus(
   }
 
   try {
+    const contentItemService = getContentItemService(env);
     const statusCounts = await contentItemService.getProcessingStatusCounts();
 
     return new Response(JSON.stringify({
@@ -553,8 +693,7 @@ async function handleContentStatus(
  */
 async function handleBuildManifest(
   request: Request,
-  env: Environment,
-  manifestBuilder: ManifestBuilderService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -563,6 +702,7 @@ async function handleBuildManifest(
   }
 
   try {
+    const manifestBuilder = getManifestBuilder(env);
     const body = await request.text();
     let requestData: any;
     
@@ -629,8 +769,7 @@ async function handleBuildManifest(
  */
 async function handleGenerateBlog(
   request: Request,
-  env: Environment,
-  blogGenerator: BlogGeneratorService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -639,6 +778,7 @@ async function handleGenerateBlog(
   }
 
   try {
+    const blogGenerator = getBlogGenerator(env);
     const body = await request.text();
     let requestData: any;
     
@@ -707,8 +847,7 @@ async function handleGenerateBlog(
  */
 async function handleJudgeContent(
   request: Request,
-  env: Environment,
-  aiJudge: AIJudgeService
+  env: Environment
 ): Promise<Response> {
   // Check authentication
   const authResponse = await requireHmacAuth(request, env);
@@ -717,6 +856,7 @@ async function handleJudgeContent(
   }
 
   try {
+    const aiJudge = getAIJudge(env);
     const body = await request.text();
     let requestData: any;
     

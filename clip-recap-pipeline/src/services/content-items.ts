@@ -1,5 +1,5 @@
 import type { Environment } from '../types/index.js';
-import type { ContentItem } from '../types/content.js';
+import type { ContentItem, PaginationCursor } from '../types/content.js';
 import { sanitizeContentItem, validateSchemaVersion } from '../utils/schema-validator.js';
 
 export interface ContentItemQuery {
@@ -15,9 +15,7 @@ export interface ContentItemQuery {
 
 export interface ContentItemListResponse {
   items: ContentItem[];
-  total: number;
-  has_more: boolean;
-  next_cursor?: string;
+  pagination: PaginationCursor;
 }
 
 /**
@@ -34,11 +32,16 @@ export class ContentItemService {
   /**
    * Generate R2 key for ContentItem storage
    * Format: recaps/content-items/YYYY/MM/CLIP_ID.json
+   * Uses UTC methods to ensure consistent keys across timezones
    */
   private generateContentItemKey(clipId: string, createdAt: string): string {
     const date = new Date(createdAt);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    // Validate that createdAt is a valid ISO/UTC timestamp
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid date format for createdAt: ${createdAt}`);
+    }
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     return `recaps/content-items/${year}/${month}/${clipId}.json`;
   }
 
@@ -137,13 +140,47 @@ export class ContentItemService {
         const endDate = new Date(date_range.end);
         const currentDate = new Date(startDate);
         
+        // If a cursor is provided, we need to determine which month to start from
+        // The cursor format should be something like "recaps/content-items/2024/01/some-key"
+        if (cursor) {
+          const cursorParts = cursor.split('/');
+          if (cursorParts.length >= 4) {
+            const cursorYear = parseInt(cursorParts[2]);
+            const cursorMonth = parseInt(cursorParts[3]);
+            const cursorDate = new Date(cursorYear, cursorMonth - 1, 1);
+            
+            // If the cursor month is within our date range, start from there
+            if (cursorDate >= startDate && cursorDate <= endDate) {
+              currentDate.setFullYear(cursorYear);
+              currentDate.setMonth(cursorMonth - 1);
+              currentDate.setDate(1);
+            }
+          }
+        }
+        
         while (currentDate <= endDate) {
           const year = currentDate.getFullYear();
           const month = String(currentDate.getMonth() + 1).padStart(2, '0');
           const monthPrefix = `recaps/content-items/${year}/${month}/`;
           
-          let monthCursor = cursor;
+          // Reset monthCursor to undefined for each new month to start from the beginning
+          // Only use the provided cursor for the first month we're processing
+          let monthCursor: string | undefined = undefined;
           let monthHasMore = true;
+          
+          // If this is the first month we're processing and we have a cursor, use it
+          // We need to check if this is the month where the cursor points to
+          if (cursor) {
+            const cursorParts = cursor.split('/');
+            if (cursorParts.length >= 4) {
+              const cursorYear = parseInt(cursorParts[2]);
+              const cursorMonth = parseInt(cursorParts[3]);
+              
+              if (year === cursorYear && month === String(cursorMonth).padStart(2, '0')) {
+                monthCursor = cursor;
+              }
+            }
+          }
           
           while (monthHasMore && items.length < limit) {
             const monthObjects = await this.env.R2_BUCKET.list({ 
@@ -160,7 +197,7 @@ export class ContentItemService {
               
               try {
                 // Use customMetadata to filter by processing_status without full GET
-                const processingStatus = obj.customMetadata?.processing_status;
+                const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
                 if (processing_status && processing_status !== processingStatus) {
                   continue;
                 }
@@ -207,9 +244,12 @@ export class ContentItemService {
         
         return {
           items,
-          total,
-          has_more: hasMore,
-          next_cursor: nextCursor,
+          pagination: {
+            has_next: hasMore,
+            has_prev: !!cursor,
+            next_cursor: nextCursor,
+            prev_cursor: cursor
+          }
         };
       } else {
         // Simple listing without date range using cursor-based pagination
@@ -225,7 +265,7 @@ export class ContentItemService {
         for (const obj of objects.objects) {
           try {
             // Use customMetadata to filter by processing_status without full GET
-            const processingStatus = obj.customMetadata?.processing_status;
+            const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
             if (processing_status && processing_status !== processingStatus) {
               continue;
             }
@@ -253,17 +293,22 @@ export class ContentItemService {
         
         return {
           items,
-          total,
-          has_more: objects.truncated,
-          next_cursor: objects.cursor,
+          pagination: {
+            has_next: objects.truncated,
+            has_prev: !!cursor,
+            next_cursor: objects.cursor,
+            prev_cursor: cursor
+          }
         };
       }
     } catch (error) {
       console.error('❌ Failed to list ContentItems:', error);
       return {
         items: [],
-        total: 0,
-        has_more: false,
+        pagination: {
+          has_next: false,
+          has_prev: false
+        }
       };
     }
   }
@@ -367,7 +412,7 @@ export class ContentItemService {
       for (const obj of objects.objects) {
         try {
           // Read processing_status from customMetadata to avoid full GETs
-          const processingStatus = obj.customMetadata?.processing_status as ContentItem['processing_status'];
+          const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
           if (processingStatus && Object.prototype.hasOwnProperty.call(counts, processingStatus)) {
             counts[processingStatus]++;
           }

@@ -22,11 +22,13 @@ compatibility_flags = ["nodejs_compat"]
 # 0 2 * * *  -> Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
 # 0 * * * *  -> Every hour - token validation
 # 0 */6 * * * -> Every 6 hours - transcription pipeline
+# 0 */12 * * * -> Every 12 hours - job cleanup
 [triggers]
 crons = [
   "0 2 * * *",
   "0 * * * *",
-  "0 */6 * * *"
+  "0 */6 * * *",
+  "0 */12 * * *"
 ]
 
 # AI binding for AI model access
@@ -43,6 +45,24 @@ index_name = "clip-recap-embeddings"
 binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 preview_bucket_name = "clip-recap-assets"
+
+# KV namespace for tracking migration failures
+[[kv_namespaces]]
+binding = "MIGRATION_FAILURES"
+id = "migration-failures"
+preview_id = "migration-failures-preview"
+
+# D1 database for job state management
+[[d1_databases]]
+binding = "JOB_STORE"
+database_name = "clip-recap-jobs"
+database_id = "clip-recap-jobs"
+migrations_dir = "./migrations"
+
+# Queue for background job processing
+[[queues]]
+binding = "JOB_QUEUE"
+name = "clip-recap-job-queue"
 
 # All sensitive data is stored as secrets using wrangler secret put
 # Run 'npx wrangler secret list' to see current secrets

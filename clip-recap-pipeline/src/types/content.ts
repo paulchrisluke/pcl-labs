@@ -1,5 +1,5 @@
 // Content generation types based on JSON schemas
-import type { ISODateTimeString, MatchReason, ContentCategory } from './index.js';
+import type { ISODateTimeString, MatchReason, ContentCategory, Score01 } from './index.js';
 
 // Transcript segment type
 export interface TranscriptSegment {
@@ -18,11 +18,11 @@ export interface Transcript {
 
 // GitHub context type
 export interface GitHubContext {
-  linked_prs: string[]; // URIs
-  linked_commits: string[];
-  linked_issues: string[];
-  confidence_score: number; // 0-1
-  match_reason: MatchReason;
+  linked_prs?: string[]; // URIs
+  linked_commits?: string[];
+  linked_issues?: string[];
+  confidence_score?: number; // 0-1
+  match_reason?: MatchReason;
 }
 
 // ContentItem - row-level truth (one per clip)
@@ -42,10 +42,16 @@ export interface ContentItem {
   processing_status: 'pending' | 'audio_ready' | 'transcribed' | 'enhanced' | 'ready_for_content';
   audio_file_url?: string | null;
 
-  transcript?: Transcript | null;
-  github_context?: GitHubContext | null;
+  // Lightweight references instead of full objects
+  transcript_url?: string | null; // R2 URL to full transcript
+  transcript_summary?: string | null; // Small summary retained in item
+  transcript_size_bytes?: number | null; // Size of transcript object in R2
+  
+  github_context_url?: string | null; // R2 URL to full GitHub context
+  github_summary?: string | null; // Small summary retained in item
+  github_context_size_bytes?: number | null; // Size of GitHub context object in R2
 
-  content_score?: number | null;
+  content_score?: Score01 | null;
   content_tags?: string[] | null;
   content_category?: ContentCategory | null;
 
@@ -61,7 +67,7 @@ export interface ManifestSection {
   title: string; // max 80 chars
   bullets: string[]; // 2-4 items, max 140 chars each
   paragraph: string;
-  score: number;
+  score: Score01;
   repo?: string | null;
   pr_links?: string[] | null; // URIs
   clip_url?: string | null;
@@ -74,8 +80,8 @@ export interface ManifestSection {
 
 // Judge result type
 export interface JudgeResult {
-  overall?: number | null;
-  per_axis?: Record<string, number> | null;
+  overall?: Score01 | null;
+  per_axis?: Record<string, Score01> | null;
   version?: string | null;
 }
 
@@ -129,35 +135,103 @@ export interface ContentGenerationRequest {
   repository?: string;
 }
 
-// Content generation response
+// Job status types
+export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+
+// Job progress information
+export interface JobProgress {
+  step: string;
+  current: number;
+  total: number;
+}
+
+// Job state stored in D1
+export interface JobState {
+  job_id: string;
+  status: JobStatus;
+  created_at: ISODateTimeString;
+  updated_at: ISODateTimeString;
+  expires_at: ISODateTimeString;
+  progress?: JobProgress;
+  request_data: string; // JSON string of original request
+  results?: string; // JSON string of results (when completed)
+  error_message?: string; // Error details (when failed)
+  worker_id?: string; // ID of worker processing the job
+  started_at?: ISODateTimeString; // When processing started
+  completed_at?: ISODateTimeString; // When processing completed
+}
+
+// Cursor-based pagination for efficient cloud storage queries
+export interface PaginationCursor {
+  next_cursor?: string; // ULID for next page
+  prev_cursor?: string; // ULID for previous page
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+// Content generation response with enhanced job information
 export interface ContentGenerationResponse {
-  run_id: string; // ULID for tracking
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  content_items: ContentItem[];
+  // Job information (always present)
+  job_id: string;
+  job_status: JobStatus;
+  status_url: string; // Absolute URL for polling job status
+  expires_at: ISODateTimeString; // ISO8601 timestamp when job expires
+  
+  // Content items (only present in sync mode or when job_status='completed')
+  content_items?: ContentItem[];
+  
+  // Structured date range
+  date_range: {
+    start: ISODateTimeString;
+    end: ISODateTimeString;
+  };
+  
+  // Cursor-based pagination metadata
+  pagination: PaginationCursor;
+  
+  // Summary statistics
   summary: {
     total_clips: number;
     total_prs: number;
     total_commits: number;
     total_issues: number;
-    date_range: string;
   };
-  suggested_title: string;
-  suggested_tags: string[];
-  content_score: number;
-  manifest?: Manifest; // Only present when status is 'completed'
+  
+  // Content suggestions (only in sync mode or completed async jobs)
+  suggested_title?: string;
+  suggested_tags?: ContentCategory[]; // Align with ContentCategory enum
+  content_score?: Score01;
+  
+  // Error information (only present on failure)
+  error?: {
+    code: string;
+    message: string;
+    occurred_at: ISODateTimeString;
+  };
 }
 
-// Run status for async processing
-export interface RunStatus {
-  run_id: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+// Job status response for the status endpoint
+export interface JobStatusResponse {
+  job_id: string;
+  status: JobStatus;
+  status_url: string;
+  expires_at: ISODateTimeString;
+  progress?: JobProgress;
+  results?: any; // Parsed results when completed
+  error?: {
+    code: string;
+    message: string;
+    occurred_at: ISODateTimeString;
+  };
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
-  progress?: {
-    step: string;
-    current: number;
-    total: number;
-  };
-  error?: string;
-  manifest?: Manifest;
+  started_at?: ISODateTimeString;
+  completed_at?: ISODateTimeString;
+}
+
+// Queue message for background job processing
+export interface JobQueueMessage {
+  job_id: string;
+  request_data: ContentGenerationRequest;
+  worker_id?: string;
 }
