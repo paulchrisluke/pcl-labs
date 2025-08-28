@@ -109,17 +109,13 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
         }
         
         // Step 1: Authentication check - must come before any operations
-        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        // Get request body for HMAC verification
-        const body = await request.text();
-        
-        if (!(await verifyHmacSignature(request, env, body))) {
-          console.warn(`🚨 Unauthorized test event creation attempt`);
-          return createUnauthorizedResponse('HMAC authentication required for test event creation');
-        }
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const rawBody = await request.text();
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
         
         // Test endpoint to simulate storing a GitHub event
+        // Note: rawBody is available from authentication step above
         const testEvent = {
           deliveryId: `test-${Date.now()}`,
           eventType: 'pull_request',
@@ -688,19 +684,6 @@ export default {
             // Store clips data to R2
             console.log('💾 Storing clips data...');
             
-            // Check request body size limit (10MB)
-            const contentLength = request.headers.get('content-length');
-            const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
-            if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
-              return new Response(JSON.stringify({
-                success: false,
-                error: `Request body too large. Maximum size is ${MAX_REQUEST_SIZE / (1024 * 1024)}MB.`
-              }), {
-                status: 413,
-                headers: { 'Content-Type': 'application/json' }
-              });
-            }
-            
             const body = JSON.parse(rawBody) as { clips?: any[] };
             const clipsToStore = body.clips || [];
             
@@ -1265,15 +1248,10 @@ export default {
     if (url.pathname.startsWith('/api/transcribe/force/') && request.method === 'POST') {
       try {
         // Step 1: Authentication check - must come before any destructive operations
-        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        // Get request body for HMAC verification
+        const { requireHmacAuth } = await import('./utils/auth.js');
         const rawRequestBody = await request.text();
-        
-        if (!(await verifyHmacSignature(request, env, rawRequestBody))) {
-          console.warn(`🚨 Unauthorized force re-transcription attempt for path: ${url.pathname}`);
-          return createUnauthorizedResponse('HMAC authentication required for force re-transcription');
-        }
+        const authError = await requireHmacAuth(request, env, rawRequestBody);
+        if (authError) return authError;
         
         const clipId = url.pathname.replace('/api/transcribe/force/', '');
         
@@ -2020,15 +1998,10 @@ export default {
     if (url.pathname === '/api/transcription-pipeline' && request.method === 'POST') {
       try {
         // Step 1: Admin authentication check
-        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        // Get request body for HMAC verification
+        const { requireHmacAuth } = await import('./utils/auth.js');
         const pipelineRawBody = await request.text();
-        
-        if (!(await verifyHmacSignature(request, env, pipelineRawBody))) {
-          console.warn(`🚨 Unauthorized manual transcription pipeline attempt`);
-          return createUnauthorizedResponse('HMAC authentication required for manual transcription pipeline');
-        }
+        const authError = await requireHmacAuth(request, env, pipelineRawBody);
+        if (authError) return authError;
         
         console.log('🎤 Manual transcription pipeline for all stored clips...');
         
@@ -2071,12 +2044,9 @@ export default {
         const rawBody = await request.text();
         
         // Step 1: HMAC authentication required for compute-intensive operations
-        const { verifyHmacSignature, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        if (!(await verifyHmacSignature(request, env, rawBody))) {
-          console.warn(`🚨 Unauthorized Whisper API access attempt`);
-          return createUnauthorizedResponse('HMAC authentication required for Whisper API access');
-        }
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
         
         // Step 2: Parse and validate request body
         let whisperRequestBody: { clipId?: string };

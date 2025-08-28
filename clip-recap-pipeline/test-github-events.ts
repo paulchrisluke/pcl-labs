@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Test GitHub Event Storage and Temporal Matching (M8 - GitHub Integration)
  * 
@@ -78,13 +76,22 @@ async function testGitHubEventStorage() {
     testEvent.repository
   );
   
-  console.log(`✅ Event storage result: ${stored ? 'SUCCESS' : 'FAILED'}`);
+  if (!stored) {
+    throw new Error('Event storage failed - storeEvent returned false');
+  }
+  
+  console.log(`✅ Event storage result: SUCCESS`);
   
   // Test 2: Find events for a clip (temporal matching)
   console.log('\n🔍 Test 2: Temporal Matching');
   console.log('-'.repeat(40));
   
   const events = await githubEventService.findEventsForClip(sampleClip, 'paulchrisluke/pcl-labs');
+  
+  // Assert that at least one PR was found to ensure temporal matching is working
+  if (events.prs.length === 0) {
+    throw new Error('No PRs found for temporal matching - test should have found at least one PR within the time window');
+  }
   
   console.log(`📊 Found events for clip:`);
   console.log(`   - PRs: ${events.prs.length}`);
@@ -107,6 +114,34 @@ async function testGitHubEventStorage() {
     console.log(`   - Linked commits: ${enhancedClip.github_context.linked_commits.length}`);
     console.log(`   - Linked issues: ${enhancedClip.github_context.linked_issues.length}`);
   }
+  
+  // Validate enhanced clip structure
+  if (!enhancedClip) {
+    throw new Error('Enhanced clip is undefined - enhancement failed');
+  }
+  
+  if (!enhancedClip.github_context) {
+    throw new Error('Enhanced clip missing github_context - enhancement did not add GitHub context');
+  }
+  
+  if (!Array.isArray(enhancedClip.github_context.linked_prs)) {
+    throw new Error('Enhanced clip github_context.linked_prs is not an array');
+  }
+  
+  if (!Array.isArray(enhancedClip.github_context.linked_commits)) {
+    throw new Error('Enhanced clip github_context.linked_commits is not an array');
+  }
+  
+  if (!Array.isArray(enhancedClip.github_context.linked_issues)) {
+    throw new Error('Enhanced clip github_context.linked_issues is not an array');
+  }
+  
+  // Validate that we found at least one PR (since we stored one in the test)
+  if (enhancedClip.github_context.linked_prs.length === 0) {
+    throw new Error('Enhanced clip has no linked PRs - expected at least one PR from the test event');
+  }
+  
+  console.log(`✅ Clip enhancement validation passed - all required fields present`);
   
   // Test 4: Configuration
   console.log('\n⚙️  Test 4: Configuration');

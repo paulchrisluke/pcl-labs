@@ -8,7 +8,8 @@
  */
 
 import { TranscriptionService } from './src/services/transcribe.js';
-import { createMockEnvironment, MockR2Bucket } from './src/utils/mock-r2.js';
+import { createMockEnvironment } from './src/utils/mock-r2.js';
+import type { MockR2Bucket } from './src/utils/mock-r2.js';
 
 // Helper function to create a minimal valid 16-bit PCM WAV file
 function createMinimalWAV(): Uint8Array {

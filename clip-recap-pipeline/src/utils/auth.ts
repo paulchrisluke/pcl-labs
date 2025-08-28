@@ -130,12 +130,43 @@ export function createForbiddenResponse(message: string = 'Forbidden'): Response
 /**
  * Middleware function to require HMAC authentication for endpoints
  * Returns null if authentication passes, or a Response if it fails
+ * 
+ * @param request - The incoming request
+ * @param env - Environment variables
+ * @param body - Optional body string for POST requests (to avoid double-reading)
  */
 export async function requireHmacAuth(
   request: Request, 
   env: Environment,
-  body: string = ''
+  body?: string
 ): Promise<Response | null> {
+  // For POST requests, check Content-Length before processing
+  if (request.method === 'POST') {
+    const contentLength = request.headers.get('content-length');
+    if (contentLength) {
+      const size = parseInt(contentLength, 10);
+      // Limit to 10MB to prevent DoS attacks
+      if (size > 10 * 1024 * 1024) {
+        console.warn(`🚨 Request body too large: ${size} bytes`);
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Request body too large (max 10MB)'
+        }), {
+          status: 413,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // If body is not provided, read it here to avoid double-reading
+    if (body === undefined) {
+      body = await request.text();
+    }
+  } else {
+    // For non-POST requests, body should be empty
+    body = '';
+  }
+
   if (!(await verifyHmacSignature(request, env, body))) {
     console.warn(`🚨 Unauthorized access attempt to ${request.url}`);
     return createUnauthorizedResponse('HMAC authentication required');

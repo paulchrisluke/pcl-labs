@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Test script for audio processing pipeline integration
  */
