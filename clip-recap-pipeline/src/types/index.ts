@@ -38,6 +38,13 @@ export interface HealthResponse {
 // ISO DateTime string type for consistent date handling
 export type ISODateTimeString = string;
 
+// Shared union types for clip-GitHub linking
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+export type MatchReason = 'temporal_proximity' | 'content_analysis' | 'manual_override';
+
+// GitHub event action types
+export type PullRequestAction = 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
+
 // Twitch API types
 export interface TwitchClip {
   id: string;
@@ -63,8 +70,6 @@ export interface TwitchTokenResponse {
   expires_in: number;
   token_type: string;
 }
-
-
 
 // Content generation types
 export interface ClipSection {
@@ -134,5 +139,144 @@ export interface CompletedGitHubCheckRun extends Omit<GitHubCheckRun, 'status' |
     title: string;
     summary: string;
     text?: string;
+  };
+}
+
+// GitHub Event Storage Types (M8 - GitHub Integration)
+export interface GitHubEvent {
+  id: string; // x-github-delivery UUID
+  event_type: string; // x-github-event
+  repository: string; // org/repo
+  timestamp: ISODateTimeString;
+  action?: string; // For events with actions (pull_request, issues, etc.)
+  payload: any; // Full webhook payload
+  processed: boolean; // Whether this event has been processed for clip linking
+}
+
+export interface GitHubPullRequestEvent extends GitHubEvent {
+  event_type: 'pull_request';
+  action: PullRequestAction;
+  payload: {
+    action: PullRequestAction;
+    pull_request: {
+      number: number;
+      title: string;
+      body: string | null;
+      html_url: string;
+      state: string;
+      merged: boolean;
+      merged_at: ISODateTimeString | null;
+      created_at: ISODateTimeString;
+      updated_at: ISODateTimeString;
+      closed_at: ISODateTimeString | null;
+      user: {
+        login: string;
+      };
+      head: {
+        ref: string;
+        sha: string;
+      };
+      base: {
+        ref: string;
+        sha: string;
+      };
+    };
+    repository: {
+      full_name: string;
+    };
+  };
+}
+
+export interface GitHubPushEvent extends GitHubEvent {
+  event_type: 'push';
+  payload: {
+    ref: string;
+    before: string;
+    after: string;
+    commits: Array<{
+      id: string;
+      message: string;
+      timestamp: ISODateTimeString;
+      url: string;
+      author: {
+        name: string;
+        email: string;
+      };
+    }>;
+    repository: {
+      full_name: string;
+      default_branch?: string;
+    };
+  };
+}
+
+export interface GitHubIssueEvent extends GitHubEvent {
+  event_type: 'issues';
+  action: 'opened' | 'edited' | 'deleted' | 'pinned' | 'unpinned' | 'closed' | 'reopened' | 'assigned' | 'unassigned' | 'labeled' | 'unlabeled' | 'locked' | 'unlocked' | 'transferred' | 'milestoned' | 'demilestoned';
+  payload: {
+    action: string;
+    issue: {
+      number: number;
+      title: string;
+      body: string | null;
+      html_url: string;
+      state: string;
+      created_at: ISODateTimeString;
+      updated_at: ISODateTimeString;
+      closed_at: ISODateTimeString | null;
+      user: {
+        login: string;
+      };
+    };
+    repository: {
+      full_name: string;
+    };
+  };
+}
+
+// Clip-GitHub Linking Types
+export interface GitHubContext {
+  linked_prs: LinkedPullRequest[];
+  linked_commits: LinkedCommit[];
+  linked_issues: LinkedIssue[];
+}
+
+export interface LinkedPullRequest {
+  number: number;
+  title: string;
+  url: string;
+  merged_at: ISODateTimeString;
+  confidence: ConfidenceLevel;
+  match_reason: MatchReason;
+}
+
+export interface LinkedCommit {
+  sha: string;
+  message: string;
+  url: string;
+  timestamp: ISODateTimeString;
+}
+
+export interface LinkedIssue {
+  number: number;
+  title: string;
+  url: string;
+  closed_at: ISODateTimeString | null;
+  confidence: ConfidenceLevel;
+  match_reason: MatchReason;
+}
+
+// Enhanced Clip Metadata with GitHub Context
+export interface EnhancedTwitchClip extends TwitchClip {
+  github_context?: GitHubContext;
+}
+
+// Temporal Matching Configuration
+export interface TemporalMatchingConfig {
+  timeWindowHours: number; // Default: 2 hours
+  confidenceThresholds: {
+    high: number; // Minutes
+    medium: number; // Minutes
+    low: number; // Minutes
   };
 }

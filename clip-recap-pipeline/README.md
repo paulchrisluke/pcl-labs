@@ -175,6 +175,7 @@ npx tsx test-twitch.ts      # Twitch credentials and API
 npx tsx test-github.ts      # GitHub credentials and API
 npx tsx test-pipeline.ts    # Daily pipeline functionality
 npx tsx test-audio-pipeline.ts  # Audio processing pipeline integration (uses stored clips)
+npx tsx test-auth.ts        # HMAC authentication middleware tests
 ```
 
 **Test Coverage:**
@@ -183,6 +184,7 @@ npx tsx test-audio-pipeline.ts  # Audio processing pipeline integration (uses st
 - **GitHub Integration** (`test-github.ts`): Credentials, repository access, API connectivity
 - **Pipeline Functionality** (`test-pipeline.ts`): Clip storage, retrieval, validation, and database operations
 - **Audio Processing** (`test-audio-pipeline.ts`): Audio processing pipeline integration using actual stored clips from R2
+- **Authentication** (`test-auth.ts`): HMAC authentication middleware and Authorization header rejection
 
 **Test Results:**
 All tests validate the complete pipeline workflow:
@@ -237,6 +239,15 @@ crons = [
   - Responds 401/403 on invalid or missing signature; 2xx on success (202 if work is queued).
   - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering).
   - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub's webhook timeout.
+
+### HMAC Authentication Enforcement
+
+The `requireHmacAuth` middleware enforces HMAC-based authentication for protected endpoints:
+
+- **Authorization Header Rejection**: Explicitly checks for `request.headers.has('authorization')` at the start and immediately returns 401 Unauthorized before any HMAC validation when that header is present
+- **HMAC Validation**: Uses `X-Request-Signature`, `X-Request-Timestamp`, and `X-Request-Nonce` headers for secure authentication
+- **Security**: Prevents mixed authentication methods and ensures consistent HMAC-only authentication flow
+- **Testing**: Unit tests in `test-auth.ts` verify Authorization header rejection and HMAC validation behavior
 
 ## Content Structure
 

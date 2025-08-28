@@ -106,12 +106,13 @@ export async function verifyHmacSignature(
     ['sign']
   );
   
+  // Generate expected signature
   const expectedSignature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
   const expectedHex = Array.from(new Uint8Array(expectedSignature))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
   
-  // Normalize both signatures to lowercase and convert to bytes for constant-time comparison
+  // Compare signatures using constant-time comparison
   try {
     const signatureBytes = hexToBytes(signature.toLowerCase());
     const expectedBytes = hexToBytes(expectedHex.toLowerCase());
@@ -171,4 +172,28 @@ export function createForbiddenResponse(message: string = 'Forbidden'): Response
     status: 403,
     headers: { 'Content-Type': 'application/json' }
   });
+}
+
+/**
+ * HMAC authentication middleware
+ * Rejects requests with Authorization header before any HMAC validation
+ */
+export async function requireHmacAuth(
+  request: Request,
+  env: Environment,
+  body: string = ''
+): Promise<Response | null> {
+  // Check for Authorization header first - reject immediately if present
+  if (request.headers.has('authorization')) {
+    return createUnauthorizedResponse('Authorization header not allowed with HMAC authentication');
+  }
+  
+  // Proceed with HMAC validation
+  const isValid = await verifyHmacSignature(request, env, body);
+  if (!isValid) {
+    return createUnauthorizedResponse('HMAC authentication required');
+  }
+  
+  // Return null to indicate successful authentication
+  return null;
 }
