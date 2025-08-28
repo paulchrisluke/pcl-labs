@@ -159,17 +159,7 @@ export default {
         });
       }
       
-      // Validate admin authentication tokens (at least one must be present)
-      if (!env.ADMIN_FORCE_TRANSCRIBE_TOKEN && !env.ADMIN_KEY) {
-        console.error('🚨 Either ADMIN_FORCE_TRANSCRIBE_TOKEN or ADMIN_KEY environment variable is required');
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'Server configuration error'
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
+      // HMAC_SHARED_SECRET is sufficient for authentication - no need for separate admin tokens
     }
 
     // Validate Twitch credentials endpoint
