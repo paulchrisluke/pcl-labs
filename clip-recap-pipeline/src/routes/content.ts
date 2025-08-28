@@ -2,6 +2,9 @@ import type { Environment } from '../types/index.js';
 import type { ContentGenerationRequest, ContentGenerationResponse, RunStatus } from '../types/content.js';
 import { ContentItemService } from '../services/content-items.js';
 import { ContentMigrationService } from '../services/content-migration.js';
+import { ManifestBuilderService } from '../services/manifest-builder.js';
+import { BlogGeneratorService } from '../services/blog-generator.js';
+import { AIJudgeService } from '../services/ai-judge.js';
 import { requireHmacAuth } from '../utils/auth.js';
 
 /**
@@ -27,6 +30,9 @@ export async function handleContentRoutes(
   // Initialize services
   const contentItemService = new ContentItemService(env);
   const migrationService = new ContentMigrationService(env);
+  const manifestBuilder = new ManifestBuilderService(env);
+  const blogGenerator = new BlogGeneratorService(env);
+  const aiJudge = new AIJudgeService(env);
 
   try {
     // Content generation endpoint
@@ -67,6 +73,21 @@ export async function handleContentRoutes(
     // Content processing status endpoint
     if (path === '/api/content/status' && method === 'GET') {
       return await handleContentStatus(request, env, contentItemService);
+    }
+
+    // Manifest builder endpoints
+    if (path === '/api/content/manifest' && method === 'POST') {
+      return await handleBuildManifest(request, env, manifestBuilder);
+    }
+
+    // Blog generation endpoints
+    if (path === '/api/content/blog' && method === 'POST') {
+      return await handleGenerateBlog(request, env, blogGenerator);
+    }
+
+    // AI judge endpoints
+    if (path === '/api/content/judge' && method === 'POST') {
+      return await handleJudgeContent(request, env, aiJudge);
     }
 
     return new Response('Not Found', { status: 404 });
@@ -447,6 +468,173 @@ async function handleContentStatus(
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to get content status'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle manifest building request
+ */
+async function handleBuildManifest(
+  request: Request,
+  env: Environment,
+  manifestBuilder: ManifestBuilderService
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const body = await request.text();
+    const requestData = JSON.parse(body);
+
+    // Validate request
+    if (!requestData.date) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required date parameter'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Build manifest
+    const result = await manifestBuilder.buildDailyManifest(
+      requestData.date,
+      requestData.timezone || 'UTC'
+    );
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: result
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Manifest building error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to build manifest'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle blog generation request
+ */
+async function handleGenerateBlog(
+  request: Request,
+  env: Environment,
+  blogGenerator: BlogGeneratorService
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const body = await request.text();
+    const requestData = JSON.parse(body);
+
+    // Validate request
+    if (!requestData.manifest) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required manifest parameter'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Generate blog post
+    const result = await blogGenerator.generateBlogPost(requestData.manifest);
+
+    // Store blog post if requested
+    if (requestData.store) {
+      await blogGenerator.storeBlogPost(requestData.manifest, result.markdown);
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: result
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Blog generation error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to generate blog post'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle content judging request
+ */
+async function handleJudgeContent(
+  request: Request,
+  env: Environment,
+  aiJudge: AIJudgeService
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const body = await request.text();
+    const requestData = JSON.parse(body);
+
+    // Validate request
+    if (!requestData.manifest) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Missing required manifest parameter'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Judge content
+    const evaluation = await aiJudge.judgeManifest(requestData.manifest);
+    const qualityCheck = await aiJudge.meetsQualityThreshold(requestData.manifest);
+    const suggestions = await aiJudge.generateImprovementSuggestions(requestData.manifest);
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        evaluation,
+        qualityCheck,
+        suggestions,
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Content judging error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to judge content'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

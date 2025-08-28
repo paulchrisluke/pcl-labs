@@ -190,6 +190,155 @@ async function testContentAPI() {
   }
   console.log('');
 
+  // Test 6: Manifest Builder
+  console.log('6️⃣ Testing manifest builder endpoint...');
+  try {
+    const manifestRequest = {
+      date: '2024-01-01',
+      timezone: 'UTC'
+    };
+
+    const manifestBody = JSON.stringify(manifestRequest);
+    const manifestSignature = await generateHmacSignature(manifestBody, timestamp, nonce, secret);
+    
+    const manifestResponse = await fetch(`${WORKER_URL}/api/content/manifest`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Signature': manifestSignature,
+        'X-Request-Timestamp': timestamp,
+        'X-Request-Nonce': nonce,
+      },
+      body: manifestBody,
+    });
+
+    if (manifestResponse.ok) {
+      const manifestData = await manifestResponse.json();
+      console.log('✅ Manifest builder endpoint working!');
+      console.log('📊 Manifest data:', JSON.stringify(manifestData, null, 2));
+    } else {
+      console.log(`❌ Manifest builder failed: ${manifestResponse.status} ${manifestResponse.statusText}`);
+    }
+  } catch (error) {
+    console.log('❌ Manifest builder error:', error);
+  }
+  console.log('');
+
+  // Test 7: Blog Generator
+  console.log('7️⃣ Testing blog generator endpoint...');
+  try {
+    const blogRequest = {
+      manifest: {
+        schema_version: '1.0.0',
+        post_id: '2024-01-01',
+        date_utc: '2024-01-01T12:00:00.000Z',
+        tz: 'UTC',
+        title: 'Test Daily Recap',
+        headline_short: 'Test Recap',
+        summary: 'Test summary',
+        category: 'development',
+        tags: ['development', 'test'],
+        clip_ids: ['test-clip'],
+        sections: [{
+          section_id: 'section-1',
+          clip_id: 'test-clip',
+          title: 'Test Section',
+          bullets: ['Test bullet 1', 'Test bullet 2'],
+          paragraph: 'Test paragraph',
+          start_s: 0,
+          end_s: 60,
+        }],
+        canonical_vod: 'https://twitch.tv/test',
+        md_path: 'content/blog/development/2024-01-01-test.md',
+        target_branch: 'staging',
+        status: 'draft',
+      },
+      store: false
+    };
+
+    const blogBody = JSON.stringify(blogRequest);
+    const blogSignature = await generateHmacSignature(blogBody, timestamp, nonce, secret);
+    
+    const blogResponse = await fetch(`${WORKER_URL}/api/content/blog`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Signature': blogSignature,
+        'X-Request-Timestamp': timestamp,
+        'X-Request-Nonce': nonce,
+      },
+      body: blogBody,
+    });
+
+    if (blogResponse.ok) {
+      const blogData = await blogResponse.json();
+      console.log('✅ Blog generator endpoint working!');
+      console.log('📊 Blog data:', JSON.stringify(blogData, null, 2));
+    } else {
+      console.log(`❌ Blog generator failed: ${blogResponse.status} ${blogResponse.statusText}`);
+    }
+  } catch (error) {
+    console.log('❌ Blog generator error:', error);
+  }
+  console.log('');
+
+  // Test 8: AI Judge
+  console.log('8️⃣ Testing AI judge endpoint...');
+  try {
+    const judgeRequest = {
+      manifest: {
+        schema_version: '1.0.0',
+        post_id: '2024-01-01',
+        date_utc: '2024-01-01T12:00:00.000Z',
+        tz: 'UTC',
+        title: 'Test Daily Recap',
+        headline_short: 'Test Recap',
+        summary: 'Test summary',
+        category: 'development',
+        tags: ['development', 'test'],
+        clip_ids: ['test-clip'],
+        sections: [{
+          section_id: 'section-1',
+          clip_id: 'test-clip',
+          title: 'Test Section',
+          bullets: ['Test bullet 1', 'Test bullet 2'],
+          paragraph: 'Test paragraph',
+          start_s: 0,
+          end_s: 60,
+        }],
+        canonical_vod: 'https://twitch.tv/test',
+        md_path: 'content/blog/development/2024-01-01-test.md',
+        target_branch: 'staging',
+        status: 'draft',
+      }
+    };
+
+    const judgeBody = JSON.stringify(judgeRequest);
+    const judgeSignature = await generateHmacSignature(judgeBody, timestamp, nonce, secret);
+    
+    const judgeResponse = await fetch(`${WORKER_URL}/api/content/judge`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Signature': judgeSignature,
+        'X-Request-Timestamp': timestamp,
+        'X-Request-Nonce': nonce,
+      },
+      body: judgeBody,
+    });
+
+    if (judgeResponse.ok) {
+      const judgeData = await judgeResponse.json();
+      console.log('✅ AI judge endpoint working!');
+      console.log('📊 Judge data:', JSON.stringify(judgeData, null, 2));
+    } else {
+      console.log(`❌ AI judge failed: ${judgeResponse.status} ${judgeResponse.statusText}`);
+    }
+  } catch (error) {
+    console.log('❌ AI judge error:', error);
+  }
+  console.log('');
+
   console.log('🎉 Content API testing complete!');
 }
 
