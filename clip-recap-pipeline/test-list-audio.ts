@@ -7,33 +7,50 @@
  */
 
 import { Environment } from './src/types/index.js';
+import { createMockEnvironment, MockR2Bucket } from './src/utils/mock-r2.js';
 
-// Mock environment for testing
-const mockEnv = {
-  R2_BUCKET: {
-    list: async (options?: any) => {
-      console.log(`📋 Mock R2 list called with options:`, options);
-      
-      // Simulate some audio files
-      return {
-        objects: [
-          { key: 'audio/clip-123.wav', size: 1024000, uploaded: '2024-12-19T10:00:00Z' },
-          { key: 'audio/clip-456.wav', size: 2048000, uploaded: '2024-12-19T11:00:00Z' },
-          { key: 'audio/clip-789.wav', size: 1536000, uploaded: '2024-12-19T12:00:00Z' },
-          { key: 'clips/clip-123.mp4', size: 5120000, uploaded: '2024-12-19T10:00:00Z' },
-          { key: 'clips/clip-456.mp4', size: 10240000, uploaded: '2024-12-19T11:00:00Z' },
-          { key: 'clips/clip-789.mp4', size: 7680000, uploaded: '2024-12-19T12:00:00Z' },
-          { key: 'transcripts/clip-123.json', size: 2048, uploaded: '2024-12-19T10:30:00Z' },
-          { key: 'transcripts/clip-456.json', size: 3072, uploaded: '2024-12-19T11:30:00Z' }
-        ],
-        truncated: false
-      };
-    }
-  }
-} as any;
+// Create mock environment with improved R2 implementation
+const mockEnv = createMockEnvironment();
+const r2Bucket = mockEnv.R2_BUCKET as MockR2Bucket;
+
+// Pre-populate with sample data
+async function setupMockData() {
+  // Audio files
+  await r2Bucket.put('audio/clip-123.wav', new Uint8Array(1024000), {
+    httpMetadata: { contentType: 'audio/wav' }
+  });
+  await r2Bucket.put('audio/clip-456.wav', new Uint8Array(2048000), {
+    httpMetadata: { contentType: 'audio/wav' }
+  });
+  await r2Bucket.put('audio/clip-789.wav', new Uint8Array(1536000), {
+    httpMetadata: { contentType: 'audio/wav' }
+  });
+  
+  // Video files
+  await r2Bucket.put('clips/clip-123.mp4', new Uint8Array(5120000), {
+    httpMetadata: { contentType: 'video/mp4' }
+  });
+  await r2Bucket.put('clips/clip-456.mp4', new Uint8Array(10240000), {
+    httpMetadata: { contentType: 'video/mp4' }
+  });
+  await r2Bucket.put('clips/clip-789.mp4', new Uint8Array(7680000), {
+    httpMetadata: { contentType: 'video/mp4' }
+  });
+  
+  // Transcript files
+  await r2Bucket.put('transcripts/clip-123.json', JSON.stringify({ text: 'Sample transcript' }), {
+    httpMetadata: { contentType: 'application/json' }
+  });
+  await r2Bucket.put('transcripts/clip-456.json', JSON.stringify({ text: 'Another transcript' }), {
+    httpMetadata: { contentType: 'application/json' }
+  });
+}
 
 async function listAudioFiles() {
   console.log('🔍 Listing audio files in R2...\n');
+  
+  // Setup mock data
+  await setupMockData();
   
   try {
     const result = await mockEnv.R2_BUCKET.list();
