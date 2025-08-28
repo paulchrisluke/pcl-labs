@@ -1,4 +1,5 @@
 import type { Environment } from '../types/index.js';
+import { GitHubEventService } from './github-events.js';
 
 export async function handleWebhook(
   request: Request,
@@ -23,23 +24,87 @@ export async function handleWebhook(
     if (!event) {
       return new Response('Bad Request: Missing x-github-event', { status: 400 });
     }
+    
     let payload: any;
+    const contentType = request.headers.get('content-type') || '';
+    
     try {
-      payload = JSON.parse(new TextDecoder().decode(bodyBytes));
+      if (contentType.includes('application/x-www-form-urlencoded')) {
+        // GitHub sends payload as form-encoded data
+        const bodyString = new TextDecoder().decode(bodyBytes);
+        const params = new URLSearchParams(bodyString);
+        const payloadParam = params.get('payload');
+        
+        if (!payloadParam) {
+          console.error('No payload found in form data');
+          return new Response('Bad Request: No payload in form data', { status: 400 });
+        }
+        
+        payload = JSON.parse(payloadParam);
+      } else {
+        // Handle raw JSON payload (fallback)
+        payload = JSON.parse(new TextDecoder().decode(bodyBytes));
+      }
     } catch (e) {
-      console.error('Invalid JSON payload', e);
-      return new Response('Bad Request: Invalid JSON', { status: 400 });
+      console.error('Invalid payload parsing', e);
+      return new Response('Bad Request: Invalid payload', { status: 400 });
     }
 
     const delivery = request.headers.get('x-github-delivery');
     console.log(`Received GitHub webhook: ${event} (delivery: ${delivery})`);
 
+    // Store the event for temporal matching (M8 - GitHub Integration)
+    if (delivery && payload.repository?.full_name) {
+      const storeEventTask = async () => {
+        try {
+          const githubEventService = new GitHubEventService(env);
+          const stored = await githubEventService.storeEvent(
+            delivery,
+            event,
+            payload,
+            payload.repository.full_name
+          );
+          
+          if (!stored) {
+            console.warn(`Failed to store GitHub event: ${event} (${delivery})`);
+          }
+        } catch (error) {
+          console.error(`Failed to store GitHub event: ${event} (${delivery})`, error);
+        }
+      };
+
+      // Use ctx.waitUntil if available to offload to background task
+      if (ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(storeEventTask().catch(error => {
+          console.error(`Background task failed to store GitHub event: ${event} (${delivery})`, error);
+        }));
+      } else {
+        // Fallback to synchronous execution with error handling
+        try {
+          await storeEventTask();
+        } catch (error) {
+          console.error(`Failed to store GitHub event: ${event} (${delivery})`, error);
+        }
+      }
+    }
+
     switch (event) {
       case 'pull_request': {
         return await handlePullRequestEvent(payload, env);
       }
+      case 'push': {
+        return await handlePushEvent(payload, env);
+      }
+      case 'issues': {
+        return await handleIssueEvent(payload, env);
+      }
       case 'check_run': {
         return await handleCheckRunEvent(payload, env);
+      }
+      case 'ping': {
+        // GitHub sends ping events to test webhook connectivity
+        console.log('Received GitHub ping event - webhook is working!');
+        return new Response('Pong', { status: 200 });
       }
       default: {
         console.log(`Unhandled event type: ${event}`);
@@ -106,6 +171,46 @@ async function handlePullRequestEvent(payload: any, env: Environment): Promise<R
   // Handle PR events (merged, closed, etc.)
   if (action === 'closed' && pull_request.merged) {
     console.log(`PR #${pull_request.number} was merged`);
+    // Could trigger additional actions here
+  }
+  
+  return new Response('OK', { status: 200 });
+}
+
+async function handlePushEvent(payload: any, env: Environment): Promise<Response> {
+  const { ref, commits, repository } = payload;
+  
+  // Guard against non-array commits
+  if (!Array.isArray(commits)) {
+    console.warn(`Push event has non-array commits: ${typeof commits}`);
+    return new Response('OK', { status: 200 });
+  }
+  
+  console.log(`Push to ${ref}: ${commits.length} commits`);
+  
+  // Only process pushes to the repository's default branch
+  const defaultBranch = repository?.default_branch;
+  if (!defaultBranch) {
+    console.warn(`Repository missing default_branch, skipping push processing`);
+    return new Response('OK', { status: 200 });
+  }
+  
+  if (ref === `refs/heads/${defaultBranch}`) {
+    console.log(`${defaultBranch} branch push with ${commits.length} commits`);
+    // Could trigger additional actions here
+  }
+  
+  return new Response('OK', { status: 200 });
+}
+
+async function handleIssueEvent(payload: any, env: Environment): Promise<Response> {
+  const { action, issue } = payload;
+  
+  console.log(`Issue ${action}: #${issue.number} - ${issue.title}`);
+  
+  // Handle issue events (closed, reopened, etc.)
+  if (action === 'closed') {
+    console.log(`Issue #${issue.number} was closed`);
     // Could trigger additional actions here
   }
   

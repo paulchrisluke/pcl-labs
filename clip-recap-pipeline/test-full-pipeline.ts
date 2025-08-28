@@ -171,10 +171,13 @@ async function testFullPipeline() {
     
     // Step 4: Test transcription directly
     console.log('\n🎤 Step 4: Testing transcription...');
+    const transcribeBody = JSON.stringify({ clipId: testClip.id });
+    const transcribeHeaders = await createSecurityHeaders(transcribeBody);
+    
     const transcribeResponse = await fetch(`${WORKER_URL}/api/transcribe/clip`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clipId: testClip.id })
+      headers: transcribeHeaders,
+      body: transcribeBody
     });
     
     if (transcribeResponse.ok) {

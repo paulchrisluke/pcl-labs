@@ -2,6 +2,15 @@
 // This test works with your deployed worker's /validate-github endpoint
 // Run with: npx tsx test-github.ts
 
+import crypto from 'crypto';
+
+async function generateHmacSignature(body: string, timestamp: string, nonce: string, secret: string): Promise<string> {
+  const payload = `${body}${timestamp}${nonce}`;
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(payload);
+  return hmac.digest('hex');
+}
+
 async function testGitHubCredentials() {
   // Get the worker URL from environment or use production as default
   const workerUrl = process.env.WORKER_URL || 'https://clip-recap-pipeline.paulchrisluke.workers.dev';
@@ -26,13 +35,29 @@ async function testGitHubCredentials() {
   try {
     console.log('\n🔑 Testing GitHub credentials validation...');
     
-    const response = await fetch(validateUrl);
+    // Generate authentication headers
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const signature = await generateHmacSignature('', timestamp, nonce, process.env.HMAC_SHARED_SECRET || '');
+    
+    const response = await fetch(validateUrl, {
+      headers: {
+        'X-Request-Signature': signature,
+        'X-Request-Timestamp': timestamp,
+        'X-Request-Nonce': nonce,
+      }
+    });
     
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Validation request failed');
       console.error(`  Status: ${response.status} ${response.statusText}`);
       console.error(`  Error: ${errorText}`);
+      
+      if (response.status === 401) {
+        console.log('\n💡 Authentication required - make sure HMAC_SHARED_SECRET is set:');
+        console.log('   export HMAC_SHARED_SECRET="your-secret"');
+      }
       
       if (response.status === 404) {
         console.log('\n💡 Make sure your worker is running:');

@@ -314,7 +314,6 @@ export class GitHubEventService {
       }
       
       const normalizedTimestamp = date.toISOString();
-      
       const event: GitHubEvent = {
         id: deliveryId,
         event_type: eventType,

@@ -72,6 +72,219 @@ async function getClipAudioStatus(clipId: string, env: Environment) {
   }
 }
 
+async function handleGitHubRequestInternal(request: Request, env: Environment): Promise<Response> {
+  try {
+    const { handleGitHubRequest } = await import('./routes/github.js');
+    return await handleGitHubRequest(request, env);
+  } catch (error) {
+    console.error('GitHub route error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+async function handleGitHubEventsRequest(request: Request, env: Environment): Promise<Response> {
+  try {
+    const { GitHubEventService } = await import('./services/github-events.js');
+    const githubEventService = new GitHubEventService(env);
+    
+    const url = new URL(request.url);
+    const path = url.pathname;
+    
+    switch (path) {
+      case '/api/github-events/test': {
+        if (request.method !== 'POST') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Step 1: Authentication check - must come before any operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const rawBody = await request.text();
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
+        // Test endpoint to simulate storing a GitHub event
+        // Note: rawBody is available from authentication step above
+        const testEvent = {
+          deliveryId: `test-${Date.now()}`,
+          eventType: 'pull_request',
+          payload: {
+            action: 'closed',
+            pull_request: {
+              number: 42,
+              title: 'Test PR for temporal matching',
+              html_url: 'https://github.com/paulchrisluke/pcl-labs/pull/42',
+              merged: true,
+              merged_at: new Date().toISOString(),
+              created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+              updated_at: new Date().toISOString(),
+              closed_at: new Date().toISOString(),
+              user: { login: 'testuser' },
+              head: { ref: 'feature/test', sha: 'abc123' },
+              base: { ref: 'main', sha: 'def456' }
+            },
+            repository: {
+              full_name: 'paulchrisluke/pcl-labs'
+            }
+          },
+          repository: 'paulchrisluke/pcl-labs'
+        };
+        
+        const stored = await githubEventService.storeEvent(
+          testEvent.deliveryId,
+          testEvent.eventType,
+          testEvent.payload,
+          testEvent.repository
+        );
+        
+        return new Response(JSON.stringify({
+          success: stored,
+          message: stored ? 'Test event stored successfully' : 'Failed to store test event',
+          event: testEvent
+        }), {
+          status: stored ? 200 : 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      case '/api/github-events/list': {
+        if (request.method !== 'GET') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Authentication check for GET requests
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
+        // List recent GitHub events
+        const searchParams = url.searchParams;
+        const daysParam = searchParams.get('days');
+        const repository = searchParams.get('repository') || undefined;
+        
+        // Validate and clamp the days parameter
+        let days = 1; // default value
+        if (daysParam !== null) {
+          const parsedDays = parseInt(daysParam);
+          if (Number.isFinite(parsedDays) && !Number.isNaN(parsedDays)) {
+            days = Math.floor(parsedDays);
+            // Clamp to sane range: min 1, max 365
+            days = Math.max(1, Math.min(365, days));
+          } else {
+            // Return 400 for clearly malformed input
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid days parameter - must be a valid number between 1 and 365'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        }
+        
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        
+        const events = await githubEventService.getEventsForDateRange(startDate, endDate, repository);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          events,
+          count: events.length,
+          dateRange: {
+            start: startDate.toISOString(),
+            end: endDate.toISOString()
+          }
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      case '/api/github-events/enhance-clip': {
+        if (request.method !== 'POST') {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Method not allowed'
+          }), {
+            status: 405,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Authentication check for POST requests (need body for HMAC)
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const rawBody = await request.text();
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
+        // Test temporal matching with a clip
+        const body = JSON.parse(rawBody) as { clip: any; repository?: string };
+        const { clip, repository } = body;
+        
+        if (!clip || !clip.created_at) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid clip data - missing created_at'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(clip, repository);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          clip: enhancedClip,
+          hasGitHubContext: !!enhancedClip.github_context,
+          githubContext: enhancedClip.github_context
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      default: {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Endpoint not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('GitHub Events route error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -198,6 +411,11 @@ export default {
     // Validate Twitch credentials endpoint
     if (url.pathname === '/validate-twitch') {
       try {
+        // Authentication check
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         console.log('🔍 Validating Twitch credentials...');
         // Step 1: Get access token
         const formData = new URLSearchParams();
@@ -309,6 +527,11 @@ export default {
     // Validate GitHub credentials endpoint
     if (url.pathname === '/validate-github') {
       try {
+        // Authentication check
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         console.log('🔍 Validating GitHub credentials...');
         
         // Check if we have any GitHub tokens
@@ -449,11 +672,16 @@ export default {
     // Twitch clips management endpoint
     if (url.pathname === '/api/twitch/clips') {
       try {
-        const { TwitchService } = await import('./services/twitch');
+        const { TwitchService } = await import('./services/twitch.js');
         const twitchService = new TwitchService(env);
         
         switch (request.method) {
           case 'GET': {
+            // Authentication check for GET requests
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const authError = await requireHmacAuth(request, env);
+            if (authError) return authError;
+            
             // Fetch recent clips from Twitch
             console.log('🔍 Fetching recent Twitch clips...');
             const clips = await twitchService.getRecentClips();
@@ -480,23 +708,16 @@ export default {
           }
 
           case 'POST': {
+            // Authentication check for POST requests (need body for HMAC)
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const rawBody = await request.text();
+            const authError = await requireHmacAuth(request, env, rawBody);
+            if (authError) return authError;
+            
             // Store clips data to R2
             console.log('💾 Storing clips data...');
             
-            // Check request body size limit (10MB)
-            const contentLength = request.headers.get('content-length');
-            const MAX_REQUEST_SIZE = 10 * 1024 * 1024; // 10MB
-            if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
-              return new Response(JSON.stringify({
-                success: false,
-                error: `Request body too large. Maximum size is ${MAX_REQUEST_SIZE / (1024 * 1024)}MB.`
-              }), {
-                status: 413,
-                headers: { 'Content-Type': 'application/json' }
-              });
-            }
-            
-            const body = await request.json() as { clips?: any[] };
+            const body = JSON.parse(rawBody) as { clips?: any[] };
             const clipsToStore = body.clips || [];
             
             // Validate request size
@@ -594,7 +815,29 @@ export default {
           case 'PUT': {
             // Update specific clip data
             console.log('🔄 Updating clip data...');
-            const updateBody = await request.json() as { clipId?: string; data?: any };
+            
+            // Get raw body first to avoid double-consume issues
+            const rawBody = await request.text();
+            
+            // HMAC authentication required for data modification operations
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const authError = await requireHmacAuth(request, env, rawBody);
+            if (authError) return authError;
+            
+            // Parse JSON body after authentication
+            let updateBody: { clipId?: string; data?: any };
+            try {
+              updateBody = JSON.parse(rawBody);
+            } catch {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid JSON in request body'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
             const { clipId, data } = updateBody;
             
             if (!clipId || !data) {
@@ -676,6 +919,11 @@ export default {
     // Read stored Twitch clips from R2
     if (url.pathname.startsWith('/api/twitch/clips/stored')) {
       try {
+        // Authentication check
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env);
+        if (authError) return authError;
+        
         const clipId = url.searchParams.get('id');
         
         if (clipId) {
@@ -839,6 +1087,14 @@ export default {
     // Audio processing test endpoint
     if (url.pathname === '/api/test-audio-processing' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🧪 Testing audio processing...');
         
         // Get stored clips
@@ -893,6 +1149,14 @@ export default {
     // Test transcription endpoint - Real pipeline test
     if (url.pathname === '/api/test-transcription' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🧪 Testing real transcription pipeline...');
 
         // Step 1: Get a real clip ID from stored clips
@@ -1017,12 +1281,10 @@ export default {
     if (url.pathname.startsWith('/api/transcribe/force/') && request.method === 'POST') {
       try {
         // Step 1: Authentication check - must come before any destructive operations
-        const { verifyAdminAuth, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        if (!verifyAdminAuth(request, env)) {
-          console.warn(`🚨 Unauthorized force re-transcription attempt for path: ${url.pathname}`);
-          return createUnauthorizedResponse('Admin authentication required for force re-transcription');
-        }
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const rawRequestBody = await request.text();
+        const authError = await requireHmacAuth(request, env, rawRequestBody);
+        if (authError) return authError;
         
         const clipId = url.pathname.replace('/api/transcribe/force/', '');
         
@@ -1096,9 +1358,29 @@ export default {
         const transcriptionService = new TranscriptionService(env);
         
         if (url.pathname === '/api/transcribe/clip' && request.method === 'POST') {
-          // Transcribe a single clip with validation
-          const body = await request.json() as { clipId?: string };
-          const { clipId } = body;
+          // Get raw body first to avoid double-consume issues
+          const rawBody = await request.text();
+          
+          // HMAC authentication required for compute-intensive operations
+          const { requireHmacAuth } = await import('./utils/auth.js');
+          const authError = await requireHmacAuth(request, env, rawBody);
+          if (authError) return authError;
+          
+          // Parse JSON body after authentication
+          let clipRequestBody: { clipId?: string };
+          try {
+            clipRequestBody = JSON.parse(rawBody);
+          } catch {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid JSON in request body'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          const { clipId } = clipRequestBody;
           
           // Step 1: Basic input validation
           if (!clipId) {
@@ -1147,9 +1429,29 @@ export default {
         }
         
         if (url.pathname === '/api/transcribe/batch' && request.method === 'POST') {
-          // Transcribe multiple clips with comprehensive validation
-          const body = await request.json() as { clipIds?: string[] };
-          const { clipIds } = body;
+          // Get raw body first to avoid double-consume issues
+          const rawBody = await request.text();
+          
+          // HMAC authentication required for compute-intensive operations
+          const { requireHmacAuth } = await import('./utils/auth.js');
+          const authError = await requireHmacAuth(request, env, rawBody);
+          if (authError) return authError;
+          
+          // Parse JSON body after authentication
+          let batchRequestBody: { clipIds?: string[] };
+          try {
+            batchRequestBody = JSON.parse(rawBody);
+          } catch {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Invalid JSON in request body'
+            }), {
+              status: 400,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+          
+          const { clipIds } = batchRequestBody;
           
           // Step 1: Basic input validation
           if (!clipIds || !Array.isArray(clipIds)) {
@@ -1417,7 +1719,28 @@ export default {
         
         switch (request.method) {
           case 'POST': {
-            const body = await request.json() as { clip_ids?: string[] };
+            // Get raw body first to avoid double-consume issues
+            const rawBody = await request.text();
+            
+            // HMAC authentication required for compute-intensive operations
+            const { requireHmacAuth } = await import('./utils/auth.js');
+            const authError = await requireHmacAuth(request, env, rawBody);
+            if (authError) return authError;
+            
+            // Parse JSON body after authentication
+            let body: { clip_ids?: string[] };
+            try {
+              body = JSON.parse(rawBody);
+            } catch {
+              return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid JSON in request body'
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            
             const clipIds = body.clip_ids || [];
             
             if (clipIds.length === 0) {
@@ -1587,7 +1910,12 @@ export default {
 
     // GitHub endpoints
     if (url.pathname.startsWith('/api/github/')) {
-      return handleGitHubRequest(request, env);
+      return handleGitHubRequestInternal(request, env);
+    }
+
+    // GitHub Event Storage endpoints (M8 - GitHub Integration)
+    if (url.pathname.startsWith('/api/github-events/')) {
+      return handleGitHubEventsRequest(request, env);
     }
 
     // Webhook endpoints
@@ -1598,6 +1926,14 @@ export default {
     // Manual pipeline trigger endpoint
     if (url.pathname === '/api/trigger-pipeline' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🚀 Manual pipeline trigger activated...');
         
         // Import the scheduler function
@@ -1633,6 +1969,14 @@ export default {
     // Manual audio processing endpoint (processes all stored clips)
     if (url.pathname === '/api/process-all-clips' && request.method === 'POST') {
       try {
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
         console.log('🎵 Manual audio processing for all stored clips...');
         
         // Get all stored clips
@@ -1687,12 +2031,10 @@ export default {
     if (url.pathname === '/api/transcription-pipeline' && request.method === 'POST') {
       try {
         // Step 1: Admin authentication check
-        const { verifyAdminAuth, createUnauthorizedResponse } = await import('./utils/auth.js');
-        
-        if (!verifyAdminAuth(request, env)) {
-          console.warn(`🚨 Unauthorized manual transcription pipeline attempt`);
-          return createUnauthorizedResponse('Admin authentication required for manual transcription pipeline');
-        }
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const pipelineRawBody = await request.text();
+        const authError = await requireHmacAuth(request, env, pipelineRawBody);
+        if (authError) return authError;
         
         console.log('🎤 Manual transcription pipeline for all stored clips...');
         
@@ -1731,9 +2073,29 @@ export default {
       try {
         console.log('🧪 Testing Whisper API with real audio...');
         
-        // Step 1: Validate request body
-        const body = await request.json() as { clipId?: string };
-        const { clipId } = body;
+        // Get raw body first to avoid double-consume issues
+        const rawBody = await request.text();
+        
+        // Step 1: HMAC authentication required for compute-intensive operations
+        const { requireHmacAuth } = await import('./utils/auth.js');
+        const authError = await requireHmacAuth(request, env, rawBody);
+        if (authError) return authError;
+        
+        // Step 2: Parse and validate request body
+        let whisperRequestBody: { clipId?: string };
+        try {
+          whisperRequestBody = JSON.parse(rawBody);
+        } catch {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Invalid JSON in request body'
+          }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        const { clipId } = whisperRequestBody;
         
         if (!clipId) {
           return new Response(JSON.stringify({
@@ -1745,7 +2107,7 @@ export default {
           });
         }
         
-        // Step 2: Validate clipId format and length
+        // Step 3: Validate clipId format and length
         const { validateClipId } = await import('./utils/validation.js');
         const validation = validateClipId(clipId);
         
@@ -1760,27 +2122,8 @@ export default {
           });
         }
         
-        // Step 3: Authorization check - require admin key or Bearer token
-        const authHeader = request.headers.get('authorization');
-        const apiKey = request.headers.get('x-api-key');
-        
-        // Check for valid authorization using centralized verification
-        const { verifyAdminAuthWithApiKey } = await import('./utils/auth.js');
-        const isAuthorized = verifyAdminAuthWithApiKey(request, env);
-        
-        if (!isAuthorized) {
-          console.warn(`🚨 Unauthorized Whisper API access attempt for clip: ${clipId}`);
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Unauthorized access'
-          }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-        
         // Step 4: Rate limiting check (simple logging for now)
-        const clientId = apiKey || authHeader || 'unknown';
+        const clientId = 'hmac-authenticated';
         
         // For now, just log the request for monitoring
         // In production, you'd want to use a proper rate limiting service

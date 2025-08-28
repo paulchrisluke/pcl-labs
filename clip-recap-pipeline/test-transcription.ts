@@ -8,6 +8,8 @@
  */
 
 import { TranscriptionService } from './src/services/transcribe.js';
+import { createMockEnvironment } from './src/utils/mock-r2.js';
+import type { MockR2Bucket } from './src/utils/mock-r2.js';
 
 // Helper function to create a minimal valid 16-bit PCM WAV file
 function createMinimalWAV(): Uint8Array {
@@ -59,125 +61,57 @@ function createMinimalWAV(): Uint8Array {
   return new Uint8Array(buffer);
 }
 
-// In-memory R2 store for testing
-const r2Store = new Map<string, { data: Uint8Array; size: number; uploaded: string }>();
+// Create mock environment with improved R2 implementation
+const mockEnv = createMockEnvironment();
 
 // Initialize with test audio files using valid WAV data
 const mockAudioData = createMinimalWAV();
-r2Store.set('audio/test-clip-123.wav', {
-  data: mockAudioData,
-  size: mockAudioData.length,
-  uploaded: new Date().toISOString()
+const r2Bucket = mockEnv.R2_BUCKET as MockR2Bucket;
+
+// Pre-populate the mock R2 bucket with test audio files
+await r2Bucket.put('audio/test-clip-123.wav', mockAudioData, {
+  httpMetadata: { contentType: 'audio/wav' }
 });
-r2Store.set('audio/test-clip-1.wav', {
-  data: mockAudioData,
-  size: mockAudioData.length,
-  uploaded: new Date().toISOString()
+await r2Bucket.put('audio/test-clip-1.wav', mockAudioData, {
+  httpMetadata: { contentType: 'audio/wav' }
 });
-r2Store.set('audio/test-clip-2.wav', {
-  data: mockAudioData,
-  size: mockAudioData.length,
-  uploaded: new Date().toISOString()
+await r2Bucket.put('audio/test-clip-2.wav', mockAudioData, {
+  httpMetadata: { contentType: 'audio/wav' }
 });
-r2Store.set('audio/test-clip-3.wav', {
-  data: mockAudioData,
-  size: mockAudioData.length,
-  uploaded: new Date().toISOString()
+await r2Bucket.put('audio/test-clip-3.wav', mockAudioData, {
+  httpMetadata: { contentType: 'audio/wav' }
 });
 
-// Mock environment for testing
-const mockEnv = {
-  ai: {
-    run: async (model: string, options: any) => {
-      console.log(`🤖 Mock AI run called with model: ${model}`);
-      console.log(`📊 Audio data size: ${options.audio?.length || 0} bytes`);
-      
-      // Simulate Whisper response
-      return {
-        text: "This is a test transcription of the audio content. It includes multiple sentences to test the transcription pipeline.",
-        language: "en",
-        segments: [
-          {
-            start: 0,
-            end: 2.5,
-            text: "This is a test transcription"
-          },
-          {
-            start: 2.5,
-            end: 5.0,
-            text: "of the audio content."
-          },
-          {
-            start: 5.0,
-            end: 8.0,
-            text: "It includes multiple sentences to test the transcription pipeline."
-          }
-        ]
-      };
-    }
-  },
-  R2_BUCKET: {
-    get: async (key: string) => {
-      console.log(`📥 Mock R2 get: ${key}`);
-      
-      const stored = r2Store.get(key);
-      if (!stored) {
-        return null;
-      }
-      
-      // Return object with proper body that works with new Response(body).arrayBuffer()
-      return {
-        body: new Blob([stored.data], { type: 'audio/wav' }),
-        size: stored.size,
-        json: async () => {
-          // Try to parse as JSON if it's a string, otherwise return the data
-          const text = new TextDecoder().decode(stored.data);
-          try {
-            return JSON.parse(text);
-          } catch {
-            return text;
-          }
+// Add mock AI service
+mockEnv.ai = {
+  run: async (model: string, options: any) => {
+    console.log(`🤖 Mock AI run called with model: ${model}`);
+    console.log(`📊 Audio data size: ${options.audio?.length || 0} bytes`);
+    
+    // Simulate Whisper response
+    return {
+      text: "This is a test transcription of the audio content. It includes multiple sentences to test the transcription pipeline.",
+      language: "en",
+      segments: [
+        {
+          start: 0,
+          end: 2.5,
+          text: "This is a test transcription"
+        },
+        {
+          start: 2.5,
+          end: 5.0,
+          text: "of the audio content."
+        },
+        {
+          start: 5.0,
+          end: 8.0,
+          text: "It includes multiple sentences to test the transcription pipeline."
         }
-      };
-    },
-    put: async (key: string, data: string | Uint8Array, options?: any) => {
-      console.log(`📤 Mock R2 put: ${key}`);
-      console.log(`📄 Data type: ${typeof data}`);
-      
-      let uint8Data: Uint8Array;
-      if (typeof data === 'string') {
-        uint8Data = new TextEncoder().encode(data);
-      } else {
-        uint8Data = data;
-      }
-      
-      console.log(`📏 Data size: ${uint8Data.length} bytes`);
-      
-      // Store the data in our in-memory Map
-      r2Store.set(key, {
-        data: uint8Data,
-        size: uint8Data.length,
-        uploaded: new Date().toISOString()
-      });
-      
-      return { ok: true };
-    },
-    head: async (key: string) => {
-      console.log(`🔍 Mock R2 head: ${key}`);
-      
-      const stored = r2Store.get(key);
-      if (!stored) {
-        return null;
-      }
-      
-      return {
-        size: stored.size,
-        uploaded: stored.uploaded,
-        ok: true
-      };
-    }
+      ]
+    };
   }
-} as any;
+};
 
 async function testTranscriptionService() {
   console.log('🧪 Testing Transcription Service...\n');

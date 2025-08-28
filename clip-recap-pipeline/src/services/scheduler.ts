@@ -1,4 +1,4 @@
-import type { Environment } from '../types';
+import type { Environment } from '../types/index.js';
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import { TwitchService } from './twitch.js';
 import { ContentService } from './content.js';

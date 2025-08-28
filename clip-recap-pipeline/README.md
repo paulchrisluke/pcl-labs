@@ -175,6 +175,7 @@ npx tsx test-twitch.ts      # Twitch credentials and API
 npx tsx test-github.ts      # GitHub credentials and API
 npx tsx test-pipeline.ts    # Daily pipeline functionality
 npx tsx test-audio-pipeline.ts  # Audio processing pipeline integration (uses stored clips)
+npx tsx test-github-events.ts  # GitHub event storage and temporal matching (M8)
 npx tsx test-auth.ts        # HMAC authentication middleware tests
 ```
 
@@ -184,6 +185,7 @@ npx tsx test-auth.ts        # HMAC authentication middleware tests
 - **GitHub Integration** (`test-github.ts`): Credentials, repository access, API connectivity
 - **Pipeline Functionality** (`test-pipeline.ts`): Clip storage, retrieval, validation, and database operations
 - **Audio Processing** (`test-audio-pipeline.ts`): Audio processing pipeline integration using actual stored clips from R2
+- **GitHub Events** (`test-github-events.ts`): Event storage, temporal matching, and clip enhancement (M8)
 - **Authentication** (`test-auth.ts`): HMAC authentication middleware and Authorization header rejection
 
 **Test Results:**
@@ -220,25 +222,559 @@ crons = [
 
 ## API Endpoints
 
-### Core Endpoints
-- `GET /` - API status page with endpoint documentation
+### Authentication
+
+Most API endpoints require authentication using HMAC SHA-256 signatures with the `HMAC_SHARED_SECRET` environment variable. The following endpoints are public and do not require authentication:
+
+- `GET /` - API status page
 - `GET /health` - Health check endpoint
 
+All other endpoints require the authentication described below.
+
+**Required Headers:**
+- `X-Request-Signature: <encoding_prefix>:<signature>` - HMAC-SHA256 signature with explicit encoding prefix
+  - `hex:<64-character-hex-string>` (preferred format)
+**HMAC Signature Generation (canonical string):**
+Compute SHA-256 of the raw request body bytes (empty string for GET) as `content_sha256` (hex). Build:
+
+- `Content-Type: application/json` (for POST requests)
+
+**Accepted Signature Formats:**
+- `X-Request-Signature: hex:a1b2c3d4e5f6...` (64-character hex string)
+- `X-Request-Signature: b64:YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=` (base64 encoded)
+
+**Note:** The `Authorization: Bearer` header is deprecated and no longer supported. Use only the `X-Request-Signature` header with the appropriate encoding prefix.
+
+**HMAC Signature Generation:**
+The signature is computed using HMAC-SHA256 over the payload: `body + timestamp + nonce`
+
+**Hex Signature (Preferred Format):**
+```bash
+# Create hex signature from payload
+signature=$(echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p -c 64)
+# Use as: X-Request-Signature: hex:$signature
+```
+
+**Base64 Signature (Alternative Format):**
+```bash
+# Create base64 signature from payload
+signature=$(echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | base64)
+# Use as: X-Request-Signature: b64:$signature
+```
+
+**Example:**
+```bash
+# For a GET request with timestamp 1640995200 and nonce abc123def456
+signature=$(echo -n "1640995200abc123def456" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+# Result: a1b2c3d4e5f6...
+# Header: X-Request-Signature: hex:a1b2c3d4e5f6...
+
+# For a POST request with JSON body
+signature=$(echo -n '{"key":"value"}1640995200abc123def456' | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+# Result: a1b2c3d4e5f6...
+# Header: X-Request-Signature: hex:a1b2c3d4e5f6...
+```
+
+### Error Codes
+
+| Code | Description |
+|------|-------------|
+| `400` | Bad Request - Invalid request format or missing required fields |
+| `401` | Unauthorized - Missing or invalid authentication |
+| `403` | Forbidden - Valid authentication but insufficient permissions |
+| `404` | Not Found - Resource not found |
+| `405` | Method Not Allowed - HTTP method not supported for endpoint |
+| `429` | Too Many Requests - Rate limit exceeded |
+| `500` | Internal Server Error - Server-side error |
+
+### Core Endpoints
+
+#### `GET /`
+API status page with endpoint documentation.
+
+**Authentication:** None required
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "service": "clip-recap-pipeline",
+  "version": "1.0.0",
+  "endpoints": [
+    "/health",
+    "/validate-twitch",
+    "/api/twitch/clips",
+    "/api/github/activity",
+    "/api/github-events/list"
+  ]
+}
+```
+
+**Example:**
+```bash
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/"
+```
+
+#### `GET /health`
+Health check endpoint.
+
+**Authentication:** None required
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "service": "clip-recap-pipeline",
+  "version": "1.0.0",
+  "uptime": "1h 23m 45s"
+}
+```
+
+**Example:**
+```bash
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/health"
+```
+
 ### Twitch Integration
-- `GET /validate-twitch` - Validate Twitch API credentials and connection
-- `GET /api/twitch/clips` - Fetch recent Twitch clips from the last 24 hours
-- `POST /api/twitch/clips` - Store clips data to R2 storage
-- `GET /api/twitch/clips/stored` - List all stored clips from R2 storage
+
+#### `GET /validate-twitch`
+Validate Twitch API credentials and connection.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "valid": true,
+  "broadcaster_id": "123456789",
+  "broadcaster_login": "username",
+  "token_expires_in": 3600
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-twitch" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+#### `GET /api/twitch/clips`
+Fetch recent Twitch clips from the last 24 hours.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `hours` (optional): Number of hours to look back (default: 24)
+
+**Response:**
+```json
+{
+  "clips": [
+    {
+      "id": "clip_id",
+      "url": "https://clips.twitch.tv/clip_id",
+      "title": "Clip Title",
+      "broadcaster_name": "username",
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "duration": 30,
+      "view_count": 1000
+    }
+  ],
+  "total": 1,
+  "fetched_at": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips?hours=24" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+#### `POST /api/twitch/clips`
+Store clips data to R2 storage.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "clips": [
+    {
+      "id": "clip_id",
+      "url": "https://clips.twitch.tv/clip_id",
+      "title": "Clip Title",
+      "broadcaster_name": "username",
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "duration": 30,
+      "view_count": 1000
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "stored": 1,
+  "failed": 0,
+  "errors": []
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body='{"clips":[{"id":"test","url":"https://clips.twitch.tv/test","title":"Test","broadcaster_name":"test","created_at":"2024-01-01T00:00:00.000Z","duration":30,"view_count":1000}]}'
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
+  -d "$body"
+```
+
+#### `GET /api/twitch/clips/stored`
+List all stored clips from R2 storage.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `limit` (optional): Maximum number of clips to return (default: 100)
+- `offset` (optional): Number of clips to skip (default: 0)
+
+**Response:**
+```json
+{
+  "clips": [
+    {
+      "id": "clip_id",
+      "url": "https://clips.twitch.tv/clip_id",
+      "title": "Clip Title",
+      "broadcaster_name": "username",
+      "created_at": "2024-01-01T00:00:00.000Z",
+      "duration": 30,
+      "view_count": 1000,
+      "stored_at": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "total": 1,
+  "limit": 100,
+  "offset": 0
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/twitch/clips/stored?limit=50&offset=0" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
 ### GitHub Integration
-- `GET /validate-github` - Validate GitHub API credentials and repository access
-- `GET /api/github/activity` - Get daily GitHub activity and repository statistics
-- `POST /webhook/github` - GitHub webhook handler
-  - Verifies `X-Hub-Signature-256` (HMAC SHA-256) with `GITHUB_WEBHOOK_SECRET`
-  - Rejects non-POST methods with 405
-  - Uses the raw request body (no JSON parsing before HMAC) and constant-time comparison to validate signatures. Expect header format `sha256=<hex>`.
-  - Responds 401/403 on invalid or missing signature; 2xx on success (202 if work is queued).
-  - Includes replay protection (idempotency via `X-GitHub-Delivery` UUID with a configurable TTL; signature verification prevents payload tampering).
-  - Offloads long-running or non-critical work to async tasks/queues to ensure responses meet GitHub's webhook timeout.
+
+#### `GET /validate-github`
+Validate GitHub API credentials and repository access.
+
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "valid": true,
+  "app_id": "12345",
+  "installation_id": "67890",
+  "repositories": [
+    "org/repo1",
+    "org/repo2"
+  ]
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/validate-github" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+#### `GET /api/github/activity`
+Get daily GitHub activity and repository statistics.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `repository` (required): Repository in format `org/repo` (URL-encode slashes as `%2F`)
+- `days` (optional): Number of days to look back (default: 1)
+
+**Response:**
+```json
+{
+  "repository": "org/repo",
+  "period": "2024-01-01",
+  "activity": {
+    "commits": 5,
+    "pull_requests": 2,
+    "issues": 3,
+    "releases": 1
+  },
+  "recent_commits": [
+    {
+      "sha": "abc123",
+      "message": "feat: add new feature",
+      "author": "username",
+      "date": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+# Note: URL-encode the repository name (org/repo becomes org%2Frepo)
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github/activity?repository=org%2Frepo&days=7" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+#### `POST /webhook/github`
+GitHub webhook handler.
+
+**Authentication:** GitHub webhook signature verification using HMAC-SHA256
+
+**Signature Verification:**
+- Uses the exact raw request body bytes (not parsed JSON)
+- Validates against `GITHUB_WEBHOOK_SECRET` environment variable
+- Requires `X-Hub-Signature-256` header with `sha256=` prefix format
+- Rejects other signature formats (e.g., `sha1=`, `sha256=` without prefix)
+- Performs constant-time comparison to prevent timing attacks
+- Returns HTTP 401 for invalid signatures
+
+**Idempotency:**
+- Stores `X-GitHub-Delivery` IDs for 24 hours to prevent replay attacks
+- Returns HTTP 202 for duplicate delivery IDs (already processed)
+- Prevents duplicate processing of the same webhook event
+
+**Required Headers:**
+- `X-Hub-Signature-256: sha256=<hex_signature>` - HMAC-SHA256 signature of raw body
+- `X-GitHub-Delivery: <uuid>` - Unique delivery ID for idempotency
+- `X-GitHub-Event: <event_type>` - GitHub event type (e.g., `pull_request`, `push`)
+
+**Request Body:** Raw GitHub webhook payload (exact bytes used for signature verification)
+
+**Response:**
+```json
+{
+  "status": "accepted",
+  "event_id": "uuid",
+  "event_type": "pull_request",
+  "processed": true
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized`: Invalid signature or missing signature header
+- `202 Accepted`: Duplicate delivery ID (already processed)
+- `400 Bad Request`: Missing required headers or invalid payload
+
+**Example:**
+```bash
+# GitHub automatically sends webhooks with proper signatures
+# This endpoint is called by GitHub, not by external clients
+```
+
+### GitHub Event Storage (M8 - GitHub Integration)
+
+#### `POST /api/github-events/test`
+Test GitHub event storage functionality.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "event_type": "pull_request",
+  "repository": "org/repo",
+  "payload": {
+    "action": "opened",
+    "pull_request": {
+      "number": 123,
+      "title": "Test PR",
+      "html_url": "https://github.com/org/repo/pull/123"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "event_id": "test-uuid",
+  "stored_at": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body='{"event_type":"pull_request","repository":"org/repo","payload":{"action":"opened","pull_request":{"number":123,"title":"Test PR","html_url":"https://github.com/org/repo/pull/123"}}}'
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/test" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
+  -d "$body"
+```
+
+#### `GET /api/github-events/list`
+List stored GitHub events.
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `days` (optional): Number of days to look back (default: 1)
+- `repository` (optional): Filter by specific repository (URL-encode slashes as `%2F`)
+- `event_type` (optional): Filter by event type (e.g., `pull_request`, `push`, `issues`)
+- `limit` (optional): Maximum number of events to return (default: 100)
+
+**Response:**
+```json
+{
+  "events": [
+    {
+      "id": "event-uuid",
+      "event_type": "pull_request",
+      "repository": "org/repo",
+      "timestamp": "2024-01-01T00:00:00.000Z",
+      "action": "opened",
+      "processed": false
+    }
+  ],
+  "total": 1,
+  "filters": {
+    "days": 1,
+    "repository": "org/repo",
+    "event_type": "pull_request"
+  }
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+signature=$(echo -n "$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+# List all pull request events from the last 7 days for a specific repository
+curl -X GET "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/list?days=7&repository=org%2Frepo&event_type=pull_request&limit=50" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+#### `POST /api/github-events/enhance-clip`
+Enhance a clip with GitHub context based on temporal matching.
+
+**Authentication:** Required
+
+**Request Body:**
+```json
+{
+  "clip": {
+    "id": "clip_id",
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "title": "Clip Title",
+    "url": "https://clips.twitch.tv/clip_id"
+  },
+  "repository": "org/repo",
+  "time_window_hours": 2
+}
+```
+
+**Response:**
+```json
+{
+  "clip": {
+    "id": "clip_id",
+    "created_at": "2024-01-01T00:00:00.000Z",
+    "title": "Clip Title",
+    "url": "https://clips.twitch.tv/clip_id",
+    "github_context": {
+      "linked_prs": [
+        {
+          "number": 123,
+          "title": "Feature PR",
+          "url": "https://github.com/org/repo/pull/123",
+          "merged_at": "2024-01-01T00:30:00.000Z",
+          "confidence": "high",
+          "match_reason": "temporal_proximity"
+        }
+      ],
+      "linked_commits": [
+        {
+          "sha": "abc123",
+          "message": "feat: add new feature",
+          "url": "https://github.com/org/repo/commit/abc123",
+          "timestamp": "2024-01-01T00:15:00.000Z"
+        }
+      ],
+      "linked_issues": []
+    }
+  },
+  "matched_events": 2,
+  "time_window_hours": 2
+}
+```
+
+**Example:**
+```bash
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body='{"clip":{"id":"clip_id","created_at":"2024-01-01T00:00:00.000Z","title":"Clip Title","url":"https://clips.twitch.tv/clip_id"},"repository":"org/repo","time_window_hours":2}'
+signature=$(echo -n "$body$timestamp$nonce" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+
+curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-events/enhance-clip" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
+  -d "$body"
+```
 
 ### HMAC Authentication Enforcement
 
@@ -275,3 +811,4 @@ Generated posts follow the existing blog structure:
 ## License
 
 MIT License - see LICENSE file for details.
+# Test webhook fix

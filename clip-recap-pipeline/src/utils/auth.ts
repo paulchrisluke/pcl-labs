@@ -34,31 +34,7 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-/**
- * Verify admin authentication using Bearer token
- * Uses constant-time comparison for security
- */
-export function verifyAdminAuth(request: Request, env: Environment): boolean {
-  const authHeader = request.headers.get('authorization');
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false;
-  }
-  
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  const adminToken = env.ADMIN_FORCE_TRANSCRIBE_TOKEN || env.ADMIN_KEY;
-  
-  if (!adminToken) {
-    console.error('Admin token not configured in environment');
-    return false;
-  }
-  
-  // Use constant-time comparison to prevent timing attacks
-  const tokenBytes = new TextEncoder().encode(token);
-  const adminTokenBytes = new TextEncoder().encode(adminToken);
-  
-  return constantTimeCompare(tokenBytes, adminTokenBytes);
-}
+
 
 /**
  * Verify HMAC signature for request authentication
@@ -124,29 +100,7 @@ export async function verifyHmacSignature(
   }
 }
 
-/**
- * Verify admin authentication using either Bearer token or X-API-Key
- * Uses constant-time comparison for security
- */
-export function verifyAdminAuthWithApiKey(request: Request, env: Environment): boolean {
-  const authHeader = request.headers.get('authorization');
-  const apiKey = request.headers.get('x-api-key');
-  
-  // Check Bearer token first
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return verifyAdminAuth(request, env);
-  }
-  
-  // Check X-API-Key with constant-time comparison
-  if (apiKey && env.ADMIN_KEY) {
-    const apiKeyBytes = new TextEncoder().encode(apiKey);
-    const adminKeyBytes = new TextEncoder().encode(env.ADMIN_KEY);
-    
-    return constantTimeCompare(apiKeyBytes, adminKeyBytes);
-  }
-  
-  return false;
-}
+
 
 /**
  * Create unauthorized response with consistent format
