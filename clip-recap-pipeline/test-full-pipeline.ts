@@ -46,13 +46,26 @@ async function createSignature(body: string, timestamp: string, nonce: string): 
  */
 async function createSecurityHeaders(body: string = ''): Promise<Record<string, string>> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = Math.random().toString(36).substring(2, 15);
+  
+  // Generate cryptographically secure nonce (16-64 alphanumeric characters)
+  const randomBytes = new Uint8Array(32);
+  crypto.getRandomValues(randomBytes);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let nonce = '';
+  for (let i = 0; i < 32; i++) {
+    nonce += chars[randomBytes[i] % chars.length];
+  }
+  
+  // Generate UUIDv4 for idempotency key
+  const idempotencyKey = crypto.randomUUID();
+  
   const signature = await createSignature(body, timestamp, nonce);
   
   return {
     'X-Request-Signature': signature,
     'X-Request-Timestamp': timestamp,
     'X-Request-Nonce': nonce,
+    'X-Idempotency-Key': idempotencyKey,
     'Content-Type': 'application/json',
   };
 }

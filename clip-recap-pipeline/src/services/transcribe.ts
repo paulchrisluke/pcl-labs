@@ -43,7 +43,7 @@ export class TranscriptionService {
    * Convert ArrayBuffer to base64 string
    * Workers-compatible implementation using chunked conversion
    */
-  private base64Encode(arrayBuffer: ArrayBuffer): string {
+  public base64Encode(arrayBuffer: ArrayBuffer): string {
     // Workers/browser environment: convert in chunks to avoid memory issues
     const bytes = new Uint8Array(arrayBuffer);
     const len = bytes.byteLength;

@@ -74,6 +74,30 @@ async function getClipAudioStatus(clipId: string, env: Environment) {
 
 export default {
   async fetch(request: Request, env: Environment, ctx: ExecutionContext): Promise<Response> {
+    // Validate required environment variables for security
+    if (!env.HMAC_SHARED_SECRET) {
+      console.error('🚨 HMAC_SHARED_SECRET environment variable is required');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Server configuration error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Validate admin authentication tokens (at least one must be present)
+    if (!env.ADMIN_FORCE_TRANSCRIBE_TOKEN && !env.ADMIN_KEY) {
+      console.error('🚨 Either ADMIN_FORCE_TRANSCRIBE_TOKEN or ADMIN_KEY environment variable is required');
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Server configuration error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     const url = new URL(request.url);
     
     // Health check endpoint
@@ -921,9 +945,17 @@ export default {
     // Force re-transcription endpoint (must come before general transcription routes)
     if (url.pathname.startsWith('/api/transcribe/force/') && request.method === 'POST') {
       try {
+        // Step 1: Authentication check - must come before any destructive operations
+        const { verifyAdminAuth, createUnauthorizedResponse } = await import('./utils/auth.js');
+        
+        if (!verifyAdminAuth(request, env)) {
+          console.warn(`🚨 Unauthorized force re-transcription attempt for path: ${url.pathname}`);
+          return createUnauthorizedResponse('Admin authentication required for force re-transcription');
+        }
+        
         const clipId = url.pathname.replace('/api/transcribe/force/', '');
         
-        // Validate clipId to prevent security issues
+        // Step 2: Validate clipId to prevent security issues
         const { validateClipId } = await import('./utils/validation.js');
         const validation = validateClipId(clipId);
         
@@ -940,7 +972,7 @@ export default {
         
         console.log(`🔄 Force re-transcribing clip: ${clipId}`);
         
-        // Delete existing transcript files
+        // Step 3: Delete existing transcript files (only after authentication)
         await env.R2_BUCKET.delete(`transcripts/${clipId}.json`);
         await env.R2_BUCKET.delete(`transcripts/${clipId}.txt`);
         await env.R2_BUCKET.delete(`transcripts/${clipId}.vtt`);
@@ -948,7 +980,7 @@ export default {
         
         console.log(`🗑️ Deleted existing transcript files for ${clipId}`);
         
-        // Import and run transcription service
+        // Step 4: Import and run transcription service
         const { TranscriptionService } = await import('./services/transcribe.js');
         const transcriptionService = new TranscriptionService(env);
         
@@ -1583,9 +1615,17 @@ export default {
     // Manual transcription pipeline endpoint
     if (url.pathname === '/api/transcription-pipeline' && request.method === 'POST') {
       try {
+        // Step 1: Admin authentication check
+        const { verifyAdminAuth, createUnauthorizedResponse } = await import('./utils/auth.js');
+        
+        if (!verifyAdminAuth(request, env)) {
+          console.warn(`🚨 Unauthorized manual transcription pipeline attempt`);
+          return createUnauthorizedResponse('Admin authentication required for manual transcription pipeline');
+        }
+        
         console.log('🎤 Manual transcription pipeline for all stored clips...');
         
-        // Import the transcription pipeline function
+        // Step 2: Import and run transcription pipeline
         const { handleTranscriptionPipeline } = await import('./services/scheduler.js');
         
         // Run transcription pipeline
@@ -1649,13 +1689,13 @@ export default {
           });
         }
         
-        // Step 3: Authorization check - require HMAC secret or Bearer token
+        // Step 3: Authorization check - require admin key or Bearer token
         const authHeader = request.headers.get('authorization');
         const apiKey = request.headers.get('x-api-key');
         
-        // Check for valid authorization (HMAC secret or Bearer token)
+        // Check for valid authorization (admin key or Bearer token)
         const isAuthorized = (
-          (apiKey && apiKey === env.HMAC_SHARED_SECRET) ||
+          (apiKey && apiKey === env.ADMIN_KEY) ||
           (authHeader && authHeader.startsWith('Bearer '))
         );
         
@@ -1712,29 +1752,17 @@ export default {
           });
         }
         
-        // Step 7: Safe binary-to-base64 conversion with chunking
+        // Step 7: Safe binary-to-base64 conversion using TranscriptionService utility
         const audioBuffer = await new Response(audioObj.body).arrayBuffer();
-        const bytes = new Uint8Array(audioBuffer);
         
-        // Use safe base64 conversion with chunking for large files
+        // Use TranscriptionService's safe base64Encode utility
         let base64Audio: string;
         try {
-          // For smaller files, use direct conversion
-          if (bytes.length <= 1024 * 1024) { // 1MB
-            base64Audio = btoa(String.fromCharCode.apply(null, Array.from(bytes)));
-          } else {
-            // For larger files, use chunked conversion to avoid stack overflow
-            const chunks: string[] = [];
-            const chunkSize = 1024 * 1024; // 1MB chunks
-            
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-              const chunk = bytes.slice(i, i + chunkSize);
-              const chunkString = String.fromCharCode.apply(null, Array.from(chunk));
-              chunks.push(btoa(chunkString));
-            }
-            
-            base64Audio = chunks.join('');
-          }
+          const { TranscriptionService } = await import('./services/transcribe.js');
+          const transcriptionService = new TranscriptionService(env);
+          
+          // Use the safe base64Encode method from TranscriptionService
+          base64Audio = transcriptionService.base64Encode(audioBuffer);
         } catch (error) {
           console.error('Base64 conversion failed:', error);
           return new Response(JSON.stringify({
