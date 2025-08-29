@@ -17,6 +17,29 @@ class SecurityMiddleware:
     """
     
     def __init__(self):
+        # Startup guard: Prevent DISABLE_AUTH=true in production
+        disable_auth = os.getenv('DISABLE_AUTH', 'false').lower() == 'true'
+        node_env = os.getenv('NODE_ENV', '').lower()
+        python_env = os.getenv('PYTHON_ENV', '').lower()
+        
+        # Only allow DISABLE_AUTH=true in development environments
+        is_dev_environment = (
+            node_env in ['development', 'dev'] or 
+            python_env in ['development', 'dev', 'test'] or
+            os.getenv('FLASK_ENV') == 'development' or
+            os.getenv('VERCEL_ENV') == 'development'
+        )
+        
+        if disable_auth and not is_dev_environment:
+            error_msg = (
+                "CRITICAL SECURITY ERROR: DISABLE_AUTH=true is not allowed in production environments. "
+                "This setting bypasses all authentication and should only be used for local development. "
+                f"Current environment: NODE_ENV={node_env}, PYTHON_ENV={python_env}, "
+                f"FLASK_ENV={os.getenv('FLASK_ENV')}, VERCEL_ENV={os.getenv('VERCEL_ENV')}"
+            )
+            logger.critical(error_msg)
+            raise ValueError(error_msg)
+        
         # Validate HMAC secret is present and non-empty
         self.hmac_secret = os.getenv('HMAC_SHARED_SECRET')
         if not self.hmac_secret or not self.hmac_secret.strip():

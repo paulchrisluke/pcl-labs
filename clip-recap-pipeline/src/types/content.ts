@@ -81,14 +81,16 @@ export interface JudgeResult {
 
 // AI Draft generation metadata
 export interface AIGenerationMetadata {
-  model: string;
-  params: {
-    temperature: number;
-    top_p: number;
-    seed: number;
+  readonly model: string;
+  readonly params: {
+    readonly temperature: number;
+    readonly top_p: number;
+    readonly seed: number;
+    readonly max_tokens: number;
   };
-  prompt_hash: string;
-  generated_at: ISODateTimeString;
+  readonly prompt_hash: string;
+  readonly content_hash?: string; // Hash of manifest content for idempotency
+  readonly generated_at: ISODateTimeString;
 }
 
 // AI Draft content

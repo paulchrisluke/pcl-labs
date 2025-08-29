@@ -1,7 +1,28 @@
 import type { Environment } from '../types/index.js';
 import type { Manifest, AIDraft, AIGenerationMetadata } from '../types/content.js';
 
-// Simple hash function for idempotency (since crypto is not available in Workers)
+// Async hash function using Web Crypto API with fallback
+async function hashId(str: string): Promise<string> {
+  try {
+    // Check if crypto.subtle and TextEncoder are available
+    if (typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      
+      // Convert ArrayBuffer to hex string
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (error) {
+    console.warn('Web Crypto not available, falling back to simple hash:', error);
+  }
+  
+  // Fallback to simple hash
+  return simpleHash(str);
+}
+
+// Simple hash function for idempotency (fallback when crypto is not available in Workers)
 function simpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -25,10 +46,11 @@ export interface DraftingResult {
  */
 export class AIDrafterService {
   private env: Environment;
-  private readonly MODEL = 'gemma-instruct';
+  private readonly MODEL = 'gemma-7b-it';
   private readonly TEMPERATURE = 0.3;
   private readonly TOP_P = 0.9;
   private readonly SEED = 42; // Fixed seed for determinism
+  private readonly MAX_TOKENS = 2000;
 
   constructor(env: Environment) {
     this.env = env;
@@ -42,11 +64,11 @@ export class AIDrafterService {
       console.log(`🤖 Generating AI draft for ${manifest.post_id}...`);
 
       // Calculate content hash for idempotency
-      const contentHash = this.calculateContentHash(manifest);
+      const contentHash = await this.calculateContentHash(manifest);
 
       // Check if we already have a draft with same content hash
       if (manifest.gen?.prompt_hash && manifest.draft) {
-        const existingPromptHash = this.calculatePromptHash(manifest);
+        const existingPromptHash = await this.calculatePromptHash(manifest);
         if (existingPromptHash === manifest.gen.prompt_hash) {
           console.log(`✅ Using existing draft (idempotent)`);
           return {
@@ -60,13 +82,14 @@ export class AIDrafterService {
 
       // Generate new draft
       const draft = await this.generateDraftContent(manifest);
-      const promptHash = this.calculatePromptHash(manifest);
+      const promptHash = await this.calculatePromptHash(manifest);
       const gen: AIGenerationMetadata = {
         model: this.MODEL,
         params: {
           temperature: this.TEMPERATURE,
           top_p: this.TOP_P,
           seed: this.SEED,
+          max_tokens: this.MAX_TOKENS,
         },
         prompt_hash: promptHash,
         generated_at: new Date().toISOString(),
@@ -99,7 +122,7 @@ export class AIDrafterService {
         temperature: this.TEMPERATURE,
         top_p: this.TOP_P,
         seed: this.SEED,
-        max_tokens: 2000,
+        max_tokens: this.MAX_TOKENS,
       });
 
       if (!response || !response.response) {
@@ -164,18 +187,30 @@ Generate the content in this exact JSON format:
    */
   private parseAIResponse(response: string, expectedSections: number): AIDraft {
     try {
-      // Try to extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
+      let jsonCandidate: string | null = null;
+      
+      // First, look for fenced JSON block (```json ... ```)
+      const fencedMatch = response.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (fencedMatch) {
+        jsonCandidate = fencedMatch[1].trim();
+      } else {
+        // Fall back to non-greedy brace capture
+        const braceMatch = response.match(/\{[\s\S]*?\}/);
+        if (braceMatch) {
+          jsonCandidate = braceMatch[0];
+        }
+      }
+      
+      if (jsonCandidate) {
+        const parsed = JSON.parse(jsonCandidate);
         
         // Validate structure
-        if (parsed.intro && parsed.sections && parsed.outro) {
+        if (parsed.intro && parsed.sections && parsed.outro && Array.isArray(parsed.sections)) {
           // Ensure we have the right number of sections
           if (parsed.sections.length === expectedSections) {
             return {
               intro: this.sanitizeText(parsed.intro),
-                             sections: parsed.sections.map((s: { paragraph?: string }) => ({
+              sections: parsed.sections.map((s: { paragraph?: string }) => ({
                 paragraph: this.sanitizeText(s.paragraph || '')
               })),
               outro: this.sanitizeText(parsed.outro),
@@ -236,20 +271,27 @@ Generate the content in this exact JSON format:
    */
   private sanitizeText(text: string): string {
     return text
+      // Normalize Unicode quotes and dashes to ASCII equivalents
+      .replace(/[""]/g, '"')
+      .replace(/['']/g, "'")
+      .replace(/[—–]/g, '-')
       .trim()
       .replace(/\s+/g, ' ') // Normalize whitespace
-      .replace(/[^\w\s.,!?-]/g, '') // Remove special characters except basic punctuation
+      // Allow parentheses, colons, slashes, apostrophes, backticks, and basic brackets
+      .replace(/[^\w\s.,!?\-():/\\'`[\]]/g, '') // Remove only truly unsafe chars
       .substring(0, 500); // Limit length
   }
 
   /**
    * Calculate content hash for idempotency
    */
-  private calculateContentHash(manifest: Manifest): string {
+  private async calculateContentHash(manifest: Manifest): Promise<string> {
     const content = {
       post_id: manifest.post_id,
       title: manifest.title,
       summary: manifest.summary,
+      category: manifest.category,
+      tags: manifest.tags,
       sections: manifest.sections.map(s => ({
         title: s.title,
         bullets: s.bullets,
@@ -259,14 +301,23 @@ Generate the content in this exact JSON format:
       })),
     };
     
-    return simpleHash(JSON.stringify(content));
+    return hashId(JSON.stringify(content));
   }
 
   /**
    * Calculate prompt hash for idempotency
    */
-  private calculatePromptHash(manifest: Manifest): string {
+  private async calculatePromptHash(manifest: Manifest): Promise<string> {
     const prompt = this.buildPrompt(manifest);
-    return simpleHash(prompt);
+    // Include model and parameters in hash for proper idempotency
+    const hashInput = JSON.stringify({
+      prompt,
+      model: this.MODEL,
+      temperature: this.TEMPERATURE,
+      top_p: this.TOP_P,
+      seed: this.SEED,
+      max_tokens: this.MAX_TOKENS,
+    });
+    return hashId(hashInput);
   }
 }

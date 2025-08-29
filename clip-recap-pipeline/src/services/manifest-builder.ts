@@ -124,14 +124,25 @@ export class ManifestBuilderService {
       // Generate AI draft
       const draftingResult = await this.aiDrafterService.generateDraft(manifest);
 
-      // Update manifest with AI draft
+      // Update manifest with AI draft and idempotency metadata
       const updatedManifest: Manifest = {
         ...manifest,
         draft: draftingResult.draft,
-        gen: draftingResult.gen,
+        gen: {
+          model: draftingResult.gen.model,
+          params: {
+            temperature: draftingResult.gen.params.temperature,
+            top_p: draftingResult.gen.params.top_p,
+            seed: draftingResult.gen.params.seed,
+            max_tokens: draftingResult.gen.params.max_tokens,
+          },
+          prompt_hash: draftingResult.gen.prompt_hash,
+          content_hash: draftingResult.contentHash, // Store content hash for cache hits and auditability
+          generated_at: draftingResult.gen.generated_at,
+        },
       };
 
-      console.log(`✅ AI draft generated for ${manifest.post_id}`);
+      console.log(`✅ AI draft generated for ${manifest.post_id} (content_hash: ${draftingResult.contentHash})`);
 
       return updatedManifest;
     } catch (error) {

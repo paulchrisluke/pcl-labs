@@ -138,12 +138,20 @@ export async function requireHmacAuth(
   env: Environment,
   body?: string
 ): Promise<Response | null> {
-  // Check for DISABLE_AUTH environment variable and local development context
+  // Startup guard: Prevent DISABLE_AUTH=true in production
   const disableAuth = env.DISABLE_AUTH === 'true' || env.DISABLE_AUTH === '1';
   const isLocalDev = env.WRANGLER_DEV === 'true' || 
                     env.NODE_ENV === 'development' || 
                     request.headers.get('host')?.includes('localhost') ||
                     request.headers.get('host')?.includes('127.0.0.1');
+  
+  // CRITICAL: Only allow DISABLE_AUTH=true in local development
+  if (disableAuth && !isLocalDev) {
+    console.error('CRITICAL SECURITY ERROR: DISABLE_AUTH=true is not allowed in production environments');
+    console.error('This setting bypasses all authentication and should only be used for local development');
+    console.error(`Current environment: WRANGLER_DEV=${env.WRANGLER_DEV}, NODE_ENV=${env.NODE_ENV}, host=${request.headers.get('host')}`);
+    return createForbiddenResponse('DISABLE_AUTH=true is not allowed in production environments');
+  }
   
   if (disableAuth && isLocalDev) {
     return null; // Allow request to proceed

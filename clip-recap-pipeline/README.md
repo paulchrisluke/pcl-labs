@@ -108,28 +108,45 @@ wrangler secret put HMAC_SHARED_SECRET
 
 **Important**: 
 - Never commit the real secret value to the repository
-- The `.dev.vars.example` file contains a placeholder for security
+- The `.dev.vars.example` file contains placeholder values for reference
 - Use a cryptographically secure random secret (32+ characters)
 - Keep the secret synchronized between Cloudflare Workers and Python server environments
+- Add `.dev.vars.local` to `.gitignore` if you create additional local override files
 
-#### Local Development Override
+#### Local Development Setup
 
-For local development, you can override environment variables by creating a `.dev.vars.local` file (which is git-ignored):
+For local development, copy the example file and update it with your actual secret:
 
 ```bash
-# Create .dev.vars.local for local development
-echo "HMAC_SHARED_SECRET=your-local-secret-here" > .dev.vars.local
-echo "DISABLE_AUTH=true" >> .dev.vars.local
+# Copy the example file
+cp .dev.vars.example .dev.vars
+
+# Edit .dev.vars and replace the placeholder with your actual secret
+# HMAC_SHARED_SECRET=your-actual-secret-here
 ```
 
-This allows you to:
-- Use a different secret for local testing
-- Disable authentication for easier local development
-- Override any other environment variables as needed
+**Important Security Notes**:
+- The `.dev.vars` file is git-ignored and should never be committed
+- Use the same HMAC secret as your production environment for testing
+- `DISABLE_AUTH=true` is only allowed in local development environments
+- Production environments have startup guards that prevent `DISABLE_AUTH=true`
+- Never commit real secret values to version control
+- Use cryptographically secure 32+ character secrets
+- Keep secrets synchronized between Cloudflare Workers and Python server
 
-**Note**: The `.dev.vars.local` file is automatically ignored by git, so your local overrides won't be committed to the repository.
+#### Production Security Guards
 
-⚠️ **Security Warning**: `DISABLE_AUTH=true` is strictly for local development (wrangler dev/localhost) and must never be set or honored in staging/production environments. The authentication bypass only works in local development contexts to prevent accidental auth bypass in deployed environments.
+The application includes startup guards to prevent security misconfigurations:
+
+**Cloudflare Workers**:
+- Prevents `DISABLE_AUTH=true` in production environments
+- Checks for `WRANGLER_DEV`, `NODE_ENV`, and host headers
+- Returns 403 Forbidden if authentication is disabled in production
+
+**Python Server**:
+- Prevents `DISABLE_AUTH=true` in production environments  
+- Checks for `NODE_ENV`, `PYTHON_ENV`, `FLASK_ENV`, and `VERCEL_ENV`
+- Raises `ValueError` and stops startup if authentication is disabled in production
 
 ### Development
 
@@ -822,14 +839,7 @@ curl -X POST "https://clip-recap-pipeline.paulchrisluke.workers.dev/api/github-e
   -d "$body"
 ```
 
-### HMAC Authentication Enforcement
 
-The `requireHmacAuth` middleware enforces HMAC-based authentication for protected endpoints:
-
-- **Authorization Header Rejection**: Explicitly checks for `request.headers.has('authorization')` at the start and immediately returns 401 Unauthorized before any HMAC validation when that header is present
-- **HMAC Validation**: Uses `X-Request-Signature`, `X-Request-Timestamp`, and `X-Request-Nonce` headers for secure authentication
-- **Security**: Prevents mixed authentication methods and ensures consistent HMAC-only authentication flow
-- **Testing**: Unit tests in `test-auth.ts` verify Authorization header rejection and HMAC validation behavior
 
 ## Content Migration and Failure Tracking
 

@@ -93,7 +93,7 @@ npx tsx test-ai-drafting.ts
 ## Configuration
 
 ### AI Model Settings
-- **Model**: `gemma-instruct`
+- **Model**: `@cf/google/gemma-3-12b-it`
 - **Temperature**: `0.3` (deterministic)
 - **Top P**: `0.9` (focused sampling)
 - **Seed**: `42` (fixed for reproducibility)

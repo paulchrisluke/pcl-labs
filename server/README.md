@@ -199,6 +199,15 @@ signature=$(echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac
 - **Secret Rotation**: Rotate the secret periodically and update both services simultaneously
 - **Access Control**: Limit access to the secret to only authorized personnel and services
 
+### Production Security Guards
+
+The server includes startup guards to prevent security misconfigurations:
+
+- **DISABLE_AUTH Protection**: Prevents `DISABLE_AUTH=true` in production environments
+- **Environment Detection**: Checks multiple environment variables (`NODE_ENV`, `PYTHON_ENV`, `FLASK_ENV`, `VERCEL_ENV`)
+- **Startup Failure**: Raises `ValueError` and stops server startup if authentication is disabled in production
+- **Development Only**: `DISABLE_AUTH=true` is only allowed in development environments
+
 ## Usage
 
 ### Command Line

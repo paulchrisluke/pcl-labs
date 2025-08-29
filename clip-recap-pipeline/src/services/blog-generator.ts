@@ -112,13 +112,8 @@ export class BlogGeneratorService {
   private generateMarkdownContent(manifest: Manifest): string {
     let content = '';
 
-    // Add introduction
+    // Add introduction (either standard or AI-generated, avoiding duplication)
     content += this.generateIntroduction(manifest);
-
-    // Add AI-generated intro if available
-    if (manifest.draft?.intro) {
-      content += `${manifest.draft.intro}\n\n`;
-    }
 
     // Add sections
     content += this.generateSections(manifest.sections, manifest);
@@ -145,28 +140,54 @@ export class BlogGeneratorService {
 
     intro += `# ${manifest.title}\n\n`;
 
+    // Handle AI-generated intro to avoid duplication
+    if (manifest.draft?.intro) {
+      // Check if AI intro is different from the standard intro content
+      const standardIntroContent = this.generateStandardIntroContent(manifest);
+      
+      if (manifest.draft.intro.trim() !== standardIntroContent.trim()) {
+        // AI intro is different, so use it instead of standard intro
+        intro += `${manifest.draft.intro}\n\n`;
+      } else {
+        // AI intro matches standard intro, use standard intro to avoid duplication
+        intro += standardIntroContent;
+      }
+    } else {
+      // No AI intro available, use standard intro
+      intro += this.generateStandardIntroContent(manifest);
+    }
+
+    return intro;
+  }
+
+  /**
+   * Generate standard introduction content (summary, overview, etc.)
+   */
+  private generateStandardIntroContent(manifest: Manifest): string {
+    let content = '';
+
     // Add summary
-    intro += `${manifest.summary}\n\n`;
+    content += `${manifest.summary}\n\n`;
 
     // Add clip count and GitHub context info
     const clipCount = manifest.clip_ids.length;
     const githubContextCount = manifest.sections.filter(s => Array.isArray(s.pr_links) && s.pr_links.length > 0).length;
 
-    intro += `## Overview\n\n`;
-    intro += `Today's development session included **${clipCount} clips** covering various development topics.`;
+    content += `## Overview\n\n`;
+    content += `Today's development session included **${clipCount} clips** covering various development topics.`;
 
     if (githubContextCount > 0) {
-      intro += ` ${githubContextCount} of these clips are connected to GitHub activity, including pull requests, commits, and issue discussions.`;
+      content += ` ${githubContextCount} of these clips are connected to GitHub activity, including pull requests, commits, and issue discussions.`;
     }
 
-    intro += `\n\n`;
+    content += `\n\n`;
 
     // Add table of contents if we have multiple sections
     if (manifest.sections.length > 3) {
-      intro += this.generateTableOfContents(manifest.sections);
+      content += this.generateTableOfContents(manifest.sections);
     }
 
-    return intro;
+    return content;
   }
 
   /**

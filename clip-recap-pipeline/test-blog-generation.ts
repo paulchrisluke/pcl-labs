@@ -51,14 +51,18 @@ async function generateAuthHeaders(body: string = ''): Promise<Record<string, st
   const crypto = getCrypto();
   const nonceArray = new Uint8Array(16);
   crypto.getRandomValues(nonceArray);
-  const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, 16);
+  const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('');
   
   const signature = await generateHmacSignature(body, timestamp, nonce, HMAC_SHARED_SECRET);
   
+  // Generate unique idempotency key
+  const idempotencyKey = crypto.randomUUID();
+  
   return {
-    'X-Request-Signature': signature,
+    'X-Request-Signature': `hex:${signature}`,
     'X-Request-Timestamp': timestamp,
     'X-Request-Nonce': nonce,
+    'Idempotency-Key': idempotencyKey,
   };
 }
 
@@ -122,7 +126,7 @@ async function testBlogGeneration() {
         }
       ],
       canonical_vod: "https://twitch.tv/videos/123",
-      md_path: "content/blog/development/2025-08-29.md",
+      md_path: "content/blog/development/2025-08-29-daily-recap.md",
       target_branch: "staging",
       status: "draft",
       draft: {
@@ -142,15 +146,18 @@ async function testBlogGeneration() {
         params: {
           temperature: 0.3,
           top_p: 0.9,
-          seed: 42
+          seed: 42,
+          max_tokens: 2000
         },
         prompt_hash: "test-hash",
+        content_hash: "test-content-hash",
         generated_at: "2025-08-29T04:13:00.000Z"
       }
     };
 
     const blogBody = JSON.stringify({
-      manifest: mockManifest
+      manifest: mockManifest,
+      store: true // Store the blog post in R2
     });
 
     const blogAuthHeaders = await generateAuthHeaders(blogBody);

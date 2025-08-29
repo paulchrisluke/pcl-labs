@@ -140,24 +140,69 @@ async function testAIDrafting() {
     const blogGenerator = new BlogGeneratorService(mockEnv);
     const blogResult = await blogGenerator.generateBlogPost(manifestWithDraft);
     
-    console.log('✅ Blog post generated:');
-    console.log(`   - Word count: ${blogResult.wordCount}`);
-    console.log(`   - Read time: ${blogResult.estimatedReadTime} min`);
-    console.log(`   - Has AI metadata: ${!!blogResult.frontMatter.ai_generated}`);
-    console.log(`   - AI model: ${blogResult.frontMatter.ai_model}`);
+    // Assert blog generation results
+    if (blogResult.wordCount <= 0) {
+      throw new Error(`Blog word count must be > 0, got: ${blogResult.wordCount}`);
+    }
+    if (blogResult.estimatedReadTime <= 0) {
+      throw new Error(`Blog estimated read time must be > 0, got: ${blogResult.estimatedReadTime}`);
+    }
+    if (!blogResult.frontMatter.ai_generated) {
+      throw new Error(`Blog front matter must have ai_generated set to true, got: ${blogResult.frontMatter.ai_generated}`);
+    }
+    if (!blogResult.frontMatter.ai_model || typeof blogResult.frontMatter.ai_model !== 'string' || blogResult.frontMatter.ai_model.length === 0) {
+      throw new Error(`Blog front matter must have non-empty ai_model string, got: ${blogResult.frontMatter.ai_model}`);
+    }
+    
+    console.log('✅ Blog post generated with valid metadata');
     console.log();
 
-    // Test 4: Idempotency Test
-    console.log('4. Testing Idempotency...');
+    // Test 4: Idempotency Test - Fresh manifest
+    console.log('4. Testing Idempotency with fresh manifest...');
     const draftingResult2 = await aiDrafter.generateDraft(mockManifest);
     
-    console.log('✅ Idempotency check:');
-    console.log(`   - Same prompt hash: ${draftingResult.promptHash === draftingResult2.promptHash}`);
-    console.log(`   - Same content hash: ${draftingResult.contentHash === draftingResult2.contentHash}`);
+    // Assert idempotency for fresh manifest
+    if (draftingResult.promptHash !== draftingResult2.promptHash) {
+      throw new Error(`Prompt hashes should be identical for same manifest, got: ${draftingResult.promptHash} vs ${draftingResult2.promptHash}`);
+    }
+    if (draftingResult.contentHash !== draftingResult2.contentHash) {
+      throw new Error(`Content hashes should be identical for same manifest, got: ${draftingResult.contentHash} vs ${draftingResult2.contentHash}`);
+    }
+    
+    console.log('✅ Idempotency verified for fresh manifest');
     console.log();
 
-    // Test 5: Content Preview
-    console.log('5. Content Preview:');
+    // Test 5: Idempotency Test - Cache/short-circuit path
+    console.log('5. Testing Idempotency with existing gen/draft...');
+    
+    // Create a manifest with existing gen/draft to test cache path
+    const manifestWithExistingDraft: Manifest = {
+      ...mockManifest,
+      draft: draftingResult.draft,
+      gen: draftingResult.gen,
+    };
+    
+    const draftingResult3 = await aiDrafter.generateDraft(manifestWithExistingDraft);
+    
+    // Assert that the cache path returns the same result
+    if (draftingResult3.draft !== manifestWithExistingDraft.draft) {
+      throw new Error('Cache path should return existing draft without regeneration');
+    }
+    if (draftingResult3.gen !== manifestWithExistingDraft.gen) {
+      throw new Error('Cache path should return existing gen metadata without regeneration');
+    }
+    if (draftingResult3.contentHash !== draftingResult.contentHash) {
+      throw new Error(`Cache path should return same content hash, got: ${draftingResult3.contentHash} vs ${draftingResult.contentHash}`);
+    }
+    if (draftingResult3.promptHash !== draftingResult.promptHash) {
+      throw new Error(`Cache path should return same prompt hash, got: ${draftingResult3.promptHash} vs ${draftingResult.promptHash}`);
+    }
+    
+    console.log('✅ Idempotency cache path verified');
+    console.log();
+
+    // Test 6: Content Preview
+    console.log('6. Content Preview:');
     console.log('--- Blog Post Preview ---');
     console.log(blogResult.markdown.substring(0, 500) + '...');
     console.log('------------------------');
