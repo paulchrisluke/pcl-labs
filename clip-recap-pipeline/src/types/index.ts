@@ -3,7 +3,6 @@ export interface Environment {
   ai: any; // Workers AI binding
   VECTORIZE: any; // Vectorize binding
   R2_BUCKET: any; // R2 bucket binding
-  MIGRATION_FAILURES: KVNamespace; // KV namespace for tracking migration failures
   JOB_STORE: D1Database; // D1 database for job state management
   JOB_QUEUE: Queue; // Queue for background job processing
   TWITCH_CLIENT_ID: string;
@@ -24,7 +23,10 @@ export interface Environment {
   CONTENT_REPO_MAIN_BRANCH: string;
   AUDIO_PROCESSOR_URL?: string;
   HMAC_SHARED_SECRET: string;
+  DISABLE_AUTH?: string; // Set to 'true' or '1' to disable authentication for testing
   WORKER_ORIGIN?: string; // Origin header for API requests (set via wrangler secret put), defaults to production worker URL
+  R2_PUBLIC_BASE_URL?: string; // Public base URL for R2 objects (required for content storage operations)
+  JOB_CLEANUP_NOTIFY_THRESHOLD?: string; // Threshold for job cleanup notifications (optional, defaults to 10)
 }
 
 // Health endpoint response interface
@@ -264,6 +266,8 @@ export interface LinkedCommit {
   message: string;
   url: string;
   timestamp: ISODateTimeString;
+  confidence: ConfidenceLevel;
+  match_reason: MatchReason;
 }
 
 export interface LinkedIssue {

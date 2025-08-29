@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "https://pcl-labs/schema/manifest.schema.json",
   "title": "Daily Recap Manifest",
   "type": "object",
@@ -23,7 +23,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["section_id","clip_id","title","bullets","paragraph","start_s","end_s"],
+        "required": ["section_id","clip_id","title","bullets","paragraph","start","end"],
         "properties": {
           "section_id": { "type": "string" },
           "clip_id": { "type": "string" },
@@ -36,8 +36,8 @@
           "clip_url": { "type": ["string","null"], "format": "uri" },
           "vod_jump": { "type": ["string","null"], "format": "uri" },
           "alignment_status": { "type": "string", "enum": ["exact","estimated","missing"], "default": "exact" },
-          "start_s": { "type": "number" },
-          "end_s": { "type": "number" },
+          "start": { "type": "number" },
+          "end": { "type": "number" },
           "entities": { "type": ["array","null"], "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
         },
         "additionalProperties": false

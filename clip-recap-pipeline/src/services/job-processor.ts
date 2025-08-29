@@ -1,4 +1,4 @@
-import type { Environment } from '../types/index.js';
+import type { Environment, ContentCategory } from '../types/index.js';
 import type { 
   JobQueueMessage, 
   ContentGenerationRequest, 
@@ -9,6 +9,7 @@ import { JobManagerService } from './job-manager.js';
 import { ContentItemService } from './content-items.js';
 import { BlogGeneratorService } from './blog-generator.js';
 import { AIJudgeService } from './ai-judge.js';
+import { ManifestBuilderService } from './manifest-builder.js';
 import { errorTracker } from '../utils/error-tracking.js';
 
 /**
@@ -21,6 +22,7 @@ export class JobProcessorService {
   private contentItemService: ContentItemService;
   private blogGenerator: BlogGeneratorService;
   private aiJudge: AIJudgeService;
+  private manifestBuilder: ManifestBuilderService;
 
   constructor(env: Environment) {
     this.env = env;
@@ -28,6 +30,7 @@ export class JobProcessorService {
     this.contentItemService = new ContentItemService(env);
     this.blogGenerator = new BlogGeneratorService(env);
     this.aiJudge = new AIJudgeService(env);
+    this.manifestBuilder = new ManifestBuilderService(env);
   }
 
   /**
@@ -53,25 +56,27 @@ export class JobProcessorService {
         total: 5
       });
 
-      const contentItems = await this.contentItemService.queryContentItems({
-        dateRange: request_data.date_range,
-        filters: request_data.filters,
+      const contentItems = await this.contentItemService.listContentItems({
+        date_range: request_data.date_range,
         limit: 1000
       });
 
-      console.log(`📊 Found ${contentItems.length} content items for job ${job_id}`);
+      console.log(`📊 Found ${contentItems.items.length} content items for job ${job_id}`);
 
-      // Step 2: Generate blog content
+      // Step 2: Build manifest
       await this.jobManager.updateJobStatus(job_id, 'processing', {
-        step: 'generating_blog_content',
+        step: 'building_manifest',
         current: 2,
         total: 5
       });
 
-      const blogContent = await this.blogGenerator.generateBlogPost(
-        contentItems,
-        request_data.content_type,
-        request_data.repository
+      // Extract date from date range start (assuming YYYY-MM-DD format)
+      const startDate = new Date(request_data.date_range.start);
+      const dateString = startDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      const manifestResult = await this.manifestBuilder.buildDailyManifest(
+        dateString,
+        'UTC' // Default to UTC timezone
       );
 
       // Step 3: AI content judgment
@@ -81,38 +86,45 @@ export class JobProcessorService {
         total: 5
       });
 
-      const judgeResult = await this.aiJudge.evaluateContent(blogContent);
+      const judgeResult = await this.aiJudge.judgeManifest(manifestResult.manifest);
 
-      // Step 4: Prepare response
+      // Step 4: Generate blog post and prepare response
       await this.jobManager.updateJobStatus(job_id, 'processing', {
         step: 'preparing_response',
         current: 4,
         total: 5
       });
 
+      // Generate blog post from manifest to get front_matter
+      const blogResult = await this.blogGenerator.generateBlogPost(manifestResult.manifest);
+
+      // Sanitize tags to ensure they're valid ContentCategory values
+      const validCategories: ContentCategory[] = ['development', 'gaming', 'tutorial', 'review', 'other'];
+      const sanitizedTags = Array.isArray(blogResult.frontMatter.tags) 
+        ? blogResult.frontMatter.tags
+            .filter(tag => typeof tag === 'string' && validCategories.includes(tag as ContentCategory))
+            .map(tag => tag as ContentCategory)
+        : [];
+
       const response: ContentGenerationResponse = {
         job_id,
         job_status: 'completed',
         status_url: `${this.getWorkerOrigin()}/api/jobs/${job_id}/status`,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        content_items: contentItems,
+        content_items: manifestResult.selectedItems,
         date_range: request_data.date_range,
         pagination: {
-          total_items: contentItems.length,
-          total_pages: 1,
-          current_page: 1,
-          per_page: contentItems.length,
           has_next: false,
           has_prev: false
         },
         summary: {
-          total_clips: contentItems.length,
-          total_prs: contentItems.reduce((sum, item) => sum + (item.github_context?.linked_prs?.length || 0), 0),
-          total_commits: contentItems.reduce((sum, item) => sum + (item.github_context?.linked_commits?.length || 0), 0),
-          total_issues: contentItems.reduce((sum, item) => sum + (item.github_context?.linked_issues?.length || 0), 0)
+          total_clips: manifestResult.selectedItems.length,
+          total_prs: manifestResult.selectedItems.reduce((sum, item) => sum + (item.github_context_url ? 1 : 0), 0),
+          total_commits: manifestResult.selectedItems.reduce((sum, item) => sum + (item.github_context_url ? 1 : 0), 0),
+          total_issues: manifestResult.selectedItems.reduce((sum, item) => sum + (item.github_context_url ? 1 : 0), 0)
         },
-        suggested_title: blogContent.title,
-        suggested_tags: blogContent.tags as any[],
+        suggested_title: blogResult.frontMatter.title || manifestResult.manifest.title,
+        suggested_tags: sanitizedTags,
         content_score: judgeResult.overall || 0
       };
 
@@ -131,11 +143,9 @@ export class JobProcessorService {
       console.error(`❌ Job processing failed: ${job_id}`, error);
 
       // Track error
-      await errorTracker.trackError('job_processing_error', {
-        job_id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      await errorTracker.trackError('job_processing_error', 
+        `Job ${job_id} failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
 
       // Update job status to failed
       await this.jobManager.updateJobStatus(

@@ -15,7 +15,122 @@ const mockEnv = {
     prepare: (query: string) => ({
       bind: (...args: any[]) => ({
         run: async () => ({ meta: { changes: 1 } }),
-        first: async () => null
+        first: async () => {
+          // Return a realistic JobState for getJobStatus tests
+          if (query.includes('WHERE job_id = ?')) {
+            return {
+              job_id: '01HXYZ1234567890ABCDEF',
+              status: 'processing',
+              created_at: '2024-01-01T10:00:00.000Z',
+              updated_at: '2024-01-01T10:15:00.000Z',
+              expires_at: '2024-01-02T10:00:00.000Z',
+              progress_step: 'fetching_content_items',
+              progress_current: 2,
+              progress_total: 5,
+              request_data: JSON.stringify({
+                date_range: {
+                  start: '2024-01-01T00:00:00Z',
+                  end: '2024-01-02T00:00:00Z'
+                },
+                content_type: 'daily_recap'
+              }),
+              results: null,
+              error_message: null,
+              worker_id: 'worker-01HXYZ1234567890ABCDEF',
+              started_at: '2024-01-01T10:05:00.000Z',
+              completed_at: null
+            };
+          }
+          // Return count for statistics queries
+          if (query.includes('COUNT(*)')) {
+            return { count: 5 };
+          }
+          return null;
+        },
+        all: async () => {
+          // Return realistic JobState array for listJobs tests
+          if (query.includes('SELECT * FROM jobs')) {
+            return {
+              results: [
+                {
+                  job_id: '01HXYZ1234567890ABCDEF',
+                  status: 'processing',
+                  created_at: '2024-01-01T10:00:00.000Z',
+                  updated_at: '2024-01-01T10:15:00.000Z',
+                  expires_at: '2024-01-02T10:00:00.000Z',
+                  progress_step: 'fetching_content_items',
+                  progress_current: 2,
+                  progress_total: 5,
+                  request_data: JSON.stringify({
+                    date_range: {
+                      start: '2024-01-01T00:00:00Z',
+                      end: '2024-01-02T00:00:00Z'
+                    },
+                    content_type: 'daily_recap'
+                  }),
+                  results: null,
+                  error_message: null,
+                  worker_id: 'worker-01HXYZ1234567890ABCDEF',
+                  started_at: '2024-01-01T10:05:00.000Z',
+                  completed_at: null
+                },
+                {
+                  job_id: '01HXYZ1234567890ABCDEG',
+                  status: 'completed',
+                  created_at: '2024-01-01T09:00:00.000Z',
+                  updated_at: '2024-01-01T09:30:00.000Z',
+                  expires_at: '2024-01-02T09:00:00.000Z',
+                  progress_step: 'completed',
+                  progress_current: 5,
+                  progress_total: 5,
+                  request_data: JSON.stringify({
+                    date_range: {
+                      start: '2024-01-01T00:00:00Z',
+                      end: '2024-01-02T00:00:00Z'
+                    },
+                    content_type: 'daily_recap'
+                  }),
+                  results: JSON.stringify({
+                    content_items: [],
+                    summary: {
+                      total_clips: 10,
+                      total_prs: 5,
+                      total_commits: 20,
+                      total_issues: 3
+                    }
+                  }),
+                  error_message: null,
+                  worker_id: 'worker-01HXYZ1234567890ABCDEG',
+                  started_at: '2024-01-01T09:05:00.000Z',
+                  completed_at: '2024-01-01T09:30:00.000Z'
+                },
+                {
+                  job_id: '01HXYZ1234567890ABCDEH',
+                  status: 'queued',
+                  created_at: '2024-01-01T11:00:00.000Z',
+                  updated_at: '2024-01-01T11:00:00.000Z',
+                  expires_at: '2024-01-02T11:00:00.000Z',
+                  progress_step: 'initialized',
+                  progress_current: 0,
+                  progress_total: 0,
+                  request_data: JSON.stringify({
+                    date_range: {
+                      start: '2024-01-01T00:00:00Z',
+                      end: '2024-01-02T00:00:00Z'
+                    },
+                    content_type: 'weekly_summary'
+                  }),
+                  results: null,
+                  error_message: null,
+                  worker_id: null,
+                  started_at: null,
+                  completed_at: null
+                }
+              ]
+            };
+          }
+          return { results: [] };
+        }
       })
     })
   },

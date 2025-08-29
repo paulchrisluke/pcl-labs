@@ -127,32 +127,32 @@ async function handleListJobs(
     const url = new URL(request.url);
     const jobManager = new JobManagerService(env);
 
-    // Parse query parameters
-    const status = url.searchParams.get('status') as any;
-    const limit = parseInt(url.searchParams.get('limit') || '50');
+    // Parse and validate query parameters
+    const statusParam = url.searchParams.get('status');
+    const limitParam = url.searchParams.get('limit') || '50';
     const cursor = url.searchParams.get('cursor') || undefined;
-    const order = (url.searchParams.get('order') || 'desc') as 'asc' | 'desc';
+    const orderParam = url.searchParams.get('order') || 'desc';
 
-    // Validate parameters
-    if (limit < 1 || limit > 100) {
+    // 1. Validate limit parameter
+    const limit = Number.parseInt(limitParam, 10);
+    if (!Number.isFinite(limit) || Number.isNaN(limit) || limit < 1 || limit > 100) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'Limit must be between 1 and 100'
+        error: 'Limit must be a valid integer between 1 and 100'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    if (order !== 'asc' && order !== 'desc') {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Order must be "asc" or "desc"'
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    // 2. Validate status parameter
+    const validStatuses = ['queued', 'processing', 'completed', 'failed'] as const;
+    const status = statusParam && validStatuses.includes(statusParam as any) 
+      ? statusParam as typeof validStatuses[number] 
+      : undefined;
+
+    // 3. Validate and coerce order parameter
+    const order = orderParam === 'asc' ? 'asc' : 'desc';
 
     const result = await jobManager.listJobs({
       status,

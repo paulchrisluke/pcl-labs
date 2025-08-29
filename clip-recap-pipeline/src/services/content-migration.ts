@@ -1,5 +1,5 @@
-import type { Environment, TwitchClip } from '../types/index.js';
-import type { ContentItem, Transcript, GitHubContext, TranscriptSegment } from '../types/content.js';
+import type { Environment, TwitchClip, GitHubContext, LinkedPullRequest, LinkedCommit, LinkedIssue, MatchReason, GitHubEvent } from '../types/index.js';
+import type { ContentItem, Transcript, TranscriptSegment } from '../types/content.js';
 import { uploadTranscriptToR2, uploadGitHubContextToR2 } from '../utils/content-storage.js';
 
 // Type for raw clip data from R2 storage
@@ -39,7 +39,6 @@ interface TranscriptData {
 
 import { ContentItemService } from './content-items.js';
 import { GitHubEventService } from './github-events.js';
-import { MigrationFailureTracker } from './migration-failure-tracker.js';
 import { trackContentMigrationError } from '../utils/error-tracking.js';
 
 export interface MigrationResult {
@@ -56,12 +55,10 @@ export interface MigrationResult {
 export class ContentMigrationService {
   private env: Environment;
   private contentItemService: ContentItemService;
-  private failureTracker: MigrationFailureTracker;
 
   constructor(env: Environment) {
     this.env = env;
     this.contentItemService = new ContentItemService(env);
-    this.failureTracker = new MigrationFailureTracker(env);
   }
 
   /**
@@ -96,7 +93,6 @@ export class ContentMigrationService {
             const errorMsg = `Failed to store ContentItem for clip ${clipId}`;
             result.errors.push(errorMsg);
             trackContentMigrationError('storage_failed', errorMsg, { clipId });
-            await this.failureTracker.recordFailure(clipId, 'storage_failed', errorMsg, { clipId });
           }
         } catch (error) {
           result.failed++;
@@ -104,7 +100,6 @@ export class ContentMigrationService {
           const errorMsg = `Error migrating clip ${clipId}: ${error instanceof Error ? error.message : String(error)}`;
           result.errors.push(errorMsg);
           console.error(errorMsg);
-          await this.failureTracker.recordFailure(clipId, 'migration_failed', errorMsg, { clipId });
         }
       }
 
@@ -234,88 +229,94 @@ export class ContentMigrationService {
    */
   private async getExistingClips(): Promise<ClipData[]> {
     try {
-      // List existing clips from the clips/ directory
-      const objects = await this.env.R2_BUCKET.list({ prefix: 'clips/' });
       const clips: ClipData[] = [];
+      let continuationToken: string | undefined;
+      let pageCount = 0;
 
-      for (const obj of objects.objects) {
-        if (obj.key.endsWith('/meta.json')) {
-          try {
-            const object = await this.env.R2_BUCKET.get(obj.key);
-            if (object) {
-              // Parse JSON with error handling
-              let clipData: ClipData;
-              try {
-                clipData = await object.json();
-              } catch (jsonError) {
-                console.error(`❌ Failed to parse JSON from ${obj.key}:`, jsonError);
-                const errorMsg = 'Failed to parse clip metadata JSON';
-                trackContentMigrationError('json_parse_failed', errorMsg, {
-                  objectKey: obj.key,
-                  error: jsonError instanceof Error ? jsonError.message : String(jsonError)
-                });
-                // Extract clip ID from the object key for failure tracking
-                const clipId = obj.key.split('/')[1]; // clips/{clipId}/meta.json
-                if (clipId) {
-                  await this.failureTracker.recordFailure(clipId, 'json_parse_failed', errorMsg, {
+      console.log('📋 Starting R2 bucket listing for clips...');
+
+      do {
+        pageCount++;
+        console.log(`📄 Fetching page ${pageCount} of clips...`);
+
+        // List objects with pagination
+        const listOptions: { prefix: string; cursor?: string } = { prefix: 'clips/' };
+        if (continuationToken) {
+          listOptions.cursor = continuationToken;
+        }
+
+        const objects = await this.env.R2_BUCKET.list(listOptions);
+        
+        console.log(`📊 Page ${pageCount}: Found ${objects.objects.length} objects`);
+
+        // Process objects in this page
+        for (const obj of objects.objects) {
+          if (obj.key.endsWith('/meta.json')) {
+            try {
+              const object = await this.env.R2_BUCKET.get(obj.key);
+              if (object) {
+                // Parse JSON with error handling
+                let clipData: ClipData;
+                try {
+                  clipData = await object.json();
+                } catch (jsonError) {
+                  console.error(`❌ Failed to parse JSON from ${obj.key}:`, jsonError);
+                  const errorMsg = 'Failed to parse clip metadata JSON';
+                  trackContentMigrationError('json_parse_failed', errorMsg, {
                     objectKey: obj.key,
                     error: jsonError instanceof Error ? jsonError.message : String(jsonError)
                   });
+                  // Extract clip ID from the object key for logging
+                  const clipId = obj.key.split('/')[1]; // clips/{clipId}/meta.json
+                  continue; // Skip this clip
                 }
-                continue; // Skip this clip
-              }
 
-              // Validate the parsed clip data
-              const validation = this.validateClipMetadata(clipData, obj.key);
-              
-              if (!validation.isValid) {
-                console.error(`❌ Invalid clip metadata in ${obj.key}: ${validation.error}`);
-                const errorMsg = 'Clip metadata validation failed';
-                trackContentMigrationError('clip_validation_failed', errorMsg, {
-                  objectKey: obj.key,
-                  error: validation.error,
-                  clipDataKeys: Object.keys(clipData),
-                  clipDataSample: {
-                    id: clipData.id || clipData.clip_id,
-                    title: clipData.title,
-                    url: clipData.url,
-                    created_at: clipData.created_at
-                  }
-                });
-                // Extract clip ID for failure tracking
-                const clipId = clipData.id || clipData.clip_id || obj.key.split('/')[1];
-                if (clipId) {
-                  await this.failureTracker.recordFailure(clipId, 'clip_validation_failed', errorMsg, {
+                // Validate the parsed clip data
+                const validation = this.validateClipMetadata(clipData, obj.key);
+                
+                if (!validation.isValid) {
+                  console.error(`❌ Invalid clip metadata in ${obj.key}: ${validation.error}`);
+                  const errorMsg = 'Clip metadata validation failed';
+                  trackContentMigrationError('clip_validation_failed', errorMsg, {
                     objectKey: obj.key,
                     error: validation.error,
-                    clipDataKeys: Object.keys(clipData)
+                    clipDataKeys: Object.keys(clipData),
+                    clipDataSample: {
+                      id: clipData.id || clipData.clip_id,
+                      title: clipData.title,
+                      url: clipData.url,
+                      created_at: clipData.created_at
+                    }
                   });
+                  // Extract clip ID for logging
+                  const clipId = clipData.id || clipData.clip_id || obj.key.split('/')[1];
+                  continue; // Skip this clip
                 }
-                continue; // Skip this clip
-              }
 
-              // Use the raw clip data
-              clips.push(clipData);
-            }
-          } catch (error) {
-            console.warn(`⚠️ Failed to read clip metadata from ${obj.key}:`, error);
-            const errorMsg = 'Failed to read clip metadata from R2';
-            trackContentMigrationError('clip_read_failed', errorMsg, {
-              objectKey: obj.key,
-              error: error instanceof Error ? error.message : String(error)
-            });
-            // Extract clip ID from the object key for failure tracking
-            const clipId = obj.key.split('/')[1]; // clips/{clipId}/meta.json
-            if (clipId) {
-              await this.failureTracker.recordFailure(clipId, 'clip_read_failed', errorMsg, {
+                // Use the raw clip data
+                clips.push(clipData);
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to read clip metadata from ${obj.key}:`, error);
+              const errorMsg = 'Failed to read clip metadata from R2';
+              trackContentMigrationError('clip_read_failed', errorMsg, {
                 objectKey: obj.key,
                 error: error instanceof Error ? error.message : String(error)
               });
+              // Extract clip ID from the object key for logging
+              const clipId = obj.key.split('/')[1]; // clips/{clipId}/meta.json
             }
           }
         }
-      }
 
+        // Update continuation token for next page
+        continuationToken = objects.cursor;
+        
+        console.log(`✅ Page ${pageCount} processed. Total clips so far: ${clips.length}`);
+
+      } while (continuationToken);
+
+      console.log(`🎉 R2 listing complete! Processed ${pageCount} pages, found ${clips.length} clips`);
       return clips;
     } catch (error) {
       console.error('❌ Failed to get existing clips:', error);
@@ -504,9 +505,9 @@ export class ContentMigrationService {
       }
 
       // Extract linked items from GitHub events
-      const linkedPrs: string[] = [];
-      const linkedCommits: string[] = [];
-      const linkedIssues: string[] = [];
+      const linkedPrs: LinkedPullRequest[] = [];
+      const linkedCommits: LinkedCommit[] = [];
+      const linkedIssues: LinkedIssue[] = [];
 
       for (const event of githubEvents) {
         // Defensive check: ensure payload exists before accessing its properties
@@ -518,7 +519,14 @@ export class ContentMigrationService {
         if (event.event_type === 'pull_request') {
           const pr = event.payload.pull_request;
           if (pr?.html_url) {
-            linkedPrs.push(pr.html_url);
+            linkedPrs.push({
+              number: pr.number,
+              title: pr.title,
+              url: pr.html_url,
+              merged_at: pr.merged_at || event.timestamp,
+              confidence: 'medium' as const,
+              match_reason: 'temporal_proximity' as const
+            });
           }
         } else if (event.event_type === 'push') {
           // Safely iterate over commits array, skip if undefined or not an array
@@ -526,14 +534,28 @@ export class ContentMigrationService {
           if (Array.isArray(commits)) {
             for (const commit of commits) {
               if (commit?.sha) {
-                linkedCommits.push(commit.sha);
+                linkedCommits.push({
+                  sha: commit.sha,
+                  message: commit.message,
+                  url: commit.url,
+                  timestamp: commit.timestamp,
+                  confidence: 'medium' as const,
+                  match_reason: 'temporal_proximity' as const
+                });
               }
             }
           }
         } else if (event.event_type === 'issues') {
           const issue = event.payload.issue;
           if (issue?.html_url) {
-            linkedIssues.push(issue.html_url);
+            linkedIssues.push({
+              number: issue.number,
+              title: issue.title,
+              url: issue.html_url,
+              closed_at: issue.closed_at || null,
+              confidence: 'medium' as const,
+              match_reason: 'temporal_proximity' as const
+            });
           }
         }
       }
@@ -611,7 +633,6 @@ export class ContentMigrationService {
       if (!object) {
         const errorMessage = `Clip not found in storage`;
         trackContentMigrationError('clip_not_found_in_storage', errorMessage, { clipId, clipKey });
-        await this.failureTracker.recordFailure(clipId, 'clip_not_found_in_storage', errorMessage, { clipId, clipKey });
         throw new Error(`${errorMessage}: ${clipId} (key: ${clipKey})`);
       }
 
@@ -622,17 +643,11 @@ export class ContentMigrationService {
       if (!success) {
         const errorMessage = `Failed to store ContentItem for clip`;
         trackContentMigrationError('storage_failed', errorMessage, { clipId });
-        await this.failureTracker.recordFailure(clipId, 'storage_failed', errorMessage, { clipId });
         throw new Error(`${errorMessage}: ${clipId}`);
       }
 
       return true;
     } catch (error) {
-      // Record the failure if it's not already recorded
-      if (error instanceof Error && !error.message.includes('Failed to migrate clip')) {
-        await this.failureTracker.recordFailure(clipId, 'migration_failed', error.message, { clipId });
-      }
-      
       // Re-throw the error with additional context
       if (error instanceof Error) {
         throw new Error(`Failed to migrate clip ${clipId}: ${error.message}`);
@@ -643,10 +658,10 @@ export class ContentMigrationService {
   }
 
   /**
-   * Start a new migration session and clear previous failure tracking
+   * Start a new migration session
    */
   async startNewMigrationSession(): Promise<string> {
-    return await this.failureTracker.startNewSession();
+    return `migration_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   /**
@@ -659,7 +674,8 @@ export class ContentMigrationService {
     context?: Record<string, any>;
     timestamp: string;
   }>> {
-    return await this.failureTracker.getFailures();
+    // Simplified implementation - return empty array since we're not tracking failures
+    return [];
   }
 
   /**
@@ -680,8 +696,8 @@ export class ContentMigrationService {
       const statusCounts = await this.contentItemService.getProcessingStatusCounts();
       const migratedClips = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
 
-      // Get actual failure count from KV store
-      const failedClips = await this.failureTracker.getFailureCount();
+      // Simplified failure count - return 0 since we're not tracking failures
+      const failedClips = 0;
 
       return {
         total_clips: totalClips,

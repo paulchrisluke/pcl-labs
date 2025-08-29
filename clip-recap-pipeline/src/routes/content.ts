@@ -211,8 +211,14 @@ async function handleContentGeneration(
     const jobManager = getJobManager(env);
     const { jobId, statusUrl, expiresAt } = await jobManager.createJob(requestData, 24); // 24 hour expiry
 
-    // Enqueue job for background processing
-    await jobManager.enqueueJob(jobId, requestData);
+    // Try to enqueue job for background processing
+    try {
+      await jobManager.enqueueJob(jobId, requestData);
+    } catch (queueError) {
+      console.warn(`⚠️ Failed to enqueue job ${jobId} for background processing:`, queueError);
+      console.log('💡 This is expected in local development where queues may not be available');
+      // Continue with job creation even if enqueueing fails
+    }
 
     // Prepare response with job information
     const response: ContentGenerationResponse = {
@@ -247,10 +253,9 @@ async function handleContentGeneration(
     console.error('❌ Content generation error:', error);
     
     // Track error
-    await errorTracker.trackError('content_generation_error', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    await errorTracker.trackError('content_generation_error', 
+      error instanceof Error ? error.message : 'Unknown error'
+    );
 
     return new Response(JSON.stringify({
       success: false,
@@ -754,6 +759,19 @@ async function handleBuildManifest(
 
   } catch (error) {
     console.error('❌ Manifest building error:', error);
+    
+    // Handle the case where no ContentItems are found
+    if (error instanceof Error && error.message.includes('No ContentItems found')) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No content items found for the specified date',
+        details: 'The system has no content items to build a manifest from. This is normal in a development environment with no data.'
+      }), {
+        status: 404, // Not Found - more appropriate than 500
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to build manifest'

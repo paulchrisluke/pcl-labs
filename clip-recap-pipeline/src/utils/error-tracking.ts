@@ -16,6 +16,32 @@ class ErrorTracker {
   private maxErrors = 1000; // Prevent memory leaks
 
   /**
+   * Recursively sanitize context objects to redact sensitive information
+   */
+  private sanitizeContext(ctx?: Record<string, any>): Record<string, any> | undefined {
+    if (!ctx) return undefined;
+    
+    const sanitized: Record<string, any> = {};
+    const sensitiveKeyPattern = /(token|secret|password|authorization|api[-_]?key|cookie)/i;
+    
+    for (const [key, value] of Object.entries(ctx)) {
+      if (sensitiveKeyPattern.test(key)) {
+        sanitized[key] = '***redacted***';
+      } else if (Array.isArray(value)) {
+        sanitized[key] = value.map(item => 
+          typeof item === 'object' && item !== null ? this.sanitizeContext(item) : item
+        );
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[key] = this.sanitizeContext(value);
+      } else {
+        sanitized[key] = value;
+      }
+    }
+    
+    return sanitized;
+  }
+
+  /**
    * Track an error occurrence
    */
   trackError(type: string, message: string, context?: Record<string, any>): void {
@@ -33,6 +59,11 @@ class ErrorTracker {
       // Clean up old errors if we're at capacity
       if (this.errorCounts.size >= this.maxErrors) {
         this.cleanupOldErrors();
+        
+        // If still at capacity after cleanup, evict the oldest entry
+        if (this.errorCounts.size >= this.maxErrors) {
+          this.evictOldestEntry();
+        }
       }
       
       this.errorCounts.set(key, {
@@ -44,9 +75,10 @@ class ErrorTracker {
       });
     }
 
-    // Log to console for immediate visibility
-    if (context) {
-      console.error(`🚨 [${type}] ${message}`, 'Context:', context);
+    // Log to console for immediate visibility with sanitized context
+    const sanitizedContext = this.sanitizeContext(context);
+    if (sanitizedContext) {
+      console.error(`🚨 [${type}] ${message}`, 'Context:', sanitizedContext);
     } else {
       console.error(`🚨 [${type}] ${message}`);
     }
@@ -102,6 +134,26 @@ class ErrorTracker {
 
     if (toDelete.length > 0) {
       console.log(`🧹 Cleaned up ${toDelete.length} old error entries`);
+    }
+  }
+
+  /**
+   * Evict the oldest entry from the error map
+   */
+  private evictOldestEntry(): void {
+    let oldestKey: string | null = null;
+    let oldestTimestamp = new Date();
+
+    for (const [key, metric] of this.errorCounts) {
+      if (metric.timestamp < oldestTimestamp) {
+        oldestTimestamp = metric.timestamp;
+        oldestKey = key;
+      }
+    }
+
+    if (oldestKey) {
+      this.errorCounts.delete(oldestKey);
+      console.log(`🗑️ Evicted oldest error entry: ${oldestKey}`);
     }
   }
 

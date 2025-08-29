@@ -60,9 +60,14 @@ database_id = "clip-recap-jobs"
 migrations_dir = "./migrations"
 
 # Queue for background job processing
-[[queues]]
+[queues]
+# Define the queue
+clip-recap-job-queue = {}
+
+# Configure this worker as a consumer for the queue
+[[queues.consumers]]
+queue = "clip-recap-job-queue"
 binding = "JOB_QUEUE"
-name = "clip-recap-job-queue"
 
 # All sensitive data is stored as secrets using wrangler secret put
 # Run 'npx wrangler secret list' to see current secrets
@@ -75,3 +80,4 @@ name = "clip-recap-job-queue"
 # GITHUB_TOKEN_BLAWBY
 # GITHUB_TOKEN_PAULCHRISLUKE
 # WORKER_ORIGIN (optional - defaults to production worker URL)
+# R2_PUBLIC_BASE_URL (optional - public base URL for R2 objects)

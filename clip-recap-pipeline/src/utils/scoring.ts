@@ -35,8 +35,8 @@ export function calculateNormalizedScoreComponents(
   // Normalize content score (already 0-1, clamp to ensure range)
   const contentScore = Math.max(0, Math.min(1, item.content_score || 0));
 
-  // Normalize GitHub confidence score (already 0-1, clamp to ensure range)
-  const githubConfidence = Math.max(0, Math.min(1, item.github_context?.confidence_score || 0));
+  // Normalize GitHub confidence score based on presence of GitHub context URL
+  const githubConfidence = item.github_context_url ? 1 : 0;
 
   // Normalize duration score using configurable threshold
   const duration = Math.min(1, item.clip_duration / config.normalization.maxDurationSeconds);
@@ -47,9 +47,17 @@ export function calculateNormalizedScoreComponents(
     : 0;
 
   // Normalize transcript length score using configurable threshold
-  const transcriptLength = item.transcript?.text
-    ? Math.min(1, item.transcript.text.split(/\s+/).length / config.normalization.maxTranscriptWords)
-    : 0;
+  // Prioritize transcript_size_bytes if available, fall back to transcript_summary word count
+  let transcriptLength = 0;
+  if (item.transcript_size_bytes) {
+    // Approximate words = bytes / 6, then normalize
+    const approximateWords = item.transcript_size_bytes / 6;
+    transcriptLength = Math.min(1, approximateWords / config.normalization.maxTranscriptWords);
+  } else if (item.transcript_summary) {
+    // Fall back to counting words in transcript_summary
+    const wordCount = item.transcript_summary.split(/\s+/).length;
+    transcriptLength = Math.min(1, wordCount / config.normalization.maxTranscriptWords);
+  }
 
   return {
     contentScore,

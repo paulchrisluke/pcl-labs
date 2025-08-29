@@ -43,10 +43,10 @@ function testNormalizedComponents() {
   
   // Test specific values
   const expectedContentScore = 0.7;
-  const expectedGithubConfidence = 0.8;
+  const expectedGithubConfidence = 1.0; // github_context_url is set, so confidence = 1
   const expectedDuration = 300 / DEFAULT_SCORING_CONFIG.normalization.maxDurationSeconds; // 0.5
   const expectedViews = 500 / DEFAULT_SCORING_CONFIG.normalization.maxViewCount; // 0.5
-  const expectedTranscriptLength = 13 / DEFAULT_SCORING_CONFIG.normalization.maxTranscriptWords; // ~0.065
+  const expectedTranscriptLength = (1024 / 6) / DEFAULT_SCORING_CONFIG.normalization.maxTranscriptWords; // ~0.853 (1024 bytes / 6 = ~171 words / 200 max)
   
   const tests = [
     { name: 'contentScore', actual: components.contentScore, expected: expectedContentScore },
@@ -123,6 +123,7 @@ function testEdgeCases() {
     transcript_size_bytes: 0,
     github_summary: '',
     github_context_size_bytes: 0,
+    github_context_url: null, // No GitHub context for zero score test
   });
   
   const zeroScore = calculateWeightedContentScore(zeroItem);
@@ -150,6 +151,7 @@ function testEdgeCases() {
     transcript_size_bytes: undefined,
     github_summary: undefined,
     github_context_size_bytes: undefined,
+    github_context_url: null, // No GitHub context for minimal test
     clip_duration: 0, // Also set duration to 0 for truly minimal item
   });
   

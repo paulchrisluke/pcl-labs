@@ -1240,16 +1240,16 @@ export default {
         const { TranscriptionService } = await import('./services/transcribe.js');
         const transcriptionService = new TranscriptionService(env);
 
-        const transcript = await transcriptionService.transcribeClip(testClipId);
+        const transcriptMetadata = await transcriptionService.transcribeClip(testClipId);
 
-        if (transcript && transcript.segments && transcript.segments.length > 0) {
+        if (transcriptMetadata) {
           return new Response(JSON.stringify({
             success: true,
             message: 'Real transcription pipeline test completed successfully',
             clip_id: testClipId,
             audio_processed: true,
             audio_file_size: (audioResult as any).results?.results?.[0]?.clip_info?.file_size || 'unknown',
-            transcript: transcript
+            transcript_metadata: transcriptMetadata
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -1257,10 +1257,10 @@ export default {
         } else {
           return new Response(JSON.stringify({
             success: false,
-            error: 'Transcription completed but no transcript segments found',
+            error: 'Transcription completed but no transcript metadata found',
             clip_id: testClipId,
             audio_processed: true,
-            transcript: transcript
+            transcript_metadata: null
           }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
@@ -1319,13 +1319,13 @@ export default {
         const { TranscriptionService } = await import('./services/transcribe.js');
         const transcriptionService = new TranscriptionService(env);
         
-        const transcript = await transcriptionService.transcribeClip(clipId);
+        const transcriptMetadata = await transcriptionService.transcribeClip(clipId);
         
-        if (transcript) {
+        if (transcriptMetadata) {
           return new Response(JSON.stringify({
             success: true,
             message: `Force re-transcription completed for ${clipId}`,
-            transcript: transcript
+            transcript_metadata: transcriptMetadata
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -1408,13 +1408,13 @@ export default {
           }
           
           console.log(`🎤 Transcribing validated clip ${clipId}...`);
-          const transcript = await transcriptionService.transcribeClip(clipId);
+          const transcriptMetadata = await transcriptionService.transcribeClip(clipId);
           
-          if (transcript) {
+          if (transcriptMetadata) {
             return new Response(JSON.stringify({
               success: true,
               message: `Transcription completed for ${clipId}`,
-              transcript: transcript
+              transcript_metadata: transcriptMetadata
             }), {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
@@ -1921,7 +1921,7 @@ export default {
     }
 
     // Job management endpoints
-    if (url.pathname.startsWith('/api/jobs/')) {
+    if (url.pathname === '/api/jobs' || url.pathname.startsWith('/api/jobs/')) {
       return handleJobRoutes(request, env, url);
     }
 
@@ -2317,21 +2317,31 @@ export default {
   async queue(batch: MessageBatch<any>, env: Environment): Promise<void> {
     console.log(`🔄 Processing ${batch.messages.length} queue messages`);
     
-    try {
-      const { JobProcessorService } = await import('./services/job-processor.js');
-      const processor = new JobProcessorService(env);
-      
-      // Process all messages in the batch
-      const messages = batch.messages.map(msg => msg.body);
-      await processor.processJobs(messages);
-      
-      console.log(`✅ Successfully processed ${batch.messages.length} queue messages`);
-      
-    } catch (error) {
-      console.error('❌ Queue processing error:', error);
-      
-      // Mark all messages as retryable
-      batch.retryAll();
+    const { JobProcessorService } = await import('./services/job-processor.js');
+    const processor = new JobProcessorService(env);
+    
+    // Process each message individually with proper ack/retry handling
+    for (const msg of batch.messages) {
+      try {
+        // Cast message body to JobQueueMessage type
+        const body = msg.body as any;
+        
+        // Process the individual job
+        await processor.processJob(body);
+        
+        // Acknowledge successful message
+        msg.ack();
+        
+        console.log(`✅ Successfully processed job: ${body.job_id}`);
+        
+      } catch (error) {
+        console.error(`❌ Failed to process job: ${msg.body?.job_id || 'unknown'}`, error);
+        
+        // Retry failed message
+        msg.retry();
+      }
     }
+    
+    console.log(`✅ Queue batch processing completed for ${batch.messages.length} messages`);
   }
 };

@@ -165,11 +165,6 @@ export class JobManagerService {
       bindValues.push(errorMessage);
     }
 
-    if (status === 'processing' && !progress?.step?.includes('started')) {
-      updates.push('started_at = ?', 'worker_id = ?');
-      bindValues.push(now, this.workerId);
-    }
-
     if (status === 'completed' || status === 'failed') {
       updates.push('completed_at = ?');
       bindValues.push(now);
@@ -177,9 +172,18 @@ export class JobManagerService {
 
     bindValues.push(jobId);
 
+    // First, update the job status and other fields
     await this.env.JOB_STORE.prepare(`
       UPDATE jobs SET ${updates.join(', ')} WHERE job_id = ?
     `).bind(...bindValues).run();
+
+    // Then, atomically set started_at and worker_id only if not already set
+    if (status === 'processing') {
+      await this.env.JOB_STORE.prepare(`
+        UPDATE jobs SET started_at = ?, worker_id = ? 
+        WHERE job_id = ? AND started_at IS NULL
+      `).bind(now, this.workerId, jobId).run();
+    }
   }
 
   /**
@@ -199,9 +203,11 @@ export class JobManagerService {
    * Clean up expired jobs
    */
   async cleanupExpiredJobs(): Promise<{ deleted: number }> {
+    const nowIso = new Date().toISOString();
+    
     const result = await this.env.JOB_STORE.prepare(`
-      DELETE FROM jobs WHERE expires_at < datetime('now')
-    `).run();
+      DELETE FROM jobs WHERE expires_at < ?
+    `).bind(nowIso).run();
 
     return { deleted: result.meta.changes || 0 };
   }

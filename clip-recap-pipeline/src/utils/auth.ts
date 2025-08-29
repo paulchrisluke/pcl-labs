@@ -142,6 +142,13 @@ export async function requireHmacAuth(
   env: Environment,
   body?: string
 ): Promise<Response | null> {
+  // Check for DISABLE_AUTH environment variable
+  const disableAuth = env.DISABLE_AUTH === 'true' || env.DISABLE_AUTH === '1';
+  if (disableAuth) {
+    console.log('🔓 Authentication disabled via DISABLE_AUTH environment variable');
+    return null; // Allow request to proceed
+  }
+  
   // Check for Authorization header first - reject immediately if present
   if (request.headers.has('authorization')) {
     return createUnauthorizedResponse('Authorization header not allowed with HMAC authentication');

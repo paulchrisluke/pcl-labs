@@ -3,8 +3,8 @@ import type { ISODateTimeString, MatchReason, ContentCategory, Score01 } from '.
 
 // Transcript segment type
 export interface TranscriptSegment {
-  start_s: number;
-  end_s: number;
+  start: number;
+  end: number;
   text: string;
 }
 
@@ -16,14 +16,8 @@ export interface Transcript {
   segments: TranscriptSegment[];
 }
 
-// GitHub context type
-export interface GitHubContext {
-  linked_prs?: string[]; // URIs
-  linked_commits?: string[];
-  linked_issues?: string[];
-  confidence_score?: number; // 0-1
-  match_reason?: MatchReason;
-}
+// Re-export GitHubContext from the canonical location
+export type { GitHubContext } from './index.js';
 
 // ContentItem - row-level truth (one per clip)
 export interface ContentItem {
@@ -73,8 +67,8 @@ export interface ManifestSection {
   clip_url?: string | null;
   vod_jump?: string | null; // URI
   alignment_status: 'exact' | 'estimated' | 'missing';
-  start_s: number;
-  end_s: number;
+  start: number;
+  end: number;
   entities?: string[] | null;
 }
 
@@ -153,6 +147,9 @@ export interface JobState {
   updated_at: ISODateTimeString;
   expires_at: ISODateTimeString;
   progress?: JobProgress;
+  progress_step?: string; // Current step name
+  progress_current?: number; // Current progress value
+  progress_total?: number; // Total progress value
   request_data: string; // JSON string of original request
   results?: string; // JSON string of results (when completed)
   error_message?: string; // Error details (when failed)
@@ -234,4 +231,15 @@ export interface JobQueueMessage {
   job_id: string;
   request_data: ContentGenerationRequest;
   worker_id?: string;
+}
+
+// Run status type for tracking pipeline runs
+export interface RunStatus {
+  run_id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  created_at: ISODateTimeString;
+  updated_at: ISODateTimeString;
+  completed_at?: ISODateTimeString;
+  error?: string;
+  results?: any;
 }

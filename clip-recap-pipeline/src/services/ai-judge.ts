@@ -367,7 +367,7 @@ Only return valid JSON, no additional text.`;
       if (manifest.sections.length < 3) {
         suggestions.push('Consider adding more sections for better coverage');
       }
-      if (manifest.sections.filter(s => s.pr_links).length === 0) {
+      if (manifest.sections.filter(s => Array.isArray(s.pr_links) && s.pr_links.length > 0).length === 0) {
         suggestions.push('Include more GitHub context for better developer value');
       }
 

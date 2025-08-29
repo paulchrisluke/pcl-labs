@@ -458,7 +458,9 @@ export class GitHubEventService {
                 sha: commit.id,
                 message: commit.message,
                 url: commit.url,
-                timestamp: commit.timestamp
+                timestamp: commit.timestamp,
+                confidence,
+                match_reason: 'temporal_proximity'
               });
             }
           }

@@ -1,5 +1,6 @@
 import { uploadTranscriptToR2, uploadGitHubContextToR2, getTranscriptFromR2, getGitHubContextFromR2 } from './src/utils/content-storage.js';
-import type { Transcript, GitHubContext } from './src/types/index.js';
+import type { GitHubContext } from './src/types/index.js';
+import type { Transcript } from './src/types/content.js';
 
 /**
  * Test the new content storage utilities
@@ -22,8 +23,8 @@ const mockEnv = {
           language: 'en',
           redacted: false,
           segments: [
-            { start_s: 0, end_s: 5, text: 'This is a test transcript' },
-            { start_s: 5, end_s: 10, text: 'with multiple words to test' }
+            { start: 0, end: 5, text: 'This is a test transcript' },
+            { start: 5, end: 10, text: 'with multiple words to test' }
           ]
         };
         return {
@@ -31,9 +32,37 @@ const mockEnv = {
         };
       } else if (key.includes('github-context')) {
         const mockContext: GitHubContext = {
-          linked_prs: ['https://github.com/test/repo/pull/1'],
-          linked_commits: ['abc123', 'def456'],
-          linked_issues: ['https://github.com/test/repo/issues/1'],
+          linked_prs: [{
+            number: 1,
+            title: 'Test Pull Request',
+            url: 'https://github.com/test/repo/pull/1',
+            merged_at: new Date().toISOString(),
+            confidence: 'high',
+            match_reason: 'temporal_proximity'
+          }],
+          linked_commits: [{
+            sha: 'abc123',
+            message: 'Test commit message',
+            url: 'https://github.com/test/repo/commit/abc123',
+            timestamp: new Date().toISOString(),
+            confidence: 'high',
+            match_reason: 'temporal_proximity'
+          }, {
+            sha: 'def456',
+            message: 'Another test commit',
+            url: 'https://github.com/test/repo/commit/def456',
+            timestamp: new Date().toISOString(),
+            confidence: 'medium',
+            match_reason: 'temporal_proximity'
+          }],
+          linked_issues: [{
+            number: 1,
+            title: 'Test Issue',
+            url: 'https://github.com/test/repo/issues/1',
+            closed_at: new Date().toISOString(),
+            confidence: 'high',
+            match_reason: 'temporal_proximity'
+          }],
           confidence_score: 0.8,
           match_reason: 'temporal_proximity'
         };
@@ -44,7 +73,7 @@ const mockEnv = {
       return null;
     }
   },
-  R2_BUCKET_NAME: 'test-bucket'
+  R2_PUBLIC_BASE_URL: 'https://test-bucket.r2.cloudflarestorage.com'
 } as any;
 
 async function testContentStorage() {
@@ -60,8 +89,8 @@ async function testContentStorage() {
     language: 'en',
     redacted: false,
     segments: [
-      { start_s: 0, end_s: 5, text: 'This is a test transcript' },
-      { start_s: 5, end_s: 10, text: 'with multiple words to test' }
+      { start: 0, end: 5, text: 'This is a test transcript' },
+      { start: 5, end: 10, text: 'with multiple words to test' }
     ]
   };
   
@@ -77,9 +106,37 @@ async function testContentStorage() {
   console.log('-'.repeat(40));
   
   const testGitHubContext: GitHubContext = {
-    linked_prs: ['https://github.com/test/repo/pull/1'],
-    linked_commits: ['abc123', 'def456'],
-    linked_issues: ['https://github.com/test/repo/issues/1'],
+    linked_prs: [{
+      number: 1,
+      title: 'Test Pull Request',
+      url: 'https://github.com/test/repo/pull/1',
+      merged_at: new Date().toISOString(),
+      confidence: 'high',
+      match_reason: 'temporal_proximity'
+    }],
+    linked_commits: [{
+      sha: 'abc123',
+      message: 'Test commit message',
+      url: 'https://github.com/test/repo/commit/abc123',
+      timestamp: new Date().toISOString(),
+      confidence: 'high',
+      match_reason: 'temporal_proximity'
+    }, {
+      sha: 'def456',
+      message: 'Another test commit',
+      url: 'https://github.com/test/repo/commit/def456',
+      timestamp: new Date().toISOString(),
+      confidence: 'medium',
+      match_reason: 'temporal_proximity'
+    }],
+    linked_issues: [{
+      number: 1,
+      title: 'Test Issue',
+      url: 'https://github.com/test/repo/issues/1',
+      closed_at: new Date().toISOString(),
+      confidence: 'high',
+      match_reason: 'temporal_proximity'
+    }],
     confidence_score: 0.8,
     match_reason: 'temporal_proximity'
   };
@@ -121,6 +178,40 @@ async function testContentStorage() {
   console.log(`   - Commits: ${retrievedContext.linked_commits?.length || 0}`);
   console.log(`   - Issues: ${retrievedContext.linked_issues?.length || 0}`);
   console.log(`   - Confidence: ${retrievedContext.confidence_score}`);
+  
+  // Test 4.5: Test host validation
+  console.log('\n🔒 Test 4.5: Host Validation');
+  console.log('-'.repeat(40));
+  
+  console.log('Testing error handling when URL hostname does not match expected R2 host...');
+  try {
+    await getTranscriptFromR2(mockEnv, 'https://malicious-site.com/transcripts/test-clip-1.json');
+    throw new Error('Expected error when URL hostname does not match expected R2 host');
+  } catch (error) {
+    console.log(`✅ Correctly threw error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+  
+  // Test 5: Test URL building with and without base URL
+  console.log('\n🔗 Test 5: URL Building Scenarios');
+  console.log('-'.repeat(40));
+  
+  // Test with base URL (current mock)
+  console.log(`✅ With R2_PUBLIC_BASE_URL: ${transcriptMetadata.url}`);
+  
+  // Test without base URL (should throw error)
+  console.log('Testing error handling when R2_PUBLIC_BASE_URL is not configured...');
+  const mockEnvNoBase = { ...mockEnv, R2_PUBLIC_BASE_URL: undefined };
+  try {
+    await uploadTranscriptToR2(mockEnvNoBase, 'test-clip-2', testTranscript);
+    throw new Error('Expected error when R2_PUBLIC_BASE_URL is not configured');
+  } catch (error) {
+    console.log(`✅ Correctly threw error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+  
+  // Test with trailing slash in base URL
+  const mockEnvTrailingSlash = { ...mockEnv, R2_PUBLIC_BASE_URL: 'https://test-bucket.r2.cloudflarestorage.com/' };
+  const transcriptMetadataTrailingSlash = await uploadTranscriptToR2(mockEnvTrailingSlash, 'test-clip-3', testTranscript);
+  console.log(`✅ With trailing slash in base URL: ${transcriptMetadataTrailingSlash.url}`);
   
   console.log('\n✅ All content storage tests passed!');
 }

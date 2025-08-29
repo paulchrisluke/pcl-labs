@@ -464,7 +464,8 @@ async function handleJobCleanup(env: Environment): Promise<void> {
     console.log(`✅ Job cleanup completed: ${result.deleted} expired jobs removed`);
     
     // Send notification if significant cleanup occurred
-    if (result.deleted > 10) {
+    const notifyThreshold = Number(env.JOB_CLEANUP_NOTIFY_THRESHOLD ?? 10);
+    if (result.deleted > notifyThreshold) {
       try {
         const discordService = new DiscordService(env);
         await discordService.notifyJobCleanup(result.deleted);

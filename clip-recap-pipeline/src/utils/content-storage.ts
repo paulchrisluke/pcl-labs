@@ -1,4 +1,34 @@
-import type { Environment, Transcript, GitHubContext } from '../types/index.js';
+import type { Environment, GitHubContext } from '../types/index.js';
+import type { Transcript } from '../types/content.js';
+
+/**
+ * Build R2 object URL with configurable base URL
+ */
+function buildR2Url(env: Environment, key: string): string {
+  const baseUrl = env.R2_PUBLIC_BASE_URL?.trim();
+  if (!baseUrl) {
+    throw new Error('R2_PUBLIC_BASE_URL environment variable is not configured');
+  }
+  
+  // Remove trailing slashes from base URL
+  const cleanBase = baseUrl.replace(/\/+$/, '');
+  return `${cleanBase}/${key}`;
+}
+
+/**
+ * Validate that a URL is from the expected R2 host
+ */
+function validateR2Url(url: URL, env: Environment): void {
+  const expectedHost = env.R2_PUBLIC_BASE_URL ? new URL(env.R2_PUBLIC_BASE_URL).hostname : null;
+  
+  if (!expectedHost) {
+    throw new Error('R2_PUBLIC_BASE_URL environment variable is not configured');
+  }
+  
+  if (url.hostname !== expectedHost) {
+    throw new Error(`URL hostname '${url.hostname}' does not match expected R2 hostname '${expectedHost}'`);
+  }
+}
 
 /**
  * Upload transcript to R2 and return metadata
@@ -17,7 +47,7 @@ export async function uploadTranscriptToR2(
   
   // Generate R2 URL
   const key = `transcripts/${clipId}.json`;
-  const url = `https://${env.R2_BUCKET_NAME}.r2.cloudflarestorage.com/${key}`;
+  const url = buildR2Url(env, key);
   
   // Upload to R2
   await env.R2_BUCKET.put(key, transcriptJson, {
@@ -57,7 +87,7 @@ export async function uploadGitHubContextToR2(
   
   // Generate R2 URL
   const key = `github-context/${clipId}.json`;
-  const url = `https://${env.R2_BUCKET_NAME}.r2.cloudflarestorage.com/${key}`;
+  const url = buildR2Url(env, key);
   
   // Upload to R2
   await env.R2_BUCKET.put(key, contextJson, {
@@ -91,8 +121,11 @@ export async function getTranscriptFromR2(
   transcriptUrl: string
 ): Promise<Transcript | null> {
   try {
-    // Extract key from URL
+    // Parse and validate URL
     const url = new URL(transcriptUrl);
+    validateR2Url(url, env);
+    
+    // Extract key from URL pathname
     const key = url.pathname.substring(1); // Remove leading slash
     
     const result = await env.R2_BUCKET.get(key);
@@ -116,8 +149,11 @@ export async function getGitHubContextFromR2(
   githubContextUrl: string
 ): Promise<GitHubContext | null> {
   try {
-    // Extract key from URL
+    // Parse and validate URL
     const url = new URL(githubContextUrl);
+    validateR2Url(url, env);
+    
+    // Extract key from URL pathname
     const key = url.pathname.substring(1); // Remove leading slash
     
     const result = await env.R2_BUCKET.get(key);

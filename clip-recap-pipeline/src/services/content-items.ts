@@ -186,7 +186,8 @@ export class ContentItemService {
             const monthObjects = await this.env.R2_BUCKET.list({ 
               prefix: monthPrefix,
               limit: Math.min(100, limit - items.length),
-              cursor: monthCursor
+              cursor: monthCursor,
+              include: ['customMetadata']
             });
             
             for (const obj of monthObjects.objects) {
@@ -198,10 +199,11 @@ export class ContentItemService {
               try {
                 // Use customMetadata to filter by processing_status without full GET
                 const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
-                if (processing_status && processing_status !== processingStatus) {
+                if (processing_status && processingStatus !== processing_status) {
                   continue;
                 }
                 
+                // Only perform GET if metadata is absent or we need the full object
                 const object = await this.env.R2_BUCKET.get(obj.key);
                 if (object) {
                   const data = await object.json();
@@ -256,7 +258,8 @@ export class ContentItemService {
         const objects = await this.env.R2_BUCKET.list({ 
           prefix,
           limit,
-          cursor
+          cursor,
+          include: ['customMetadata']
         });
         
         const items: ContentItem[] = [];
@@ -266,10 +269,11 @@ export class ContentItemService {
           try {
             // Use customMetadata to filter by processing_status without full GET
             const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
-            if (processing_status && processing_status !== processingStatus) {
+            if (processing_status && processingStatus !== processing_status) {
               continue;
             }
             
+            // Only perform GET if metadata is absent or we need the full object
             const object = await this.env.R2_BUCKET.get(obj.key);
             if (object) {
               const data = await object.json();

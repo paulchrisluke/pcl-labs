@@ -27,6 +27,20 @@ export class TranscriptionService {
   constructor(private env: Environment) {}
 
   /**
+   * Build R2 object URL with configurable base URL
+   */
+  private buildR2Url(key: string): string {
+    const baseUrl = this.env.R2_PUBLIC_BASE_URL?.trim();
+    if (baseUrl) {
+      // Remove trailing slashes from base URL
+      const cleanBase = baseUrl.replace(/\/+$/, '');
+      return `${cleanBase}/${key}`;
+    }
+    // Fall back to just the key if no base URL is configured
+    return key;
+  }
+
+  /**
    * Redact PII from transcript text
    */
   private redactText(text: string): string {
@@ -316,7 +330,7 @@ export class TranscriptionService {
     
     // Generate R2 URL
     const key = `transcripts/${clipId}.json`;
-    const url = `https://${this.env.R2_BUCKET_NAME}.r2.cloudflarestorage.com/${key}`;
+    const url = this.buildR2Url(key);
     
     // Generate summary (first 200 characters of transcript text)
     const summary = transcript.text 

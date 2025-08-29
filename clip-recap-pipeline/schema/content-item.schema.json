@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "https://pcl-labs/schema/content-item.schema.json",
   "title": "ContentItem",
   "type": "object",
@@ -30,7 +30,7 @@
 
     "content_score": { "type": ["number", "null"] },
     "content_tags": { "type": ["array", "null"], "items": { "type": "string" } },
-    "content_category": { "type": ["string", "null"], "enum": ["development","gaming","tutorial","review"] },
+    "content_category": { "type": ["string", "null"], "enum": ["development","gaming","tutorial","review","other"] },
 
     "stored_at": { "type": "string", "format": "date-time" },
     "enhanced_at": { "type": ["string", "null"], "format": "date-time" },

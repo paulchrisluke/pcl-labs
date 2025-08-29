@@ -1,7 +1,11 @@
-import type { Environment, Manifest, ManifestSection, ContentItem, ContentCategory } from '../types/content.js';
-import type { JudgeResult, SocialBlurbs } from '../types/content.js';
+import type { Environment, ContentCategory } from '../types/index.js';
+import type { Manifest, ManifestSection, ContentItem, JudgeResult, SocialBlurbs } from '../types/content.js';
 import { getTranscriptFromR2, getGitHubContextFromR2 } from '../utils/content-storage.js';
 import { DateTime } from 'luxon';
+import { ContentItemService } from './content-items.js';
+import { validateManifest, sanitizeManifest } from '../utils/schema-validator.js';
+import { calculateWeightedContentScore, calculateDetailedScore } from '../utils/scoring.js';
+import { DEFAULT_SCORING_CONFIG } from '../config/scoring.js';
 
 /**
  * Robust sentence segmentation that handles abbreviations, decimals, URLs, etc.
@@ -70,11 +74,6 @@ function segmentSentences(text: string): string[] {
       return sentence;
     });
 }
-import type { ContentItem, Manifest, ManifestSection } from '../types/content.js';
-import { ContentItemService } from './content-items.js';
-import { validateManifest, sanitizeManifest } from '../utils/schema-validator.js';
-import { calculateWeightedContentScore, calculateDetailedScore } from '../utils/scoring.js';
-import { DEFAULT_SCORING_CONFIG } from '../config/scoring.js';
 
 export interface SelectionConfig {
   clipBudgetMin: number;
@@ -184,8 +183,13 @@ export class ManifestBuilderService {
   private async selectContentItems(candidates: ContentItem[]): Promise<ContentItem[]> {
     // Filter candidates by minimum requirements
     const filteredCandidates = candidates.filter(item => {
-      // Must have transcript
-      if (!item.transcript?.text || item.transcript.text.length < this.config.minTranscriptLength) {
+      // Must have valid transcript (either summary or transcript_url)
+      const hasValidSummary = item.transcript_summary && 
+        item.transcript_summary.length >= this.config.minTranscriptLength;
+      const hasTranscriptUrl = item.transcript_url && 
+        (!item.transcript_size_bytes || item.transcript_size_bytes > 0);
+      
+      if (!hasValidSummary && !hasTranscriptUrl) {
         return false;
       }
 
@@ -264,7 +268,7 @@ export class ManifestBuilderService {
     const score = calculateWeightedContentScore(item, DEFAULT_SCORING_CONFIG);
     
     // Log detailed scoring information for debugging
-    if (item.github_context?.confidence_score) {
+    if (item.github_summary) {
       const details = calculateDetailedScore(item, DEFAULT_SCORING_CONFIG);
       console.log(`🔗 Scoring breakdown for ${item.clip_id}:`, {
         finalScore: details.finalScore,
@@ -315,14 +319,8 @@ export class ManifestBuilderService {
     const fixedContextTags: string[] = [];
 
     // Extract fixed context tags first (these are always included)
-    if (Array.isArray(item.github_context?.linked_prs) && item.github_context.linked_prs.length > 0) {
-      fixedContextTags.push('github-pr');
-    }
-    if (Array.isArray(item.github_context?.linked_commits) && item.github_context.linked_commits.length > 0) {
-      fixedContextTags.push('github-commit');
-    }
-    if (Array.isArray(item.github_context?.linked_issues) && item.github_context.linked_issues.length > 0) {
-      fixedContextTags.push('github-issue');
+    if (item.github_context_url) {
+      fixedContextTags.push('github-context');
     }
 
     // Helper function to normalize and tokenize text
@@ -365,8 +363,8 @@ export class ManifestBuilderService {
     }
 
     // Process transcript
-    if (item.transcript?.text) {
-      const transcriptTokens = normalizeAndTokenize(item.transcript.text);
+    if (item.transcript_summary) {
+      const transcriptTokens = normalizeAndTokenize(item.transcript_summary);
       transcriptTokens.forEach(token => {
         transcriptEntities.set(token, (transcriptEntities.get(token) || 0) + 1);
       });
@@ -437,8 +435,8 @@ export class ManifestBuilderService {
         clip_url: item.clip_url,
         vod_jump: this.generateVodJump(item),
         alignment_status: alignmentStatus,
-        start_s: 0, // Clips start at 0, VOD offsets would be handled separately
-        end_s: item.clip_duration,
+        start: 0, // Clips start at 0, VOD offsets would be handled separately
+        end: item.clip_duration,
         entities: await this.extractEntities(item),
       };
 
@@ -490,8 +488,18 @@ export class ManifestBuilderService {
 
     // Generate bullets from transcript
     if (transcript?.text) {
-      const sentences = transcript.text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+      const sentences = transcript.text.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
       const keySentences = sentences.slice(0, 3); // Take first 3 meaningful sentences
+      
+      for (const sentence of keySentences) {
+        const bullet = sentence.trim().substring(0, 140); // Limit to 140 chars
+        if (bullet.length > 20) { // Only add if substantial
+          bullets.push(bullet);
+        }
+      }
+    } else if (item.transcript_summary) {
+      const sentences = item.transcript_summary.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
+      const keySentences = sentences.slice(0, 2); // Take first 2 meaningful sentences
       
       for (const sentence of keySentences) {
         const bullet = sentence.trim().substring(0, 140); // Limit to 140 chars
@@ -548,7 +556,11 @@ export class ManifestBuilderService {
 
     // Build paragraph from transcript
     if (transcript?.text) {
-      const sentences = transcript.text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+      const sentences = transcript.text.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
+      const keySentences = sentences.slice(0, 2); // Take first 2 meaningful sentences
+      paragraph = keySentences.join('. ').trim() + '.';
+    } else if (item.transcript_summary) {
+      const sentences = item.transcript_summary.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
       const keySentences = sentences.slice(0, 2); // Take first 2 meaningful sentences
       paragraph = keySentences.join('. ').trim() + '.';
     }
@@ -578,12 +590,12 @@ export class ManifestBuilderService {
    * Determine alignment status for VOD mapping
    */
   private determineAlignmentStatus(item: ContentItem): 'exact' | 'estimated' | 'missing' {
-    // For now, assume exact if we have transcript segments
-    if (item.transcript?.segments && item.transcript.segments.length > 0) {
+    // For now, assume exact if we have transcript URL
+    if (item.transcript_url) {
       return 'exact';
     }
     
-    // If we have duration but no segments, estimate
+    // If we have duration but no transcript URL, estimate
     if (item.clip_duration > 0) {
       return 'estimated';
     }
@@ -614,8 +626,9 @@ export class ManifestBuilderService {
     }
     
     // Extract repo from first PR URL
-    const prUrl = githubContext.linked_prs[0];
-    const match = prUrl.match(/github\.com\/([^\/]+\/[^\/]+)/);
+    const firstPr = githubContext.linked_prs[0];
+    if (!firstPr) return null;
+    const match = firstPr.url.match(/github\.com\/([^\/]+\/[^\/]+)/);
     return match ? match[1] : null;
   }
 
@@ -628,7 +641,10 @@ export class ManifestBuilderService {
     }
     
     const githubContext = await getGitHubContextFromR2(this.env, item.github_context_url);
-    return githubContext?.linked_prs || null;
+    if (!githubContext?.linked_prs) return null;
+    
+    // Convert LinkedPullRequest objects to URLs
+    return githubContext.linked_prs.map(pr => pr.url);
   }
 
   /**
@@ -651,7 +667,7 @@ export class ManifestBuilderService {
     const tags = this.extractTags(selectedItems);
 
     // Extract repos
-    const repos = this.extractRepos(selectedItems);
+    const repos = await this.extractRepos(selectedItems);
 
     // Generate canonical VOD (use first clip for now)
     const canonicalVod = selectedItems[0]?.clip_url || '';
@@ -694,7 +710,7 @@ export class ManifestBuilderService {
    */
   private async generateTitle(selectedItems: ContentItem[]): Promise<string> {
     // Count different types of content
-    const hasGitHubContext = selectedItems.some(item => item.github_context);
+    const hasGitHubContext = selectedItems.some(item => item.github_context_url);
     const hasMultipleClips = selectedItems.length > 1;
 
     if (hasGitHubContext) {
@@ -711,7 +727,7 @@ export class ManifestBuilderService {
    */
   private async generateSummary(selectedItems: ContentItem[]): Promise<string> {
     const clipCount = selectedItems.length;
-    const githubContextCount = selectedItems.filter(item => item.github_context).length;
+    const githubContextCount = selectedItems.filter(item => item.github_context_url).length;
 
     if (githubContextCount > 0) {
       return `Today's development session featured ${clipCount} clips with ${githubContextCount} connected to GitHub activity, including pull requests, commits, and issue discussions.`;
@@ -732,14 +748,8 @@ export class ManifestBuilderService {
 
     // Add tags from GitHub context
     selectedItems.forEach(item => {
-      if (Array.isArray(item.github_context?.linked_prs) && item.github_context.linked_prs.length > 0) {
-        tags.add('pull-requests');
-      }
-      if (Array.isArray(item.github_context?.linked_commits) && item.github_context.linked_commits.length > 0) {
-        tags.add('commits');
-      }
-      if (Array.isArray(item.github_context?.linked_issues) && item.github_context.linked_issues.length > 0) {
-        tags.add('issues');
+      if (item.github_context_url) {
+        tags.add('github-context');
       }
     });
 
@@ -756,15 +766,15 @@ export class ManifestBuilderService {
   /**
    * Extract repos from selected items
    */
-  private extractRepos(selectedItems: ContentItem[]): string[] {
+  private async extractRepos(selectedItems: ContentItem[]): Promise<string[]> {
     const repos = new Set<string>();
 
-    selectedItems.forEach(item => {
-      const repo = this.extractRepoFromGitHubContext(item);
+    for (const item of selectedItems) {
+      const repo = await this.extractRepoFromGitHubContext(item);
       if (repo) {
         repos.add(repo);
       }
-    });
+    }
 
     return Array.from(repos);
   }
@@ -791,7 +801,7 @@ export class ManifestBuilderService {
       diversityScore = (uniqueHours / selectedCount) * 100;
     }
     
-    const githubContextCount = selected.filter(item => item.github_context).length;
+    const githubContextCount = selected.filter(item => item.github_context_url).length;
 
     return {
       totalCandidates,

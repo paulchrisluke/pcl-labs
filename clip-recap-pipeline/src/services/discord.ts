@@ -100,6 +100,34 @@ export class DiscordService {
     await this.sendDiscordMessage(embed);
   }
 
+  async notifyJobCleanup(deletedCount: number): Promise<void> {
+    console.log(`Sending job cleanup notification to Discord for ${deletedCount} deleted jobs...`);
+    
+    const embed: DiscordEmbed = {
+      title: '🧹 Job Cleanup Completed',
+      description: 'Expired job records have been cleaned up from the database.',
+      color: 0x00ff00, // Green
+      fields: [
+        {
+          name: '🗑️ Jobs Removed',
+          value: `${deletedCount} expired jobs`,
+          inline: true
+        },
+        {
+          name: '⏰ Cleanup Time',
+          value: new Date().toLocaleString(),
+          inline: true
+        }
+      ],
+      footer: {
+        text: 'Twitch Clip Recap Pipeline - Job Cleanup'
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    await this.sendDiscordMessage(embed);
+  }
+
   private async sendDiscordMessage(embed: DiscordEmbed): Promise<void> {
     // validate Discord config before issuing API request
     if (!this.env.DISCORD_REVIEW_CHANNEL_ID || !this.env.DISCORD_BOT_TOKEN) {
