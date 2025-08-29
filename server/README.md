@@ -63,6 +63,7 @@ Required environment variables:
 - `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
 - `CLOUDFLARE_API_TOKEN` - Cloudflare API token with R2 permissions
 - `R2_BUCKET` - R2 bucket name (default: clip-recap-pipeline)
+- `HMAC_SHARED_SECRET` - Shared secret for HMAC authentication with Cloudflare Workers
 
 Optional:
 - `MAX_CLIP_DURATION` - Maximum clip duration before chunking (default: 300s)
@@ -164,6 +165,39 @@ The `/health` endpoint includes cache health information:
 - Check cache health via `/health` endpoint
 - Review rate limiting logs in application output
 - Verify multiple instances can access the same Redis instance
+
+## HMAC Authentication
+
+This service integrates with the Cloudflare Workers pipeline using HMAC-SHA256 authentication. The `HMAC_SHARED_SECRET` environment variable must be set to the same value as the Cloudflare Workers pipeline.
+
+### Authentication Flow
+
+1. **Cloudflare Workers** generate HMAC signatures for API requests
+2. **Python Server** validates signatures using the shared secret
+3. **Secure Communication** between services without exposing credentials
+
+### Required Headers
+
+When calling this service from Cloudflare Workers, include these headers:
+- `X-Request-Signature: hex:<64-character-hex-string>` - HMAC-SHA256 signature
+- `X-Request-Timestamp: <unix_timestamp>` - Current Unix timestamp
+- `X-Request-Nonce: <random_string>` - Random alphanumeric string (16-64 characters)
+
+### Signature Generation
+
+The signature is computed using HMAC-SHA256 over: `body + timestamp + nonce`
+
+```bash
+# Example signature generation
+signature=$(echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p -c 64)
+```
+
+### Security Notes
+
+- **Secret Management**: The `HMAC_SHARED_SECRET` must be kept secure and never committed to version control
+- **Environment Sync**: Ensure the secret is identical across Cloudflare Workers and Python server environments
+- **Secret Rotation**: Rotate the secret periodically and update both services simultaneously
+- **Access Control**: Limit access to the secret to only authorized personnel and services
 
 ## Usage
 

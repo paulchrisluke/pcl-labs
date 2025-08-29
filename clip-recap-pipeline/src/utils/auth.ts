@@ -34,8 +34,6 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-
-
 /**
  * Verify HMAC signature for request authentication
  */
@@ -100,8 +98,6 @@ export async function verifyHmacSignature(
   }
 }
 
-
-
 /**
  * Create unauthorized response with consistent format
  */
@@ -150,7 +146,6 @@ export async function requireHmacAuth(
                     request.headers.get('host')?.includes('127.0.0.1');
   
   if (disableAuth && isLocalDev) {
-    console.log('🔓 Authentication disabled via DISABLE_AUTH environment variable in local development context');
     return null; // Allow request to proceed
   }
   

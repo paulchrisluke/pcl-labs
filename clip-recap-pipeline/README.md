@@ -106,7 +106,11 @@ The `HMAC_SHARED_SECRET` is used for API authentication and must be stored secur
 wrangler secret put HMAC_SHARED_SECRET
 ```
 
-**Important**: Never commit the real secret value to the repository. The `.dev.vars` file contains a placeholder (`HMAC_SHARED_SECRET=REPLACE_ME`) for security.
+**Important**: 
+- Never commit the real secret value to the repository
+- The `.dev.vars.example` file contains a placeholder for security
+- Use a cryptographically secure random secret (32+ characters)
+- Keep the secret synchronized between Cloudflare Workers and Python server environments
 
 #### Local Development Override
 
@@ -271,19 +275,17 @@ All other endpoints require the authentication described below.
 **Required Headers:**
 - `X-Request-Signature: <encoding_prefix>:<signature>` - HMAC-SHA256 signature with explicit encoding prefix
   - `hex:<64-character-hex-string>` (preferred format)
-**HMAC Signature Generation (canonical string):**
-Compute SHA-256 of the raw request body bytes (empty string for GET) as `content_sha256` (hex). Build:
+- `X-Request-Timestamp: <unix_timestamp>` - Current Unix timestamp (seconds since epoch)
+- `X-Request-Nonce: <random_string>` - Random alphanumeric string (16-64 characters)
 
-- `Content-Type: application/json` (for POST requests)
+**HMAC Signature Generation:**
+The signature is computed using HMAC-SHA256 over the payload: `body + timestamp + nonce`
 
 **Accepted Signature Formats:**
 - `X-Request-Signature: hex:a1b2c3d4e5f6...` (64-character hex string)
 - `X-Request-Signature: b64:YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=` (base64 encoded)
 
 **Note:** The `Authorization: Bearer` header is deprecated and no longer supported. Use only the `X-Request-Signature` header with the appropriate encoding prefix.
-
-**HMAC Signature Generation:**
-The signature is computed using HMAC-SHA256 over the payload: `body + timestamp + nonce`
 
 **Hex Signature (Preferred Format):**
 ```bash
@@ -302,14 +304,21 @@ signature=$(echo -n "$request_body$timestamp$nonce" | openssl dgst -sha256 -hmac
 **Example:**
 ```bash
 # For a GET request with timestamp 1640995200 and nonce abc123def456
-signature=$(echo -n "1640995200abc123def456" | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+signature=$(echo -n "1640995200abc123def456" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p -c 64)
 # Result: a1b2c3d4e5f6...
-# Header: X-Request-Signature: hex:a1b2c3d4e5f6...
+# Headers: 
+#   X-Request-Signature: hex:a1b2c3d4e5f6...
+#   X-Request-Timestamp: 1640995200
+#   X-Request-Nonce: abc123def456
 
 # For a POST request with JSON body
-signature=$(echo -n '{"key":"value"}1640995200abc123def456' | openssl dgst -sha256 -hmac "your-secret" -binary | xxd -p -c 64)
+signature=$(echo -n '{"key":"value"}1640995200abc123def456' | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p -c 64)
 # Result: a1b2c3d4e5f6...
-# Header: X-Request-Signature: hex:a1b2c3d4e5f6...
+# Headers:
+#   X-Request-Signature: hex:a1b2c3d4e5f6...
+#   X-Request-Timestamp: 1640995200
+#   X-Request-Nonce: abc123def456
+#   Content-Type: application/json
 ```
 
 ### Error Codes
