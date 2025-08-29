@@ -27,6 +27,8 @@ export interface Environment {
   WORKER_ORIGIN?: string; // Origin header for API requests (set via wrangler secret put), defaults to production worker URL
   R2_PUBLIC_BASE_URL?: string; // Public base URL for R2 objects (required for content storage operations)
   JOB_CLEANUP_NOTIFY_THRESHOLD?: string; // Threshold for job cleanup notifications (optional, defaults to 10)
+  WRANGLER_DEV?: string; // Set to 'true' when running in wrangler dev mode
+  NODE_ENV?: string; // Node environment (development, production, etc.)
 }
 
 // Health endpoint response interface

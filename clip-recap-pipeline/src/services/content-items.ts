@@ -89,7 +89,6 @@ export class ContentItemService {
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     return `recaps/content-items/${year}/${month}/${clipId}.json`;
   }
-
   /**
    * Store a ContentItem in R2
    */
@@ -170,19 +169,14 @@ export class ContentItemService {
     try {
       const { date_range, processing_status, content_category, limit = 50, cursor } = query;
       
-      // Build prefix for listing
-      let prefix = 'recaps/content-items/';
-      
       if (date_range) {
         // For date range queries, we need to list all relevant year/month folders
         const items: ContentItem[] = [];
-        let total = 0;
         let hasMore = false;
         let nextCursor: string | undefined;
         
-        // Iterate through date range
-        const startDate = new Date(date_range.start);
-        const endDate = new Date(date_range.end);
+        const startDate = new Date(date_range.start + 'T00:00:00Z');
+        const endDate = new Date(date_range.end + 'T23:59:59Z');
         const currentDate = new Date(startDate);
         
         // Parse cursor to determine starting position
@@ -203,9 +197,10 @@ export class ContentItemService {
           }
         }
         
-        while (currentDate <= endDate) {
-          const year = currentDate.getFullYear();
-          const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        // Iterate through months in date range
+        while (currentDate <= endDate && items.length < limit) {
+          const year = currentDate.getUTCFullYear();
+          const month = String(currentDate.getUTCMonth() + 1).padStart(2, '0');
           const monthPrefix = `recaps/content-items/${year}/${month}/`;
           
           // Reset monthCursor to undefined for each new month to start from the beginning
@@ -235,7 +230,7 @@ export class ContentItemService {
               try {
                 // Use customMetadata to filter by processing_status without full GET
                 const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
-                if (processing_status && processingStatus !== processing_status) {
+                if (processing_status && processingStatus !== processingStatus) {
                   continue;
                 }
                 
@@ -257,7 +252,6 @@ export class ContentItemService {
                     }
                     
                     items.push(item);
-                    total++;
                   }
                 }
               } catch (error) {
@@ -281,9 +275,9 @@ export class ContentItemService {
           
           if (hasMore) break;
           
-          // Move to next month and reset continuation token
-          currentDate.setMonth(currentDate.getMonth() + 1);
+          // Move to next month
           currentDate.setDate(1);
+          currentDate.setMonth(currentDate.getMonth() + 1);
           
           // Reset decodedCursor to null when moving to next month
           decodedCursor = null;
@@ -300,22 +294,20 @@ export class ContentItemService {
         };
       } else {
         // Simple listing without date range using cursor-based pagination
-        // For simple listing, we use the cursor directly as it's not date-range specific
         const objects = await this.env.R2_BUCKET.list({ 
-          prefix,
+          prefix: 'recaps/content-items/',
           limit,
           cursor,
           include: ['customMetadata']
         });
         
         const items: ContentItem[] = [];
-        let total = 0;
         
         for (const obj of objects.objects) {
           try {
             // Use customMetadata to filter by processing_status without full GET
             const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
-            if (processing_status && processingStatus !== processing_status) {
+            if (processing_status && processingStatus !== processingStatus) {
               continue;
             }
             
@@ -333,7 +325,6 @@ export class ContentItemService {
                 if (content_category && item.content_category !== content_category) continue;
                 
                 items.push(item);
-                total++;
               }
             }
           } catch (error) {
@@ -388,6 +379,7 @@ export class ContentItemService {
         clip_created_at: existing.clip_created_at,
         stored_at: existing.stored_at,
         processing_status: updates.processing_status || existing.processing_status,
+        // Preserve nested objects if not fully replaced
       };
 
       // Store updated item

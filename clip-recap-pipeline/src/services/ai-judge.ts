@@ -197,7 +197,18 @@ Only return valid JSON, no additional text.`;
   private parseAIResponse(response: string): AiEvaluationResult {
     try {
       // Extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+// Try to find JSON-like content more safely
+      const trimmed = response.trim();
+      let jsonStr = trimmed;
+      
+      // If response contains markdown code blocks, extract content
+      const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      }
+      
+      // Try to extract JSON from the content
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }

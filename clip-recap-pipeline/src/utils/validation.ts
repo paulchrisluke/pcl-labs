@@ -1,5 +1,7 @@
 // Validation utilities for the clip-recap-pipeline
 
+import type { TwitchClip, EnhancedTwitchClip } from '../types/index.js';
+
 export interface ValidationResult {
   isValid: boolean;
   error?: string;
@@ -190,7 +192,7 @@ export const CLIP_FORBIDDEN_FIELDS = [
 ];
 
 // Convenience function for clip data validation
-export function validateClipData(data: any): ValidationResult {
+export function validateClipData(data: Partial<TwitchClip>): ValidationResult {
   return validateData(data, CLIP_DATA_SCHEMA, CLIP_FORBIDDEN_FIELDS);
 }
 
@@ -221,6 +223,6 @@ export const CLIP_OBJECT_FORBIDDEN_FIELDS = [
 ];
 
 // Validation function for complete clip objects
-export function validateClipObject(clip: any): ValidationResult {
+export function validateClipObject(clip: TwitchClip | EnhancedTwitchClip): ValidationResult {
   return validateData(clip, CLIP_OBJECT_SCHEMA, CLIP_OBJECT_FORBIDDEN_FIELDS);
 }

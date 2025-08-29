@@ -2,7 +2,7 @@ import type { Environment, TwitchTokenResponse, HealthResponse } from './types/i
 import { validateClipId, validateClipData, validateClipObject } from './utils/validation.js';
 import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
-import { handleGitHubRequest } from './routes/github.js';
+
 import { handleContentRoutes } from './routes/content.js';
 import { handleJobRoutes } from './routes/jobs.js';
 import { generateStatusPage } from './status-page.js';
@@ -360,6 +360,11 @@ export default {
     
 
     
+    // Content generation endpoints - handle before authentication gates for public access
+    if (url.pathname.startsWith('/api/content/') || url.pathname.startsWith('/api/runs/')) {
+      return handleContentRoutes(request, env, url);
+    }
+
     // Environment variable validation for API routes
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/validate-') || url.pathname.startsWith('/webhook/')) {
       // Validate required environment variables for security
@@ -1925,10 +1930,7 @@ export default {
       return handleJobRoutes(request, env, url);
     }
 
-    // Content generation endpoints
-    if (url.pathname.startsWith('/api/content/') || url.pathname.startsWith('/api/runs/')) {
-      return handleContentRoutes(request, env, url);
-    }
+
 
     // Webhook endpoints
     if (url.pathname === '/webhook/github') {
@@ -2440,7 +2442,7 @@ export default {
   /**
    * Determine if an error is retryable
    */
-  private isRetryableError(error: any): boolean {
+  isRetryableError(error: any): boolean {
     // Network errors, timeouts, and temporary service unavailability are retryable
     if (error instanceof TypeError && error.message.includes('fetch')) {
       return true;

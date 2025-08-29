@@ -176,7 +176,7 @@ export class BlogGeneratorService {
     sections.forEach((section, index) => {
       const sectionNumber = index + 1;
       
-      sectionsContent += `<a id="section-${sectionNumber}"></a>\n## ${sectionNumber}. ${section.title}\n\n`;
+      sectionsContent += `## ${sectionNumber}. ${section.title} {#section-${sectionNumber}}\n\n`;
 
       // Add clip embed if available
       if (section.clip_url) {
@@ -365,7 +365,7 @@ export class BlogGeneratorService {
   private objectToYaml(obj: Record<string, any>): string {
     // Filter out undefined values to avoid YAML serialization issues
     const filteredObj = Object.fromEntries(
-      Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null)
+      Object.entries(obj).filter(([, value]) => value !== undefined && value !== null)
     );
     
     // Use the yaml library to safely serialize the object

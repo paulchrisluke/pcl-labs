@@ -125,6 +125,8 @@ This allows you to:
 
 **Note**: The `.dev.vars.local` file is automatically ignored by git, so your local overrides won't be committed to the repository.
 
+⚠️ **Security Warning**: `DISABLE_AUTH=true` is strictly for local development (wrangler dev/localhost) and must never be set or honored in staging/production environments. The authentication bypass only works in local development contexts to prevent accidental auth bypass in deployed environments.
+
 ### Development
 
 ```bash
@@ -180,6 +182,11 @@ bucket_name = "clip-recap"
 [[kv_namespaces]]
 binding = "STATE_KV"
 id = "your-kv-namespace-id-here"  # Replace with actual KV namespace ID per environment
+
+# KV namespace for migration failure tracking
+[[kv_namespaces]]
+binding = "MIGRATION_FAILURES"
+id = "your-migration-failures-kv-id-here"  # Replace with actual KV namespace ID per environment
 ```
 
 **Environment-Specific Configuration**:
@@ -831,7 +838,26 @@ The system uses Cloudflare KV storage to track migration failures across session
 ### Migration Endpoints
 
 #### `GET /api/content/migration-status`
+**Authentication:** Required
+
 Get current migration status including failure count.
+
+**HMAC Example:**
+```bash
+# Generate signature for GET request (empty body)
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body=""
+content_sha256=$(echo -n "$body" | sha256sum | cut -d' ' -f1)
+message="GET\n/api/content/migration-status\n$timestamp\n$nonce\n$content_sha256"
+signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
+
+# Make request
+curl -X GET "https://your-worker.your-subdomain.workers.dev/api/content/migration-status" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
 
 **Response:**
 ```json
@@ -847,7 +873,26 @@ Get current migration status including failure count.
 ```
 
 #### `GET /api/content/migration-failures`
+**Authentication:** Required
+
 Get detailed failure information for the current migration session.
+
+**HMAC Example:**
+```bash
+# Generate signature for GET request (empty body)
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body=""
+content_sha256=$(echo -n "$body" | sha256sum | cut -d' ' -f1)
+message="GET\n/api/content/migration-failures\n$timestamp\n$nonce\n$content_sha256"
+signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
+
+# Make request
+curl -X GET "https://your-worker.your-subdomain.workers.dev/api/content/migration-failures" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
 
 **Response:**
 ```json
@@ -869,7 +914,27 @@ Get detailed failure information for the current migration session.
 ```
 
 #### `POST /api/content/migration-session/start`
+**Authentication:** Required
+
 Start a new migration session and clear previous failure tracking.
+
+**HMAC Example:**
+```bash
+# Generate signature for POST request with empty body
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body=""
+content_sha256=$(echo -n "$body" | sha256sum | cut -d' ' -f1)
+message="POST\n/api/content/migration-session/start\n$timestamp\n$nonce\n$content_sha256"
+signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
+
+# Make request
+curl -X POST "https://your-worker.your-subdomain.workers.dev/api/content/migration-session/start" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
+  -H "Content-Type: application/json"
+```
 
 **Response:**
 ```json

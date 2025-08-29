@@ -18,6 +18,28 @@ const DISABLE_AUTH = process.env.DISABLE_AUTH === 'true';
 // Determine if we're in local development mode
 const IS_LOCAL_DEV = WORKER_URL.includes('localhost') || WORKER_URL.includes('127.0.0.1');
 
+// Get crypto implementation with Node.js compatibility
+function getCrypto(): Crypto {
+  // Try global crypto first (browser/Cloudflare Workers)
+  if (globalThis.crypto) {
+    return globalThis.crypto;
+  }
+  
+  // Try Node.js crypto
+  if (typeof require !== 'undefined') {
+    try {
+      const nodeCrypto = require('crypto');
+      if (nodeCrypto.webcrypto) {
+        return nodeCrypto.webcrypto;
+      }
+    } catch (error) {
+      // Ignore require errors
+    }
+  }
+  
+  throw new Error('No crypto implementation available - requires Node.js 15+ or browser environment');
+}
+
 // Test HMAC signature generation
 async function generateHmacSignature(body: string, timestamp: string, nonce: string, secret: string): Promise<string> {
   const payload = `${body}${timestamp}${nonce}`;
@@ -25,6 +47,7 @@ async function generateHmacSignature(body: string, timestamp: string, nonce: str
   const keyData = encoder.encode(secret);
   const messageData = encoder.encode(payload);
   
+  const crypto = getCrypto();
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyData,
@@ -50,11 +73,8 @@ async function generateAuthHeaders(body: string = ''): Promise<Record<string, st
   const timestamp = Math.floor(Date.now() / 1000).toString();
   
   // Generate cryptographically secure nonce
+  const crypto = getCrypto();
   const nonceArray = new Uint8Array(16);
-  const crypto = globalThis.crypto || (typeof require !== 'undefined' ? require('crypto').webcrypto : null);
-  if (!crypto) {
-    throw new Error('No crypto implementation available');
-  }
   crypto.getRandomValues(nonceArray);
   const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, 16);
   
@@ -113,7 +133,7 @@ const mockContentData = {
   }
 };
 
-async function testContentAPI() {
+async function testContentAPI(): Promise<void> {
   console.log('🧪 Testing Content Generation API...');
   console.log(`📡 Testing against: ${WORKER_URL}`);
   console.log(`🔐 Auth mode: ${DISABLE_AUTH ? 'disabled' : HMAC_SHARED_SECRET ? 'HMAC' : 'no-auth'}`);

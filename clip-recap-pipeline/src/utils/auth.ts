@@ -142,10 +142,15 @@ export async function requireHmacAuth(
   env: Environment,
   body?: string
 ): Promise<Response | null> {
-  // Check for DISABLE_AUTH environment variable
+  // Check for DISABLE_AUTH environment variable and local development context
   const disableAuth = env.DISABLE_AUTH === 'true' || env.DISABLE_AUTH === '1';
-  if (disableAuth) {
-    console.log('🔓 Authentication disabled via DISABLE_AUTH environment variable');
+  const isLocalDev = env.WRANGLER_DEV === 'true' || 
+                    env.NODE_ENV === 'development' || 
+                    request.headers.get('host')?.includes('localhost') ||
+                    request.headers.get('host')?.includes('127.0.0.1');
+  
+  if (disableAuth && isLocalDev) {
+    console.log('🔓 Authentication disabled via DISABLE_AUTH environment variable in local development context');
     return null; // Allow request to proceed
   }
   

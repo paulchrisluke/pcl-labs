@@ -6,14 +6,67 @@ type ProcessingStatus = 'pending' | 'audio_ready' | 'transcribed' | 'enhanced' |
 
 // Type guard functions for validation
 const isProcessingStatus = (s: string): s is ProcessingStatus => {
-  const validProcessingStatuses: readonly ProcessingStatus[] = ['pending', 'audio_ready', 'transcribed', 'enhanced', 'ready_for_content'];
-  return validProcessingStatuses.includes(s as ProcessingStatus);
+  return s === 'pending' || s === 'audio_ready' || s === 'transcribed' || s === 'enhanced' || s === 'ready_for_content';
 };
 
 const isContentCategory = (s: string): s is ContentCategory => {
-  const validContentCategories: readonly ContentCategory[] = ['development', 'gaming', 'tutorial', 'review', 'other'];
-  return validContentCategories.includes(s as ContentCategory);
+  return s === 'development' || s === 'gaming' || s === 'tutorial' || s === 'review' || s === 'other';
 };
+
+/**
+ * Securely extract and validate a path segment from a URL
+ * @param url - The URL object
+ * @param expectedPath - The expected path prefix (e.g., '/api/content/items/')
+ * @param segmentIndex - The index of the segment to extract (0-based)
+ * @param validationRegex - Regex pattern to validate the segment
+ * @returns The validated segment or null if validation fails
+ */
+function extractAndValidatePathSegment(
+  url: URL,
+  expectedPath: string,
+  segmentIndex: number,
+  validationRegex: RegExp
+): string | null {
+  const pathname = url.pathname;
+  
+  // Check if path starts with expected prefix
+  if (!pathname.startsWith(expectedPath)) {
+    return null;
+  }
+  
+  // Split the path into segments
+  const segments = pathname.split('/').filter(segment => segment.length > 0);
+  
+  // Find the index of the segment after the expected path
+  const expectedSegments = expectedPath.split('/').filter(segment => segment.length > 0);
+  const targetIndex = expectedSegments.length + segmentIndex;
+  
+  if (targetIndex >= segments.length) {
+    return null;
+  }
+  
+  const rawSegment = segments[targetIndex];
+  
+  try {
+    // Decode the URL component
+    const decodedSegment = decodeURIComponent(rawSegment);
+    
+    // Check for path traversal attempts
+    if (decodedSegment.includes('..') || decodedSegment.includes('/') || decodedSegment.includes('\\')) {
+      return null;
+    }
+    
+    // Validate against the provided regex
+    if (!validationRegex.test(decodedSegment)) {
+      return null;
+    }
+    
+    return decodedSegment;
+  } catch {
+    // decodeURIComponent throws on invalid percent encoding
+    return null;
+  }
+}
 import { ContentItemService } from '../services/content-items.js';
 import { ContentMigrationService } from '../services/content-migration.js';
 import { ManifestBuilderService } from '../services/manifest-builder.js';
@@ -22,18 +75,8 @@ import { AIJudgeService } from '../services/ai-judge.js';
 import { JobManagerService } from '../services/job-manager.js';
 import { requireHmacAuth } from '../utils/auth.js';
 import { errorTracker } from '../utils/error-tracking.js';
-import { ulid } from 'ulid';
 
-/**
- * Generate ULID for run tracking
- * Uses the 'ulid' library which implements the ULID spec correctly:
- * - 48-bit timestamp (10 chars) + 80-bit randomness (16 chars)
- * - Crockford base32 encoding for lexicographic ordering
- * - Cryptographically strong entropy
- */
-function generateULID(): string {
-  return ulid();
-}
+
 
 // Lazy service factory functions with memoization
 let contentItemServiceInstance: ContentItemService | null = null;
@@ -109,10 +152,11 @@ export async function handleContentRoutes(
 
     // Content item detail endpoint
     if (path.startsWith('/api/content/items/') && method === 'GET') {
-      const clipId = path.split('/').pop();
+      const clipId = extractAndValidatePathSegment(url, '/api/content/items/', 0, /^[A-Za-z0-9_-]+$/);
       if (clipId) {
         return await handleGetContentItem(request, env, clipId);
       }
+      return new Response('Invalid clip ID', { status: 400 });
     }
 
     // Migration endpoints
@@ -134,10 +178,11 @@ export async function handleContentRoutes(
 
     // Run status endpoint
     if (path.startsWith('/api/runs/') && method === 'GET') {
-      const runId = path.split('/').pop();
+      const runId = extractAndValidatePathSegment(url, '/api/runs/', 0, /^[A-Za-z0-9_-]+$/);
       if (runId) {
         return await handleGetRunStatus(request, env, runId);
       }
+      return new Response('Invalid run ID', { status: 400 });
     }
 
     // Content processing status endpoint
@@ -167,7 +212,7 @@ export async function handleContentRoutes(
 
     // Error statistics endpoint
     if (path === '/api/content/error-stats' && method === 'GET') {
-      return await handleErrorStats(request, env);
+      return await handleErrorStats();
     }
 
     return new Response('Not Found', { status: 404 });
@@ -199,7 +244,21 @@ async function handleContentGeneration(
 
   try {
     const body = await request.text();
-    const requestData: ContentGenerationRequest = JSON.parse(body);
+    let requestData: ContentGenerationRequest;
+    
+    try {
+      requestData = JSON.parse(body);
+    } catch (parseError) {
+      console.error('❌ JSON parse error in content generation request:', parseError);
+      console.error('Raw request body:', body);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid JSON in request body'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Validate request
     if (!requestData.date_range || !requestData.date_range.start || !requestData.date_range.end) {
@@ -317,11 +376,7 @@ async function handleListContentItems(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const contentItemService = getContentItemService(env);
@@ -403,11 +458,7 @@ async function handleGetContentItem(
   env: Environment,
   clipId: string
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const contentItemService = getContentItemService(env);
@@ -478,7 +529,7 @@ async function handleMigration(
     if (body.trim()) {
       try {
         requestData = JSON.parse(body);
-      } catch (parseError) {
+      } catch {
         return new Response(JSON.stringify({
           success: false,
           error: 'Invalid JSON in request body'
@@ -541,11 +592,7 @@ async function handleMigrationStatus(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const migrationService = getMigrationService(env);
@@ -577,11 +624,7 @@ async function handleMigrationFailures(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const migrationService = getMigrationService(env);
@@ -656,11 +699,7 @@ async function handleGetRunStatus(
   env: Environment,
   runId: string
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const object = await env.R2_BUCKET.get(`runs/${runId}.json`);
@@ -703,11 +742,7 @@ async function handleContentStatus(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const contentItemService = getContentItemService(env);
@@ -757,7 +792,7 @@ async function handleBuildManifest(
     if (body.trim()) {
       try {
         requestData = JSON.parse(body);
-      } catch (parseError) {
+      } catch {
         return new Response(JSON.stringify({
           success: false,
           error: 'Invalid JSON in request body'
@@ -846,7 +881,7 @@ async function handleGenerateBlog(
     if (body.trim()) {
       try {
         requestData = JSON.parse(body);
-      } catch (parseError) {
+      } catch {
         return new Response(JSON.stringify({
           success: false,
           error: 'Invalid JSON in request body'
@@ -910,11 +945,7 @@ async function handleListBlogPosts(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+  // Public endpoint - no authentication required
 
   try {
     const blogGenerator = getBlogGenerator(env);
@@ -994,7 +1025,7 @@ async function handleJudgeContent(
     if (body.trim()) {
       try {
         requestData = JSON.parse(body);
-      } catch (parseError) {
+      } catch {
         return new Response(JSON.stringify({
           success: false,
           error: 'Invalid JSON in request body'
@@ -1055,15 +1086,8 @@ async function handleJudgeContent(
 /**
  * Handle error statistics request
  */
-async function handleErrorStats(
-  request: Request,
-  env: Environment
-): Promise<Response> {
-  // Check authentication
-  const authResponse = await requireHmacAuth(request, env);
-  if (authResponse) {
-    return authResponse;
-  }
+async function handleErrorStats(): Promise<Response> {
+  // Public endpoint - no authentication required
 
   try {
     const stats = errorTracker.getErrorStats();

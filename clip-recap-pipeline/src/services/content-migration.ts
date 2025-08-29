@@ -1,4 +1,4 @@
-import type { Environment, TwitchClip, GitHubContext, LinkedPullRequest, LinkedCommit, LinkedIssue, MatchReason, GitHubEvent } from '../types/index.js';
+import type { Environment, GitHubContext, LinkedPullRequest, LinkedCommit, LinkedIssue, MatchReason, GitHubEvent } from '../types/index.js';
 import type { ContentItem, Transcript, TranscriptSegment } from '../types/content.js';
 import { uploadTranscriptToR2, uploadGitHubContextToR2 } from '../utils/content-storage.js';
 
@@ -8,21 +8,25 @@ interface ClipData {
   clip_id?: string; // Alternative field name for id
   title: string;
   url: string;
-  created_at: string;
-  duration?: number;
-  view_count?: number;
-  broadcaster_name?: string;
-  creator_name?: string;
   embed_url?: string;
   thumbnail_url?: string;
+  duration?: number;
+  view_count?: number;
+  created_at: string;
+  broadcaster_name?: string;
+  creator_name?: string;
+  stored_at?: string;
   audio_file?: {
     url?: string;
+    exists?: boolean;
     size?: number;
     duration?: number;
     format?: string;
     [key: string]: any; // Allow additional audio file properties
   };
-  stored_at?: string;
+  github_context?: GitHubContext;
+  linked_prs?: LinkedPullRequest[];
+  linked_commits?: LinkedCommit[];
   [key: string]: any; // Allow additional properties that might exist in raw data
 }
 
@@ -119,7 +123,7 @@ export class ContentMigrationService {
    * @param objectKey - The R2 object key for contextual logging
    * @returns Validation result
    */
-  private validateClipMetadata(clipData: ClipData, objectKey: string): { isValid: boolean; error?: string } {
+  private validateClipMetadata(clipData: ClipData): { isValid: boolean; error?: string } {
     try {
       // Check if clipData is a plain object
       if (!clipData || typeof clipData !== 'object' || Array.isArray(clipData)) {
@@ -266,13 +270,12 @@ export class ContentMigrationService {
                     objectKey: obj.key,
                     error: jsonError instanceof Error ? jsonError.message : String(jsonError)
                   });
-                  // Extract clip ID from the object key for logging
-                  const clipId = obj.key.split('/')[1]; // clips/{clipId}/meta.json
-                  continue; // Skip this clip
+                  // Skip this clip due to JSON parse error
+                  continue;
                 }
 
                 // Validate the parsed clip data
-                const validation = this.validateClipMetadata(clipData, obj.key);
+                const validation = this.validateClipMetadata(clipData);
                 
                 if (!validation.isValid) {
                   console.error(`❌ Invalid clip metadata in ${obj.key}: ${validation.error}`);
@@ -288,9 +291,8 @@ export class ContentMigrationService {
                       created_at: clipData.created_at
                     }
                   });
-                  // Extract clip ID for logging
-                  const clipId = clipData.id || clipData.clip_id || obj.key.split('/')[1];
-                  continue; // Skip this clip
+                  // Skip this clip due to validation failure
+                  continue;
                 }
 
                 // Use the raw clip data
@@ -303,8 +305,7 @@ export class ContentMigrationService {
                 objectKey: obj.key,
                 error: error instanceof Error ? error.message : String(error)
               });
-              // Extract clip ID from the object key for logging
-              const clipId = obj.key.split('/')[1]; // clips/{clipId}/meta.json
+              // Failed to read clip metadata
             }
           }
         }
@@ -321,6 +322,49 @@ export class ContentMigrationService {
     } catch (error) {
       console.error('❌ Failed to get existing clips:', error);
       return [];
+    }
+  }
+
+  /**
+   * Efficiently count existing clips without fetching metadata
+   * This is much faster than getExistingClips() when only the count is needed
+   */
+  private async countExistingClips(): Promise<number> {
+    try {
+      let totalCount = 0;
+      let continuationToken: string | undefined;
+      let pageCount = 0;
+
+      console.log('📊 Starting efficient clip count...');
+
+      do {
+        pageCount++;
+        console.log(`📄 Counting page ${pageCount}...`);
+
+        // List objects with pagination
+        const listOptions: { prefix: string; cursor?: string } = { prefix: 'clips/' };
+        if (continuationToken) {
+          listOptions.cursor = continuationToken;
+        }
+
+        const objects = await this.env.R2_BUCKET.list(listOptions);
+        
+        // Count only meta.json files (one per clip)
+        const metaJsonCount = objects.objects.filter((obj: { key: string }) => obj.key.endsWith('/meta.json')).length;
+        totalCount += metaJsonCount;
+        
+        console.log(`📊 Page ${pageCount}: Found ${metaJsonCount} clips, total so far: ${totalCount}`);
+
+        // Update continuation token for next page
+        continuationToken = objects.cursor;
+
+      } while (continuationToken);
+
+      console.log(`🎉 Clip count complete! Found ${totalCount} clips across ${pageCount} pages`);
+      return totalCount;
+    } catch (error) {
+      console.error('❌ Failed to count existing clips:', error);
+      return 0;
     }
   }
 
@@ -688,9 +732,8 @@ export class ContentMigrationService {
     failed_clips: number;
   }> {
     try {
-      // Count existing clips
-      const existingClips = await this.getExistingClips();
-      const totalClips = existingClips.length;
+      // Efficiently count existing clips without fetching all metadata
+      const totalClips = await this.countExistingClips();
 
       // Count migrated ContentItems
       const statusCounts = await this.contentItemService.getProcessingStatusCounts();

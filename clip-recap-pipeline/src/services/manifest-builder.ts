@@ -1,79 +1,13 @@
-import type { Environment, ContentCategory } from '../types/index.js';
-import type { Manifest, ManifestSection, ContentItem, JudgeResult, SocialBlurbs } from '../types/content.js';
+import type { Environment } from '../types/index.js';
+import type { Manifest, ManifestSection, ContentItem } from '../types/content.js';
 import { getTranscriptFromR2, getGitHubContextFromR2 } from '../utils/content-storage.js';
 import { DateTime } from 'luxon';
 import { ContentItemService } from './content-items.js';
-import { validateManifest, sanitizeManifest } from '../utils/schema-validator.js';
+import { sanitizeManifest } from '../utils/schema-validator.js';
 import { calculateWeightedContentScore, calculateDetailedScore } from '../utils/scoring.js';
 import { DEFAULT_SCORING_CONFIG } from '../config/scoring.js';
 
-/**
- * Robust sentence segmentation that handles abbreviations, decimals, URLs, etc.
- * Uses Intl.Segmenter when available, falls back to sophisticated regex
- */
-function segmentSentences(text: string): string[] {
-  // Use sophisticated regex approach for better handling of abbreviations, decimals, URLs
-  // Intl.Segmenter is available but doesn't handle technical content as well
-  // We'll use our custom approach for more accurate sentence boundaries
 
-  // Fallback: sophisticated regex that handles common edge cases
-  // This regex looks for sentence boundaries while avoiding:
-  // - Abbreviations (Mr., Dr., etc.)
-  // - Decimal numbers (3.14, 1.5, etc.)
-  // - URLs (example.com, etc.)
-  // - Ellipses (...)
-  // - Multiple punctuation marks (?!, etc.)
-  
-  // More sophisticated approach: split on sentence boundaries but be more careful
-  // First, normalize the text to handle edge cases
-  let normalizedText = text
-    // Temporarily replace common abbreviations to prevent splitting
-    .replace(/\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|Inc|Ltd|Corp|Co|St|Ave|Blvd|Rd|Ct|Ln|Pl|Cir|Way|Hwy|Pkwy|Alley|Terrace|Heights|Gardens|Manor|Village|Square|Court|Drive|Lane|Place|Road|Street|Boulevard|Avenue|Terrace|Heights|Gardens|Manor|Village|Square|Court|Drive|Lane|Place|Road|Street|Boulevard|Avenue)\./gi, '$1_ABBREV_')
-    // Temporarily replace decimal numbers
-    .replace(/(\d+)\.(\d+)/g, '$1_DECIMAL_$2')
-    // Temporarily replace URLs
-    .replace(/(https?:\/\/[^\s]+)/g, '_URL_$1')
-    .replace(/(www\.[^\s]+)/g, '_URL_$1')
-    .replace(/([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '_URL_$1');
-  
-  // Now split on sentence boundaries
-  const sentenceRegex = /(?<=[.!?])\s+(?=[A-Z])/g;
-  const sentences = normalizedText.split(sentenceRegex);
-  
-  // Restore the original text in each sentence and clean up
-  return sentences
-    .map(sentence => sentence.trim())
-    .map(sentence => {
-      // Restore abbreviations
-      sentence = sentence.replace(/(\w+)_ABBREV_/g, '$1.');
-      // Restore decimals
-      sentence = sentence.replace(/(\d+)_DECIMAL_(\d+)/g, '$1.$2');
-      // Restore URLs
-      sentence = sentence.replace(/_URL_(https?:\/\/[^\s]+)/g, '$1');
-      sentence = sentence.replace(/_URL_(www\.[^\s]+)/g, '$1');
-      sentence = sentence.replace(/_URL_([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, '$1');
-      return sentence;
-    })
-    .filter(sentence => {
-      // Skip empty sentences
-      if (!sentence || sentence.length === 0) return false;
-      
-      // Skip sentences that are just punctuation
-      if (/^[.!?,\s]+$/.test(sentence)) return false;
-      
-      // Skip very short fragments that are likely not complete sentences
-      if (sentence.length < 5) return false;
-      
-      return true;
-    })
-    .map(sentence => {
-      // Ensure sentence ends with proper punctuation
-      if (!/[.!?]$/.test(sentence)) {
-        sentence += '.';
-      }
-      return sentence;
-    });
-}
 
 export interface SelectionConfig {
   clipBudgetMin: number;
@@ -473,7 +407,7 @@ export class ManifestBuilderService {
         repo: this.extractRepoFromGitHubContext(item, itemData.githubContext),
         pr_links: this.extractPrLinks(item, itemData.githubContext),
         clip_url: item.clip_url,
-        vod_jump: this.generateVodJump(item),
+        vod_jump: this.generateVodJump(),
         alignment_status: alignmentStatus,
         start: 0, // Clips start at 0, VOD offsets would be handled separately
         end: item.clip_duration,
@@ -648,7 +582,7 @@ export class ManifestBuilderService {
   /**
    * Generate VOD jump URL
    */
-  private generateVodJump(item: ContentItem): string | undefined {
+  private generateVodJump(): string | undefined {
     // This would need VOD offset information
     // For now, return undefined
     return undefined;
@@ -665,7 +599,7 @@ export class ManifestBuilderService {
     // Extract repo from first PR URL
     const firstPr = githubContext.linked_prs[0];
     if (!firstPr) return null;
-    const match = firstPr.url.match(/github\.com\/([^\/]+\/[^\/]+)/);
+    const match = firstPr.url.match(/github\.com\/([^/]+\/[^/]+)/);
     return match ? match[1] : null;
   }
 
@@ -704,11 +638,27 @@ export class ManifestBuilderService {
     // Generate canonical VOD (use first clip for now)
     const canonicalVod = selectedItems[0]?.clip_url || '';
 
+    // Calculate timezone-aware date_utc
+    // Parse the input date in the given timezone, then set to local noon (12:00) in that timezone
+    // and convert to UTC ISO string for the canonical manifest timestamp
+    const dateInTimezone = DateTime.fromISO(date, { zone: timezone });
+    if (!dateInTimezone.isValid) {
+      throw new Error(`Invalid date format or timezone: ${date}, ${timezone}`);
+    }
+    
+    // Set to local noon (12:00) in the specified timezone, then convert to UTC
+    const localNoon = dateInTimezone.set({ hour: 12, minute: 0, second: 0, millisecond: 0 });
+    const dateUtc = localNoon.toUTC().toISO();
+    
+    if (!dateUtc) {
+      throw new Error(`Failed to generate UTC date for ${date} in timezone ${timezone}`);
+    }
+
     // Build manifest
     const manifest: Manifest = {
       schema_version: '1.0.0',
       post_id: date,
-      date_utc: `${date}T12:00:00.000Z`,
+      date_utc: dateUtc,
       tz: timezone,
       title,
       headline_short: headlineShort,
@@ -833,8 +783,12 @@ export class ManifestBuilderService {
       averageScore = selected.reduce((sum, item) => sum + (this.calculateContentScore(item)), 0) / selectedCount;
       
       // Calculate diversity score (simplified) - use UTC for consistent timezone handling
-      const uniqueHours = new Set(selected.map(item => new Date(item.clip_created_at).getUTCHours())).size;
-      diversityScore = (uniqueHours / selectedCount) * 100;
+      // Filter out items without clip_created_at before calculating uniqueHours
+      const itemsWithValidDates = selected.filter(item => item.clip_created_at);
+      if (itemsWithValidDates.length > 0) {
+        const uniqueHours = new Set(itemsWithValidDates.map(item => new Date(item.clip_created_at).getUTCHours())).size;
+        diversityScore = (uniqueHours / selectedCount) * 100;
+      }
     }
     
     const githubContextCount = selected.filter(item => item.github_context_url).length;
