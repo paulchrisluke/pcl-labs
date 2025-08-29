@@ -250,7 +250,7 @@ export interface GitHubContext {
   linked_prs?: LinkedPullRequest[];
   linked_commits?: LinkedCommit[];
   linked_issues?: LinkedIssue[];
-  confidence_score?: number; // 0-1
+  confidence_score?: Score01;
   match_reason?: MatchReason;
 }
 

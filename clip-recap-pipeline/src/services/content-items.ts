@@ -187,10 +187,11 @@ export class ContentItemService {
             const cursorDate = new Date(decodedCursor.y, decodedCursor.m - 1, 1);
             
             // If the cursor month is within our date range, start from there
+            // Use UTC methods consistently to avoid timezone drift
             if (cursorDate >= startDate && cursorDate <= endDate) {
-              currentDate.setFullYear(decodedCursor.y);
-              currentDate.setMonth(decodedCursor.m - 1);
-              currentDate.setDate(1);
+              currentDate.setUTCFullYear(decodedCursor.y);
+              currentDate.setUTCMonth(decodedCursor.m - 1);
+              currentDate.setUTCDate(1);
             }
           } else {
             console.warn('⚠️ Invalid cursor provided, starting from beginning of date range');
@@ -230,7 +231,7 @@ export class ContentItemService {
               try {
                 // Use customMetadata to filter by processing_status without full GET
                 const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
-                if (processing_status && processingStatus !== processingStatus) {
+                if (processing_status && processing_status !== processingStatus) {
                   continue;
                 }
                 
@@ -262,7 +263,8 @@ export class ContentItemService {
             monthHasMore = monthObjects.truncated;
             monthCursor = monthObjects.cursor;
             
-            if (monthHasMore && items.length < limit) {
+            // Set nextCursor when continuation is needed (either truncated or limit reached)
+            if (monthObjects.cursor && (monthHasMore || items.length >= limit)) {
               // Create next cursor with current year, month, and continuation token
               const nextCursorData: ContentItemCursor = {
                 y: year,
@@ -276,8 +278,9 @@ export class ContentItemService {
           if (hasMore) break;
           
           // Move to next month
-          currentDate.setDate(1);
-          currentDate.setMonth(currentDate.getMonth() + 1);
+          // Use UTC methods consistently to avoid timezone drift
+          currentDate.setUTCDate(1);
+          currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
           
           // Reset decodedCursor to null when moving to next month
           decodedCursor = null;
@@ -307,7 +310,7 @@ export class ContentItemService {
           try {
             // Use customMetadata to filter by processing_status without full GET
             const processingStatus = obj.customMetadata?.['processing-status'] as ContentItem['processing_status'];
-            if (processing_status && processingStatus !== processingStatus) {
+            if (processing_status && processing_status !== processingStatus) {
               continue;
             }
             

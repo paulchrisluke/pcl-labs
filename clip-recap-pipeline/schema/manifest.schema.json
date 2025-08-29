@@ -21,6 +21,7 @@
 
     "sections": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": ["section_id","clip_id","title","bullets","paragraph","start","end"],
@@ -30,7 +31,7 @@
           "title": { "type": "string", "maxLength": 80 },
           "bullets": { "type": "array", "minItems": 2, "maxItems": 4, "uniqueItems": true, "items": { "type": "string", "maxLength": 140 } },
           "paragraph": { "type": "string" },
-          "score": { "type": "number" },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
           "repo": { "type": ["string","null"] },
           "pr_links": { "type": ["array","null"], "items": { "type": "string", "format": "uri" }, "minItems": 1, "uniqueItems": true },
           "clip_url": { "type": ["string","null"], "format": "uri" },
@@ -55,7 +56,8 @@
         "overall": { "type": ["number","null"] },
         "per_axis": { "type": ["object","null"] },
         "version": { "type": ["string","null"] }
-      }
+      },
+      "additionalProperties": false
     },
 
     "social_blurbs": {
@@ -63,7 +65,8 @@
       "properties": {
         "bluesky": { "type": ["string","null"], "maxLength": 260 },
         "threads": { "type": ["string","null"], "maxLength": 260 }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

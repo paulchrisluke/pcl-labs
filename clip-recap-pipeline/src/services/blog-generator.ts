@@ -214,6 +214,7 @@ export class BlogGeneratorService {
   /**
    * Securely parse and validate clip URL
    * Validates URL format, checks trusted domains, and extracts clip ID safely
+   * Handles both twitch.tv/clip/:id and clips.twitch.tv/:slug formats
    */
   private parseClipUrl(clipUrl: string): string {
     if (!clipUrl || typeof clipUrl !== 'string') {
@@ -239,14 +240,24 @@ export class BlogGeneratorService {
       // Extract clip ID from pathname
       const pathSegments = url.pathname.split('/').filter(segment => segment.length > 0);
       
-      // Look for 'clip' segment followed by the clip ID
-      const clipIndex = pathSegments.findIndex(segment => segment === 'clip');
-      if (clipIndex === -1 || clipIndex >= pathSegments.length - 1) {
-        console.warn('No valid clip ID found in URL path');
-        return '';
-      }
+      let clipId: string;
       
-      const clipId = pathSegments[clipIndex + 1];
+      // Handle clips.twitch.tv/:slug format
+      if (url.hostname === 'clips.twitch.tv') {
+        if (pathSegments.length === 0) {
+          console.warn('No clip ID found in clips.twitch.tv URL path');
+          return '';
+        }
+        clipId = pathSegments[0];
+      } else {
+        // Handle twitch.tv/clip/:id format
+        const clipIndex = pathSegments.findIndex(segment => segment === 'clip');
+        if (clipIndex === -1 || clipIndex >= pathSegments.length - 1) {
+          console.warn('No valid clip ID found in URL path');
+          return '';
+        }
+        clipId = pathSegments[clipIndex + 1];
+      }
       
       // Validate the extracted clip ID using existing validation function
       const validation = validateClipId(clipId);

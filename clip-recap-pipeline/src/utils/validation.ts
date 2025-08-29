@@ -191,8 +191,19 @@ export const CLIP_FORBIDDEN_FIELDS = [
   'creator_name', 'url', 'embed_url', 'thumbnail_url'
 ];
 
+// Type for editable clip data that matches the validation schema
+export interface EditableClipData {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  category?: string;
+  language?: string;
+  is_public?: boolean;
+  custom_metadata?: Record<string, any>;
+}
+
 // Convenience function for clip data validation
-export function validateClipData(data: Partial<TwitchClip>): ValidationResult {
+export function validateClipData(data: EditableClipData): ValidationResult {
   return validateData(data, CLIP_DATA_SCHEMA, CLIP_FORBIDDEN_FIELDS);
 }
 

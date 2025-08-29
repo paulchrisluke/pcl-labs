@@ -1,9 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-2020-12/schema",
-  "$id": "https://pcl-labs/schema/content-item.schema.json",
-  "title": "ContentItem",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["schema_version","clip_id","clip_title","clip_url","clip_duration","clip_created_at","stored_at","processing_status"],
+  "required": ["schema_version", "clip_id", "clip_title", "clip_url", "clip_duration", "clip_created_at", "processing_status", "stored_at"],
   "properties": {
     "schema_version": { "type": "string", "const": "1.0.0" },
     "clip_id": { "type": "string" },
@@ -19,22 +17,16 @@
 
     "processing_status": { "type": "string", "enum": ["pending","audio_ready","transcribed","enhanced","ready_for_content"] },
     "audio_file_url": { "type": ["string", "null"], "format": "uri" },
-    "audio_timestamp": { "type": ["string", "null"], "format": "date-time" },
 
     "transcript_url": { "type": ["string", "null"], "format": "uri" },
     "transcript_summary": { "type": ["string", "null"] },
     "transcript_size_bytes": { "type": ["integer", "null"], "minimum": 0 },
-    "transcript_timestamp": { "type": ["string", "null"], "format": "date-time" },
-
-    "enhanced_audio_url": { "type": ["string", "null"], "format": "uri" },
-    "enhancement_flags": { "type": ["array", "null"], "items": { "type": "string" } },
-    "enhancement_timestamp": { "type": ["string", "null"], "format": "date-time" },
 
     "github_context_url": { "type": ["string", "null"], "format": "uri" },
     "github_summary": { "type": ["string", "null"] },
     "github_context_size_bytes": { "type": ["integer", "null"], "minimum": 0 },
 
-    "content_score": { "type": ["number", "null"] },
+    "content_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
     "content_tags": { "type": ["array", "null"], "items": { "type": "string" } },
     "content_category": { "type": ["string", "null"], "enum": ["development","gaming","tutorial","review","other"] },
 
@@ -51,10 +43,8 @@
         }
       },
       "then": {
-        "required": ["audio_file_url", "audio_timestamp"],
         "properties": {
-          "audio_file_url": { "type": "string", "format": "uri" },
-          "audio_timestamp": { "type": "string", "format": "date-time" }
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" }
         }
       }
     },
@@ -65,13 +55,10 @@
         }
       },
       "then": {
-        "required": ["audio_file_url", "audio_timestamp", "transcript_url", "transcript_summary", "transcript_timestamp"],
         "properties": {
-          "audio_file_url": { "type": "string", "format": "uri" },
-          "audio_timestamp": { "type": "string", "format": "date-time" },
-          "transcript_url": { "type": "string", "format": "uri" },
-          "transcript_summary": { "type": "string" },
-          "transcript_timestamp": { "type": "string", "format": "date-time" }
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_summary": { "type": ["string", "null"] }
         }
       }
     },
@@ -82,18 +69,12 @@
         }
       },
       "then": {
-        "required": ["audio_file_url", "audio_timestamp", "transcript_url", "transcript_summary", "transcript_timestamp", "enhanced_audio_url", "enhancement_flags", "enhancement_timestamp", "github_context_url", "github_summary"],
         "properties": {
-          "audio_file_url": { "type": "string", "format": "uri" },
-          "audio_timestamp": { "type": "string", "format": "date-time" },
-          "transcript_url": { "type": "string", "format": "uri" },
-          "transcript_summary": { "type": "string" },
-          "transcript_timestamp": { "type": "string", "format": "date-time" },
-          "enhanced_audio_url": { "type": "string", "format": "uri" },
-          "enhancement_flags": { "type": "array", "items": { "type": "string" } },
-          "enhancement_timestamp": { "type": "string", "format": "date-time" },
-          "github_context_url": { "type": "string", "format": "uri" },
-          "github_summary": { "type": "string" }
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_summary": { "type": ["string", "null"] },
+          "github_context_url": { "type": ["string", "null"], "format": "uri" },
+          "github_summary": { "type": ["string", "null"] }
         }
       }
     },
@@ -104,21 +85,15 @@
         }
       },
       "then": {
-        "required": ["audio_file_url", "audio_timestamp", "transcript_url", "transcript_summary", "transcript_timestamp", "enhanced_audio_url", "enhancement_flags", "enhancement_timestamp", "github_context_url", "github_summary", "content_score", "content_tags", "content_ready_at"],
         "properties": {
-          "audio_file_url": { "type": "string", "format": "uri" },
-          "audio_timestamp": { "type": "string", "format": "date-time" },
-          "transcript_url": { "type": "string", "format": "uri" },
-          "transcript_summary": { "type": "string" },
-          "transcript_timestamp": { "type": "string", "format": "date-time" },
-          "enhanced_audio_url": { "type": "string", "format": "uri" },
-          "enhancement_flags": { "type": "array", "items": { "type": "string" } },
-          "enhancement_timestamp": { "type": "string", "format": "date-time" },
-          "github_context_url": { "type": "string", "format": "uri" },
-          "github_summary": { "type": "string" },
-          "content_score": { "type": "number" },
-          "content_tags": { "type": "array", "items": { "type": "string" } },
-          "content_ready_at": { "type": "string", "format": "date-time" }
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_summary": { "type": ["string", "null"] },
+          "github_context_url": { "type": ["string", "null"], "format": "uri" },
+          "github_summary": { "type": ["string", "null"] },
+          "content_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "content_tags": { "type": ["array", "null"], "items": { "type": "string" } },
+          "content_ready_at": { "type": ["string", "null"], "format": "date-time" }
         }
       }
     }

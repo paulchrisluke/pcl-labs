@@ -408,7 +408,7 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
         if (fieldConfig.items) {
           for (let i = 0; i < value.length; i++) {
             const itemValidation = validateArrayItem(value[i], fieldConfig.items, `${field}[${i}]`);
-            if (!itemValidation.isValid) {
+            if (!itemValidation.isValid && itemValidation.errors) {
               errors.push(...itemValidation.errors);
               continue;
             }
@@ -426,7 +426,7 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
         // Validate object properties if schema is provided
         if (fieldConfig.properties) {
           const objectValidation = validateObject(value, fieldConfig, field);
-          if (!objectValidation.isValid) {
+          if (!objectValidation.isValid && objectValidation.errors) {
             errors.push(...objectValidation.errors);
             continue;
           }

@@ -592,7 +592,11 @@ async function handleMigrationStatus(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Public endpoint - no authentication required
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
 
   try {
     const migrationService = getMigrationService(env);
@@ -624,7 +628,11 @@ async function handleMigrationFailures(
   request: Request,
   env: Environment
 ): Promise<Response> {
-  // Public endpoint - no authentication required
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
 
   try {
     const migrationService = getMigrationService(env);
@@ -714,7 +722,8 @@ async function handleGetRunStatus(
       });
     }
 
-    const runStatus: RunStatus = await object.json();
+    const text = await object.text();
+    const runStatus: RunStatus = JSON.parse(text);
 
     return new Response(JSON.stringify({
       success: true,

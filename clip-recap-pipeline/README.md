@@ -848,8 +848,7 @@ Get current migration status including failure count.
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
 body=""
-content_sha256=$(echo -n "$body" | sha256sum | cut -d' ' -f1)
-message="GET\n/api/content/migration-status\n$timestamp\n$nonce\n$content_sha256"
+message="$body$timestamp$nonce"
 signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
 
 # Make request
@@ -883,8 +882,7 @@ Get detailed failure information for the current migration session.
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
 body=""
-content_sha256=$(echo -n "$body" | sha256sum | cut -d' ' -f1)
-message="GET\n/api/content/migration-failures\n$timestamp\n$nonce\n$content_sha256"
+message="$body$timestamp$nonce"
 signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
 
 # Make request
@@ -924,8 +922,7 @@ Start a new migration session and clear previous failure tracking.
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
 body=""
-content_sha256=$(echo -n "$body" | sha256sum | cut -d' ' -f1)
-message="POST\n/api/content/migration-session/start\n$timestamp\n$nonce\n$content_sha256"
+message="$body$timestamp$nonce"
 signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
 
 # Make request
