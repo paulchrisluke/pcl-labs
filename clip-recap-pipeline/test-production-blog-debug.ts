@@ -8,6 +8,10 @@
 // Load environment variables from .dev.vars if it exists
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { webcrypto as nodeWebcrypto, randomBytes } from 'node:crypto';
+
+// Set up crypto.subtle with fallback to Node's webcrypto
+const subtle = globalThis.crypto?.subtle ?? nodeWebcrypto.subtle;
 
 try {
   const devVarsPath = join(process.cwd(), '.dev.vars');
@@ -39,7 +43,7 @@ async function generateHmacSignature(body: string, timestamp: string, nonce: str
   const keyData = encoder.encode(secret);
   const messageData = encoder.encode(payload);
   
-  const cryptoKey = await crypto.subtle.importKey(
+  const cryptoKey = await subtle.importKey(
     'raw',
     keyData,
     { name: 'HMAC', hash: 'SHA-256' },
@@ -47,7 +51,7 @@ async function generateHmacSignature(body: string, timestamp: string, nonce: str
     ['sign']
   );
   
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  const signature = await subtle.sign('HMAC', cryptoKey, messageData);
   return Array.from(new Uint8Array(signature))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
@@ -57,6 +61,11 @@ async function testProductionBlogDebug() {
   try {
     console.log('🚀 Testing Production Blog Debug...');
     
+    // Validate HMAC_SHARED_SECRET before proceeding
+    if (!HMAC_SHARED_SECRET || HMAC_SHARED_SECRET.trim() === '') {
+      throw new Error('HMAC_SHARED_SECRET is not set or is empty. Please set the HMAC_SHARED_SECRET environment variable.');
+    }
+    
     const requestData = {
       daysBack: 30,
       store: false
@@ -64,7 +73,10 @@ async function testProductionBlogDebug() {
     
     const body = JSON.stringify(requestData);
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const nonce = Math.random().toString(36).substring(2, 18) + 'extra123';
+    
+    // Generate cryptographically secure nonce using Node's crypto.randomBytes
+    const nonceBytes = randomBytes(16);
+    const nonce = nonceBytes.toString('hex');
     
     const signature = await generateHmacSignature(body, timestamp, nonce, HMAC_SHARED_SECRET);
     

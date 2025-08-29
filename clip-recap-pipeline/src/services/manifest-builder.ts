@@ -126,7 +126,7 @@ export class ManifestBuilderService {
       console.log(`🏗️ Building recent content manifest for last ${daysBack} days...`);
 
       // Get recent unpublished content items
-      const contentItems = await this.contentItemService.getRecentUnpublishedContent(daysBack);
+      const contentItems = await this.contentItemService.getRecentUnpublishedContent(daysBack, 100);
       console.log(`📊 Found ${contentItems.length} unpublished content items from last ${daysBack} days`);
 
       if (contentItems.length === 0) {
@@ -743,6 +743,7 @@ export class ManifestBuilderService {
     const manifest: Manifest = {
       schema_version: '1.0.0',
       post_id: date,
+      post_kind: 'daily-recap',
       date_utc: dateUtc,
       tz: timezone,
       title,

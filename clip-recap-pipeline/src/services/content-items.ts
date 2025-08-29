@@ -439,20 +439,42 @@ export class ContentItemService {
    * Finds content that hasn't been published in a blog yet, prioritizing recent content
    */
   async getRecentUnpublishedContent(daysBack: number = 7, limit: number = 50): Promise<ContentItem[]> {
-    // Get all content items and filter by unpublished status
+    // Calculate cutoff date based on daysBack
+    const now = new Date();
+    const cutoffDate = new Date(now.getTime() - (daysBack * 24 * 60 * 60 * 1000));
+    
+    console.log(`📅 Fetching unpublished content with stored_at >= ${cutoffDate.toISOString()} (${daysBack} days back)`);
+    
+    // Get content items with a higher limit to account for filtering
     const response = await this.listContentItems({
-      limit: 100, // Get more items to filter from
+      limit: Math.max(limit * 2, 100), // Get more items to filter from, minimum 100
     });
     
-    // Filter out items that have already been published
-    const unpublishedItems = response.items.filter(item => !item.published_in_blog);
+    // Filter items by stored_at cutoff and published status
+    const filteredItems = response.items.filter(item => {
+      // Must be within the daysBack window
+      const storedAt = new Date(item.stored_at);
+      if (storedAt < cutoffDate) {
+        return false;
+      }
+      
+      // Must not be published in blog
+      if (item.published_in_blog) {
+        return false;
+      }
+      
+      return true;
+    });
     
     // Sort by stored_at date (most recent first) and take the limit
-    const sortedItems = unpublishedItems.sort((a, b) => 
+    const sortedItems = filteredItems.sort((a, b) => 
       new Date(b.stored_at).getTime() - new Date(a.stored_at).getTime()
     );
     
-    return sortedItems.slice(0, limit);
+    const result = sortedItems.slice(0, limit);
+    console.log(`✅ Found ${result.length} unpublished content items from ${filteredItems.length} total items within ${daysBack} days`);
+    
+    return result;
   }
 
   /**

@@ -1,5 +1,5 @@
 import type { Environment } from '../types/index.js';
-import type { Manifest, AIDraft, AIGenerationMetadata } from '../types/content.js';
+import type { Manifest, AIDraft, AIGenerationMetadata, ManifestSection } from '../types/content.js';
 
 // Async hash function using Web Crypto API with fallback
 async function hashId(str: string): Promise<string> {
@@ -144,25 +144,23 @@ export class AIDrafterService {
    */
   private buildPrompt(manifest: Manifest): string {
     const sections = manifest.sections.map((section, index) => {
-      // Extract GitHub context from the paragraph if it exists
-      const githubContext = section.paragraph.includes('GitHub Activity:') 
-        ? section.paragraph.split('GitHub Activity:')[1]?.trim() || ''
-        : '';
+      // Build GitHub context from safe fields
+      const githubContext = this.buildGitHubContext(section);
       
       const sectionPrompt = `
 Section ${index + 1}: ${section.title}
 - Bullets: ${section.bullets.join('; ')}
 - Repo: ${section.repo || 'N/A'}
 - PR Links: ${section.pr_links?.join(', ') || 'N/A'}
-- GitHub Context: ${githubContext || 'N/A'}
+- GitHub Context: ${githubContext}
 - Entities: ${section.entities?.join(', ') || 'N/A'}
 `;
       return sectionPrompt;
     }).join('\n');
 
-    // Count GitHub-related content
+    // Count GitHub-related content by checking for GitHub-related fields
     const githubSections = manifest.sections.filter(section => 
-      section.paragraph.includes('GitHub Activity:')
+      section.repo || (section.pr_links && section.pr_links.length > 0) || (section.entities && section.entities.length > 0)
     ).length;
 
     const githubContext = githubSections > 0 
@@ -283,18 +281,39 @@ Generate the content in this exact JSON format:
   }
 
   /**
+   * Build GitHub context from safe fields
+   */
+  private buildGitHubContext(section: ManifestSection): string {
+    const parts: string[] = [];
+    
+    if (section.repo) {
+      parts.push(`Repository: ${section.repo}`);
+    }
+    
+    if (section.pr_links && section.pr_links.length > 0) {
+      parts.push(`PR Links: ${section.pr_links.join(', ')}`);
+    }
+    
+    if (section.entities && section.entities.length > 0) {
+      parts.push(`Entities: ${section.entities.join(', ')}`);
+    }
+    
+    return parts.length > 0 ? parts.join(' | ') : 'N/A';
+  }
+
+  /**
    * Sanitize text content
    */
   private sanitizeText(text: string): string {
     return text
       // Normalize Unicode quotes and dashes to ASCII equivalents
-      .replace(/[""]/g, '"')
-      .replace(/['']/g, "'")
-      .replace(/[—–]/g, '-')
+      .replace(/["""]/gu, '"')
+      .replace(/[''']/gu, "'")
+      .replace(/[—–]/gu, '-')
       .trim()
       .replace(/\s+/g, ' ') // Normalize whitespace
-      // Allow parentheses, colons, slashes, apostrophes, backticks, and basic brackets
-      .replace(/[^\w\s.,!?\-():/\\'`[\]]/g, '') // Remove only truly unsafe chars
+      // Allow Unicode letters, numbers, and technical punctuation
+      .replace(/[^\p{L}\p{N}\s.,!?\-():/\\'`[\]]/gu, '') // Remove only truly unsafe chars
       .substring(0, 500); // Limit length
   }
 

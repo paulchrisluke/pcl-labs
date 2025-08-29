@@ -1,5 +1,5 @@
 import type { Environment, ContentCategory } from '../types/index.js';
-import type { ContentGenerationRequest, ContentGenerationResponse, RunStatus } from '../types/content.js';
+import type { ContentGenerationRequest, ContentGenerationResponse, RunStatus, Manifest } from '../types/content.js';
 
 // Processing status type definition
 type ProcessingStatus = 'pending' | 'audio_ready' | 'transcribed' | 'enhanced' | 'ready_for_content';
@@ -76,6 +76,7 @@ import { AIJudgeService } from '../services/ai-judge.js';
 import { JobManagerService } from '../services/job-manager.js';
 import { requireHmacAuth } from '../utils/auth.js';
 import { errorTracker } from '../utils/error-tracking.js';
+import { validateDaysBack, validateTimezone } from '../utils/validation.js';
 
 
 
@@ -929,10 +930,38 @@ async function handleBuildRecentManifest(
       requestData = {};
     }
 
+    // Validate and sanitize input parameters
+    const daysBackValidation = validateDaysBack(requestData.days_back || 7);
+    if (!daysBackValidation.isValid) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: daysBackValidation.error
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const timezoneValidation = validateTimezone(requestData.timezone || 'UTC');
+    if (!timezoneValidation.isValid) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: timezoneValidation.error
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Log validation warnings if parameters were clamped
+    if (daysBackValidation.error) {
+      console.log(`⚠️ ${daysBackValidation.error}`);
+    }
+
     // Build manifest from recent content
     const result = await manifestBuilder.buildRecentContentManifest(
-      requestData.days_back || 7,
-      requestData.timezone || 'UTC'
+      daysBackValidation.sanitizedData,
+      timezoneValidation.sanitizedData
     );
 
     // Generate AI draft if requested
@@ -1321,7 +1350,23 @@ async function handleGenerateProductionBlog(
       
       try {
         // Enhance clip with GitHub context
-        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(item);
+        // Create a TwitchClip-like object from ContentItem for GitHub context enhancement
+        const clipForGitHub = {
+          id: item.clip_id,
+          created_at: item.clip_created_at,
+          // Add other required TwitchClip properties as needed
+        } as any;
+        
+        // Precompute real PR links by calling findEventsForClip
+        let realPrLinks: string[] = [];
+        try {
+          const { prs } = await githubEventService.findEventsForClip(clipForGitHub);
+          realPrLinks = prs.map(pr => pr.url);
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch real PR links for ${item.clip_id}:`, error);
+        }
+        
+        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(clipForGitHub);
         
         if (enhancedClip) {
           console.log(`✅ Enhanced clip with GitHub context`);
@@ -1329,11 +1374,15 @@ async function handleGenerateProductionBlog(
             ...item,
             github_context_url: enhancedClip.url,
             github_summary: enhancedClip.summary,
-            github_context_size_bytes: enhancedClip.sizeBytes
+            github_context_size_bytes: enhancedClip.sizeBytes,
+            real_pr_links: realPrLinks // Store precomputed real PR links
           });
         } else {
           console.log(`⚠️ No GitHub context found for clip`);
-          enhancedItems.push(item);
+          enhancedItems.push({
+            ...item,
+            real_pr_links: realPrLinks // Store precomputed real PR links even if no context
+          });
         }
       } catch (error) {
         console.warn(`⚠️ Failed to enhance clip with GitHub context:`, error);
@@ -1343,9 +1392,10 @@ async function handleGenerateProductionBlog(
 
     // Step 4: Create manifest with GitHub context
     const currentDate = new Date().toISOString().split('T')[0];
-    const manifest = {
-      schema_version: '1.0.0',
-      post_id: `production-recap-${currentDate}`,
+    const manifest: Manifest = {
+      schema_version: '1.0.0' as const,
+      post_id: currentDate,
+      post_kind: 'production-recap',
       date_utc: new Date().toISOString(),
       tz: 'UTC',
       title: `AI-Enhanced Development Recap - ${currentDate}`,
@@ -1359,64 +1409,67 @@ async function handleGenerateProductionBlog(
         let repo = 'paulchrisluke/pcl-labs'; // Default repo
         let prLinks: string[] = [];
         
+        // Use precomputed real PR links if available
+        if (item.real_pr_links && item.real_pr_links.length > 0) {
+          prLinks = item.real_pr_links.slice(0, 3); // Limit to 3 PR links
+        }
+        
         if (item.github_summary) {
           githubContext = `\nGitHub Activity: ${item.github_summary}`;
           
-          // Try to extract repo and PR links from GitHub context
-          if (item.github_context_url) {
-            try {
-              // Extract PR links from the summary
-              const prMatch = item.github_summary.match(/(\d+)\s+PRs?/);
-              if (prMatch) {
-                const prCount = parseInt(prMatch[1]);
-                
-                // Try to extract actual PR numbers from the summary
-                const prNumberMatches = item.github_summary.match(/PR #(\d+):/g);
-                if (prNumberMatches && prNumberMatches.length > 0) {
-                  // Use actual PR numbers from the summary
-                  for (const prMatch of prNumberMatches.slice(0, 3)) {
-                    const prNumber = prMatch.match(/PR #(\d+):/)?.[1];
-                    if (prNumber) {
-                      prLinks.push(`https://github.com/paulchrisluke/pcl-labs/pull/${prNumber}`);
-                    }
-                  }
-                } else {
-                  // Fallback to generic PR links based on the count
-                  for (let i = 1; i <= Math.min(prCount, 3); i++) {
-                    prLinks.push(`https://github.com/paulchrisluke/pcl-labs/pull/${i}`);
-                  }
-                }
-              }
-              
-              // Extract commit count from the summary
-              const commitMatch = item.github_summary.match(/(\d+)\s+commits?/);
-              if (commitMatch) {
-                const commitCount = parseInt(commitMatch[1]);
-                githubContext += `\nRecent commits: ${commitCount} commits found in the time window.`;
-              }
-              
-              // Extract issue count from the summary
-              const issueMatch = item.github_summary.match(/(\d+)\s+issues?/);
-              if (issueMatch) {
-                const issueCount = parseInt(issueMatch[1]);
-                githubContext += `\nRecent issues: ${issueCount} issues found in the time window.`;
-              }
-              
-            } catch (error) {
-              console.warn(`Failed to parse GitHub context for ${item.clip_id}:`, error);
-            }
+          // Extract commit count from the summary
+          const commitMatch = item.github_summary.match(/(\d+)\s+commits?/);
+          if (commitMatch) {
+            const commitCount = parseInt(commitMatch[1]);
+            githubContext += `\nRecent commits: ${commitCount} commits found in the time window.`;
+          }
+          
+          // Extract issue count from the summary
+          const issueMatch = item.github_summary.match(/(\d+)\s+issues?/);
+          if (issueMatch) {
+            const issueCount = parseInt(issueMatch[1]);
+            githubContext += `\nRecent issues: ${issueCount} issues found in the time window.`;
           }
         }
         
         // Add GitHub context to the paragraph if available
-        const fullParagraph = item.transcript_summary.substring(0, 300) + '...' + githubContext;
+        const transcriptText = item.transcript_summary || 'No transcript available';
+        const fullParagraph = transcriptText.substring(0, 300) + '...' + githubContext;
+        
+        // Clean up title with fallback to ensure it's never empty
+        let cleanedTitle = item.clip_title
+          .replace(/^(yo|hey|so|okay|right|now|let's|let me|i'm|i am)\s+/i, '')
+          .replace(/\s+(lol|haha|omg|wow|nice|cool|awesome|amazing)\s*/gi, ' ')
+          .trim();
+        
+        // Fallback logic: if cleaned title is empty, use alternatives
+        if (!cleanedTitle || cleanedTitle.length === 0) {
+          // Try using a shortened transcript snippet
+          const transcriptText = item.transcript_summary || '';
+          if (transcriptText.length > 0) {
+            cleanedTitle = transcriptText.substring(0, 60).trim();
+            if (cleanedTitle.length > 0) {
+              cleanedTitle = cleanedTitle.replace(/\s+$/, ''); // Remove trailing whitespace
+            }
+          }
+          
+          // If still empty, use the original clip title
+          if (!cleanedTitle || cleanedTitle.length === 0) {
+            cleanedTitle = item.clip_title.trim();
+          }
+          
+          // Final fallback: use clip ID
+          if (!cleanedTitle || cleanedTitle.length === 0) {
+            cleanedTitle = `Untitled - ${item.clip_id}`;
+          }
+        }
         
         return {
           section_id: `section-${index + 1}`,
           clip_id: item.clip_id,
-          title: item.clip_title.replace(/^(yo|hey|so|okay|right|now|let's|let me|i'm|i am)\s+/i, '').replace(/\s+(lol|haha|omg|wow|nice|cool|awesome|amazing)\s*/gi, ' ').trim(),
+          title: cleanedTitle,
           bullets: [
-            item.transcript_summary.substring(0, 140),
+            (item.transcript_summary || 'No transcript available').substring(0, 140),
             'AI-enhanced development content',
             'Professional recap format'
           ],
@@ -1435,7 +1488,15 @@ async function handleGenerateProductionBlog(
       canonical_vod: 'https://twitch.tv/paulchrisluke',
       md_path: `content/blog/development/${currentDate}-production-recap.md`,
       target_branch: 'staging',
-      status: 'draft' as const
+      status: 'draft' as const,
+      repos: ['paulchrisluke/pcl-labs'],
+      keywords: undefined,
+      headline_short: undefined,
+      description: undefined,
+      judge: undefined,
+      social_blurbs: undefined,
+      draft: undefined,
+      gen: undefined
     };
 
     console.log('📝 Created enhanced manifest with GitHub context');
@@ -1469,13 +1530,15 @@ async function handleGenerateProductionBlog(
     try {
       const judgeResult = await aiJudgeService.judgeManifest(manifest);
       // Handle the nested response structure
-      manifest.judge = judgeResult.evaluation || judgeResult;
+      manifest.judge = judgeResult;
       contentJudged = true;
       console.log(`✅ Content judged: ${manifest.judge.overall}/100`);
-      console.log(`⚖️ Coherence: ${manifest.judge.per_axis.coherence}/100`);
-      console.log(`⚖️ Correctness: ${manifest.judge.per_axis.correctness}/100`);
-      console.log(`⚖️ Dev Signal: ${manifest.judge.per_axis.dev_signal}/100`);
-      console.log(`⚖️ Narrative Flow: ${manifest.judge.per_axis.narrative_flow}/100`);
+      if (manifest.judge.per_axis) {
+        console.log(`⚖️ Coherence: ${manifest.judge.per_axis.coherence}/100`);
+        console.log(`⚖️ Correctness: ${manifest.judge.per_axis.correctness}/100`);
+        console.log(`⚖️ Dev Signal: ${manifest.judge.per_axis.dev_signal}/100`);
+        console.log(`⚖️ Narrative Flow: ${manifest.judge.per_axis.narrative_flow}/100`);
+      }
     } catch (error) {
       console.error('❌ Content judging failed:', error);
       return new Response(JSON.stringify({
@@ -1500,7 +1563,7 @@ async function handleGenerateProductionBlog(
       // Mark content items as published
       console.log('🏷️ Marking content items as published...');
       for (const item of enhancedItems) {
-        await contentItemService.updateContentItem(item.clip_id, {
+        await contentItemService.updateContentItem(item.clip_id, item.clip_created_at, {
           published_in_blog: manifest.post_id
         });
       }

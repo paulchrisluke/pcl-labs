@@ -12,16 +12,40 @@ try {
   const devVarsPath = join(process.cwd(), '.dev.vars');
   const devVarsContent = readFileSync(devVarsPath, 'utf8');
   
-  devVarsContent.split('\n').forEach(line => {
-    if (line.includes('=')) {
-      const firstEqualsIndex = line.indexOf('=');
-      const key = line.substring(0, firstEqualsIndex);
-      const value = line.substring(firstEqualsIndex + 1);
-      if (key && value && !process.env[key]) {
-        process.env[key] = value;
-      }
+  // Split on CRLF or LF, handle each line robustly
+  const lines = devVarsContent.split(/\r?\n/);
+  
+  for (const line of lines) {
+    // Trim whitespace and skip empty lines
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith('#')) {
+      continue;
     }
-  });
+    
+    // Find the first '=' to separate key and value
+    const equalsIndex = trimmedLine.indexOf('=');
+    if (equalsIndex === -1) {
+      continue; // Skip lines without '='
+    }
+    
+    // Extract and trim key and value
+    const key = trimmedLine.substring(0, equalsIndex).trim();
+    let value = trimmedLine.substring(equalsIndex + 1).trim();
+    
+    // Skip if key is empty or already set in process.env
+    if (!key || process.env[key] !== undefined) {
+      continue;
+    }
+    
+    // Remove surrounding quotes from value (single or double quotes)
+    if ((value.startsWith('"') && value.endsWith('"')) || 
+        (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    
+    // Set the environment variable
+    process.env[key] = value;
+  }
   
   console.log('✅ Loaded environment variables from .dev.vars');
 } catch (error) {

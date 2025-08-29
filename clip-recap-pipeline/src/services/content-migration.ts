@@ -1,6 +1,6 @@
 import type { Environment, GitHubContext, LinkedPullRequest, LinkedCommit, LinkedIssue, MatchReason, GitHubEvent } from '../types/index.js';
 import type { ContentItem, Transcript, TranscriptSegment } from '../types/content.js';
-import { uploadTranscriptToR2, uploadGitHubContextToR2 } from '../utils/content-storage.js';
+
 
 // Type for raw clip data from R2 storage
 interface ClipData {
@@ -256,7 +256,7 @@ export class ContentMigrationService {
         // Process objects in this page
         for (const obj of objects.objects) {
           // Look for both old format (clips/[clipId].json) and new format (clips/[clipId]/meta.json)
-          if (obj.key.endsWith('.json') && (obj.key.endsWith('/meta.json') || obj.key.match(/^clips\/[^\/]+\.json$/))) {
+          if (obj.key.endsWith('.json') && (obj.key.endsWith('/meta.json') || obj.key.match(/^clips\/[^/]+\.json$/))) {
             try {
               const object = await this.env.R2_BUCKET.get(obj.key);
               if (object) {
@@ -352,7 +352,7 @@ export class ContentMigrationService {
         
         // Count both old format (clips/[clipId].json) and new format (clips/[clipId]/meta.json)
         const clipJsonCount = objects.objects.filter((obj: { key: string }) => 
-          obj.key.endsWith('.json') && (obj.key.endsWith('/meta.json') || obj.key.match(/^clips\/[^\/]+\.json$/))
+          obj.key.endsWith('.json') && (obj.key.endsWith('/meta.json') || obj.key.match(/^clips\/[^/]+\.json$/))
         ).length;
         totalCount += clipJsonCount;
         

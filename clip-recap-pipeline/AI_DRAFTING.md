@@ -93,7 +93,9 @@ npx tsx test-ai-drafting.ts
 ## Configuration
 
 ### AI Model Settings
-- **Model**: `@cf/google/gemma-3-12b-it`
+- **AI Drafter Model**: `@hf/google/gemma-7b-it` (for blog post content generation)
+- **Content Service Model**: `@cf/google/gemma-2b-it` (for clip analysis and content processing)
+- **Transcription Model**: `@cf/openai/whisper-large-v3-turbo` (for audio transcription)
 - **Temperature**: `0.3` (deterministic)
 - **Top P**: `0.9` (focused sampling)
 - **Seed**: `42` (fixed for reproducibility)

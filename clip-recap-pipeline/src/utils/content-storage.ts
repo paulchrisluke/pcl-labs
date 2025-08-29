@@ -7,8 +7,8 @@ import type { Transcript } from '../types/content.js';
 function buildR2Url(env: Environment, key: string): string {
   const baseUrl = env.R2_PUBLIC_BASE_URL?.trim();
   if (!baseUrl) {
-    // If no public URL is configured, return a relative path that can be accessed via the worker
-    return `/github-context/${key}`;
+    // If no public URL is configured, return the key as-is to preserve original prefixes
+    return `/${key}`;
   }
   
   // Remove trailing slashes from base URL

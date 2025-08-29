@@ -44,6 +44,7 @@ export interface ContentItem {
   github_context_url?: string | null; // R2 URL to full GitHub context
   github_summary?: string | null; // Small summary retained in item
   github_context_size_bytes?: number | null; // Size of GitHub context object in R2
+  real_pr_links?: string[] | null; // Precomputed real PR links from GitHub events
 
   content_score?: Score01 | null;
   content_tags?: string[] | null;
@@ -113,6 +114,7 @@ export interface SocialBlurbs {
 export interface Manifest {
   schema_version: '1.0.0';
   post_id: string; // YYYY-MM-DD format
+  post_kind?: 'daily-recap' | 'production-recap' | 'weekly-summary' | 'topic-focus'; // Type of post
   date_utc: ISODateTimeString;
   tz: string;
   title: string;

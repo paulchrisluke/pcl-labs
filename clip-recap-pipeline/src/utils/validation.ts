@@ -237,3 +237,59 @@ export const CLIP_OBJECT_FORBIDDEN_FIELDS = [
 export function validateClipObject(clip: TwitchClip | EnhancedTwitchClip): ValidationResult {
   return validateData(clip, CLIP_OBJECT_SCHEMA, CLIP_OBJECT_FORBIDDEN_FIELDS);
 }
+
+// Validation function for days_back parameter
+export function validateDaysBack(daysBack: any): ValidationResult {
+  // Check if it's a number
+  if (typeof daysBack !== 'number' || isNaN(daysBack)) {
+    return { isValid: false, error: 'days_back must be a valid number' };
+  }
+
+  // Check if it's an integer
+  if (!Number.isInteger(daysBack)) {
+    return { isValid: false, error: 'days_back must be an integer' };
+  }
+
+  // Clamp to reasonable range (1 to 365 days)
+  const clamped = Math.max(1, Math.min(365, daysBack));
+  
+  if (clamped !== daysBack) {
+    return { 
+      isValid: true, 
+      sanitizedData: clamped,
+      error: `days_back clamped from ${daysBack} to ${clamped} (valid range: 1-365)`
+    };
+  }
+
+  return { isValid: true, sanitizedData: daysBack };
+}
+
+// Validation function for timezone parameter
+export function validateTimezone(timezone: any): ValidationResult {
+  // Check if it's a string
+  if (typeof timezone !== 'string') {
+    return { isValid: false, error: 'timezone must be a string' };
+  }
+
+  // Check length
+  if (timezone.length > 50) {
+    return { isValid: false, error: 'timezone is too long (max 50 characters)' };
+  }
+
+  // Sanitize the timezone string
+  const sanitized = sanitizeString(timezone);
+  
+  // Check if it's empty after sanitization
+  if (!sanitized) {
+    return { isValid: false, error: 'timezone cannot be empty' };
+  }
+
+  // Validate timezone format (basic check for common timezone patterns)
+  // This is a simplified check - Luxon will handle the actual validation
+  const timezonePattern = /^[A-Za-z_][A-Za-z0-9_\/+-]+$/;
+  if (!timezonePattern.test(sanitized)) {
+    return { isValid: false, error: 'timezone contains invalid characters' };
+  }
+
+  return { isValid: true, sanitizedData: sanitized };
+}

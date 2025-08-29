@@ -503,7 +503,36 @@ export class BlogGeneratorService {
    * Generate canonical URL
    */
   private generateCanonicalUrl(manifest: Manifest): string {
-    return `https://paulchrisluke.com/blog/development/${manifest.post_id}-daily-recap`;
+    // Derive the URL suffix from post_kind or fall back to md_path
+    let urlSuffix = 'daily-recap'; // Default fallback
+    
+    if (manifest.post_kind) {
+      // Map post_kind to URL suffix
+      switch (manifest.post_kind) {
+        case 'daily-recap':
+          urlSuffix = 'daily-recap';
+          break;
+        case 'production-recap':
+          urlSuffix = 'production-recap';
+          break;
+        case 'weekly-summary':
+          urlSuffix = 'weekly-summary';
+          break;
+        case 'topic-focus':
+          urlSuffix = 'topic-focus';
+          break;
+        default:
+          urlSuffix = 'daily-recap';
+      }
+    } else {
+      // Fallback: try to extract from md_path
+      const pathMatch = manifest.md_path.match(/-([^-]+)\.md$/);
+      if (pathMatch) {
+        urlSuffix = pathMatch[1];
+      }
+    }
+    
+    return `https://paulchrisluke.com/blog/development/${manifest.post_id}-${urlSuffix}`;
   }
 
   /**

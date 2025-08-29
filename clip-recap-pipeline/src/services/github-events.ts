@@ -12,7 +12,7 @@ import type {
   TwitchClip,
   MatchReason
 } from '../types/index.js';
-import { uploadGitHubContextToR2 } from '../utils/content-storage.js';
+
 
 export interface GitHubContextMetadata {
   url: string;
@@ -408,7 +408,14 @@ export class GitHubEventService {
     commits: LinkedCommit[];
     issues: LinkedIssue[];
   }> {
-    const clipTime = new Date(clip.created_at || clip.clip_created_at);
+    // Validate clip timestamp to avoid Date(NaN) issues
+    const clipTime = new Date(clip.created_at);
+    if (isNaN(clipTime.getTime())) {
+      console.warn(`⚠️ Invalid clip timestamp for clip ${clip.id}: ${clip.created_at}`);
+      // Return empty results instead of processing with invalid date
+      return { prs: [], commits: [], issues: [] };
+    }
+    
     const startTime = new Date(clipTime.getTime() - (this.config.timeWindowHours * 60 * 60 * 1000));
     const endTime = new Date(clipTime.getTime() + (this.config.timeWindowHours * 60 * 60 * 1000));
     
@@ -529,18 +536,19 @@ export class GitHubEventService {
     };
     
     // Store the context in R2 with proper URL format
-    const contextKey = `github-context/${clip.clip_id || clip.id}.json`;
-    await this.getBucket().put(contextKey, JSON.stringify(githubContext, null, 2), {
+    const contextKey = `github-context/${clip.id}.json`;
+    const payload = JSON.stringify(githubContext, null, 2);
+    await this.getBucket().put(contextKey, payload, {
       httpMetadata: {
         contentType: 'application/json',
       },
     });
     
-    // Return metadata with proper URL
+    // Return metadata with proper URL and exact byte size
     return {
-      url: `/github-context/${clip.clip_id || clip.id}.json`,
+      url: `/github-context/${clip.id}.json`,
       summary,
-      sizeBytes: JSON.stringify(githubContext).length
+      sizeBytes: new TextEncoder().encode(payload).length
     };
   }
 

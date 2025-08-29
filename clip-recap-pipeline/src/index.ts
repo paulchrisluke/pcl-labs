@@ -9,6 +9,100 @@ import { generateStatusPage } from './status-page.js';
 import { calculateUptime } from './utils/uptime.js';
 
 /**
+ * Validate asset path with comprehensive security checks
+ */
+function validateAssetPath(filePath: string): { isValid: boolean; reason?: string } {
+  try {
+    // Decode URL-encoded path safely
+    let decodedPath: string;
+    try {
+      decodedPath = decodeURIComponent(filePath);
+    } catch {
+      return { isValid: false, reason: 'Invalid URL encoding' };
+    }
+    
+    // Normalize path: replace backslashes with forward slashes
+    const normalizedPath = decodedPath.replace(/\\/g, '/');
+    
+    // Split into segments and validate each
+    const segments = normalizedPath.split('/').filter(segment => segment.length > 0);
+    
+    // Check for directory traversal attempts
+    for (const segment of segments) {
+      if (segment === '..' || segment === '.') {
+        return { isValid: false, reason: 'Directory traversal attempt detected' };
+      }
+      
+      // Check for backslashes or other dangerous characters
+      if (segment.includes('\\') || segment.includes('\0')) {
+        return { isValid: false, reason: 'Invalid characters in path segment' };
+      }
+    }
+    
+    // Validate based on path type
+    if (normalizedPath.startsWith('github-context/')) {
+      // Strict validation for github-context files
+      if (segments.length !== 2) {
+        return { isValid: false, reason: 'Invalid github-context path structure' };
+      }
+      
+      const filename = segments[1];
+      // Validate filename: must be alphanumeric + underscore + dash, ending in .json
+      if (!/^[a-zA-Z0-9_-]+\.json$/.test(filename)) {
+        return { isValid: false, reason: 'Invalid github-context filename format' };
+      }
+      
+      // Additional check: filename should look like a clip ID (reasonable length)
+      const clipId = filename.replace('.json', '');
+      if (clipId.length < 8 || clipId.length > 50) {
+        return { isValid: false, reason: 'Invalid clip ID length' };
+      }
+      
+    } else if (normalizedPath.startsWith('clips/')) {
+      // Validation for clip files
+      if (segments.length !== 2) {
+        return { isValid: false, reason: 'Invalid clips path structure' };
+      }
+      
+      const filename = segments[1];
+      if (!/^[a-zA-Z0-9_-]+\.(mp4|json)$/.test(filename)) {
+        return { isValid: false, reason: 'Invalid clips filename format' };
+      }
+      
+    } else if (normalizedPath.startsWith('audio/')) {
+      // Validation for audio files
+      if (segments.length !== 2) {
+        return { isValid: false, reason: 'Invalid audio path structure' };
+      }
+      
+      const filename = segments[1];
+      if (!/^[a-zA-Z0-9_-]+\.(wav|raw)$/.test(filename)) {
+        return { isValid: false, reason: 'Invalid audio filename format' };
+      }
+      
+    } else if (normalizedPath.startsWith('transcripts/')) {
+      // Validation for transcript files
+      if (segments.length !== 2) {
+        return { isValid: false, reason: 'Invalid transcripts path structure' };
+      }
+      
+      const filename = segments[1];
+      if (!/^[a-zA-Z0-9_-]+\.(json|txt|vtt)$/.test(filename)) {
+        return { isValid: false, reason: 'Invalid transcripts filename format' };
+      }
+      
+    } else {
+      return { isValid: false, reason: 'Invalid asset path prefix' };
+    }
+    
+    return { isValid: true };
+    
+  } catch {
+    return { isValid: false, reason: 'Path validation error' };
+  }
+}
+
+/**
  * Get comprehensive audio processing status for a clip
  */
 async function getClipAudioStatus(clipId: string, env: Environment) {
@@ -313,8 +407,10 @@ export default {
         const filePath = url.pathname.substring(1); // Remove leading slash
         console.log(`📁 Serving asset: ${filePath}`);
         
-        // Basic path validation to prevent directory traversal
-        if (filePath.includes('..') || filePath.includes('//')) {
+        // Enhanced path validation with proper security checks
+        const validationResult = validateAssetPath(filePath);
+        if (!validationResult.isValid) {
+          console.warn(`🚨 Invalid asset path rejected: ${filePath} - ${validationResult.reason}`);
           return new Response('Invalid path', { status: 400 });
         }
         
@@ -339,7 +435,6 @@ export default {
             'Content-Type': contentType,
             'Content-Length': fileObj.size.toString(),
             'Cache-Control': 'public, max-age=3600',
-            'Accept-Ranges': 'bytes',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, HEAD',
             'Access-Control-Allow-Headers': 'Range'
