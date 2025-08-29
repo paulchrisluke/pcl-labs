@@ -25,11 +25,11 @@ export class GitHubEventService {
 
   constructor(private env: Environment) {
     this.config = {
-      timeWindowHours: 2, // Default 2 hour window
+      timeWindowHours: 168, // 7 days (168 hours) for blog generation
       confidenceThresholds: {
-        high: 30, // 30 minutes
-        medium: 60, // 1 hour
-        low: 120 // 2 hours
+        high: 60, // 1 hour
+        medium: 240, // 4 hours
+        low: 720 // 12 hours
       }
     };
   }
@@ -408,7 +408,7 @@ export class GitHubEventService {
     commits: LinkedCommit[];
     issues: LinkedIssue[];
   }> {
-    const clipTime = new Date(clip.created_at);
+    const clipTime = new Date(clip.created_at || clip.clip_created_at);
     const startTime = new Date(clipTime.getTime() - (this.config.timeWindowHours * 60 * 60 * 1000));
     const endTime = new Date(clipTime.getTime() + (this.config.timeWindowHours * 60 * 60 * 1000));
     
@@ -501,16 +501,47 @@ export class GitHubEventService {
       return null;
     }
     
+    // Calculate confidence score based on the number of events found
+    const totalEvents = prs.length + commits.length + issues.length;
+    const confidenceScore = Math.min(95, 50 + (totalEvents * 10)); // Base 50% + 10% per event, max 95%
+    
+    // Create detailed summary with actual content
+    let summary = `GitHub context with ${prs.length} PRs, ${commits.length} commits, ${issues.length} issues (confidence: ${confidenceScore.toFixed(1)}%)`;
+    
+    // Add specific details to the summary
+    if (prs.length > 0) {
+      const prDetails = prs.slice(0, 2).map(pr => `PR #${pr.number}: ${pr.title}`).join(', ');
+      summary += `\nRecent PRs: ${prDetails}`;
+    }
+    
+    if (commits.length > 0) {
+      const commitDetails = commits.slice(0, 3).map(commit => commit.message.substring(0, 50)).join(', ');
+      summary += `\nRecent commits: ${commitDetails}`;
+    }
+    
+    // Create a detailed context object that can be stored
     const githubContext: GitHubContext = {
       linked_prs: prs,
       linked_commits: commits,
       linked_issues: issues,
-      confidence_score: 0.8, // Default confidence score
+      confidence_score: confidenceScore,
       match_reason: 'temporal_proximity' as MatchReason
     };
     
-    // Upload to R2 and return metadata
-    return await uploadGitHubContextToR2(this.env, clip.id, githubContext);
+    // Store the context in R2 with proper URL format
+    const contextKey = `github-context/${clip.clip_id || clip.id}.json`;
+    await this.getBucket().put(contextKey, JSON.stringify(githubContext, null, 2), {
+      httpMetadata: {
+        contentType: 'application/json',
+      },
+    });
+    
+    // Return metadata with proper URL
+    return {
+      url: `/github-context/${clip.clip_id || clip.id}.json`,
+      summary,
+      sizeBytes: JSON.stringify(githubContext).length
+    };
   }
 
   /**

@@ -125,8 +125,10 @@ interface AIGenerationMetadata {
     temperature: number;
     top_p: number;
     seed: number;
+    max_tokens: number;
   };
   prompt_hash: string;
+  content_hash?: string; // Hash of manifest content for idempotency
   generated_at: ISODateTimeString;
 }
 ```

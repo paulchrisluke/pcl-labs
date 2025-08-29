@@ -249,7 +249,9 @@ export class ContentItemService {
                     if (content_category && item.content_category !== content_category) continue;
                     if (date_range) {
                       const itemDate = new Date(item.clip_created_at);
-                      if (itemDate < startDate || itemDate > endDate) continue;
+                      const startDateObj = new Date(startDate);
+                      const endDateObj = new Date(endDate);
+                      if (itemDate < startDateObj || itemDate > endDateObj) continue;
                     }
                     
                     items.push(item);
@@ -430,6 +432,27 @@ export class ContentItemService {
     });
     
     return response.items;
+  }
+
+  /**
+   * Get recent unpublished content items for blog generation
+   * Finds content that hasn't been published in a blog yet, prioritizing recent content
+   */
+  async getRecentUnpublishedContent(daysBack: number = 7, limit: number = 50): Promise<ContentItem[]> {
+    // Get all content items and filter by unpublished status
+    const response = await this.listContentItems({
+      limit: 100, // Get more items to filter from
+    });
+    
+    // Filter out items that have already been published
+    const unpublishedItems = response.items.filter(item => !item.published_in_blog);
+    
+    // Sort by stored_at date (most recent first) and take the limit
+    const sortedItems = unpublishedItems.sort((a, b) => 
+      new Date(b.stored_at).getTime() - new Date(a.stored_at).getTime()
+    );
+    
+    return sortedItems.slice(0, limit);
   }
 
   /**

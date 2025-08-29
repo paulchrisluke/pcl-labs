@@ -7,7 +7,8 @@ import type { Transcript } from '../types/content.js';
 function buildR2Url(env: Environment, key: string): string {
   const baseUrl = env.R2_PUBLIC_BASE_URL?.trim();
   if (!baseUrl) {
-    throw new Error('R2_PUBLIC_BASE_URL environment variable is not configured');
+    // If no public URL is configured, return a relative path that can be accessed via the worker
+    return `/github-context/${key}`;
   }
   
   // Remove trailing slashes from base URL
@@ -22,7 +23,8 @@ function validateR2Url(url: URL, env: Environment): void {
   const expectedHost = env.R2_PUBLIC_BASE_URL ? new URL(env.R2_PUBLIC_BASE_URL).hostname : null;
   
   if (!expectedHost) {
-    throw new Error('R2_PUBLIC_BASE_URL environment variable is not configured');
+    // If no public URL is configured, skip validation
+    return;
   }
   
   if (url.hostname !== expectedHost) {

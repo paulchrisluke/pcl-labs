@@ -242,10 +242,10 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
         const body = JSON.parse(rawBody) as { clip: any; repository?: string };
         const { clip, repository } = body;
         
-        if (!clip || !clip.created_at) {
+        if (!clip || (!clip.created_at && !clip.clip_created_at)) {
           return new Response(JSON.stringify({
             success: false,
-            error: 'Invalid clip data - missing created_at'
+            error: 'Invalid clip data - missing created_at or clip_created_at'
           }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
@@ -307,8 +307,8 @@ export default {
       });
     }
 
-    // Asset serving endpoints (clips, audio, transcripts) - MUST come before API routes
-    if (url.pathname.startsWith('/clips/') || url.pathname.startsWith('/audio/') || url.pathname.startsWith('/transcripts/')) {
+    // Asset serving endpoints (clips, audio, transcripts, github-context) - MUST come before API routes
+    if (url.pathname.startsWith('/clips/') || url.pathname.startsWith('/audio/') || url.pathname.startsWith('/transcripts/') || url.pathname.startsWith('/github-context/')) {
       try {
         const filePath = url.pathname.substring(1); // Remove leading slash
         console.log(`📁 Serving asset: ${filePath}`);

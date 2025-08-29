@@ -28,11 +28,31 @@ export class BlogGeneratorService {
     try {
       console.log(`📝 Generating blog post for ${manifest.post_id}...`);
 
-      // Generate front matter
-      const frontMatter = this.generateFrontMatter(manifest);
+      // ALWAYS use AI services if available - this is the core value of the project
+      let enhancedManifest = manifest;
+      
+      // Generate AI draft if not already present
+      if (!manifest.draft || !manifest.gen) {
+        console.log('🤖 Generating AI draft for blog post...');
+        try {
+          const aiDrafterService = new (await import('./ai-drafter.js')).AIDrafterService(this.env);
+          const draftingResult = await aiDrafterService.generateDraft(manifest);
+          enhancedManifest = {
+            ...manifest,
+            draft: draftingResult.draft,
+            gen: draftingResult.gen,
+          };
+          console.log('✅ AI draft generated successfully');
+        } catch (error) {
+          console.warn('⚠️ AI drafting failed, using fallback content:', error);
+        }
+      }
 
-      // Generate markdown content
-      const markdownContent = this.generateMarkdownContent(manifest);
+      // Generate markdown content using AI-enhanced manifest
+      const markdownContent = this.generateMarkdownContent(enhancedManifest);
+
+      // Generate front matter (with content hash computed from markdown content)
+      const frontMatter = await this.generateFrontMatter(enhancedManifest, markdownContent);
 
       // Combine front matter and content
       const markdown = this.combineFrontMatterAndContent(frontMatter, markdownContent);
@@ -41,7 +61,7 @@ export class BlogGeneratorService {
       const wordCount = this.calculateWordCount(markdownContent);
       const estimatedReadTime = this.calculateReadTime(wordCount);
 
-      console.log(`✅ Generated blog post: ${wordCount} words, ~${estimatedReadTime} min read`);
+      console.log(`✅ Generated AI-enhanced blog post: ${wordCount} words, ~${estimatedReadTime} min read`);
 
       return {
         markdown,
@@ -58,7 +78,7 @@ export class BlogGeneratorService {
   /**
    * Generate front matter for the blog post
    */
-  private generateFrontMatter(manifest: Manifest): Record<string, any> {
+  private async generateFrontMatter(manifest: Manifest, markdownContent?: string): Promise<Record<string, any>> {
     const frontMatter: Record<string, any> = {
       title: manifest.title,
       date: manifest.date_utc,
@@ -101,6 +121,17 @@ export class BlogGeneratorService {
       frontMatter.ai_generated = true;
       frontMatter.ai_model = manifest.gen.model;
       frontMatter.ai_generated_at = manifest.gen.generated_at;
+      
+      // Compute deterministic hashes for auditability
+      if (manifest.gen.prompt_hash) {
+        frontMatter.ai_prompt_hash = manifest.gen.prompt_hash;
+      }
+      
+      // Compute content hash from the generated markdown content
+      if (markdownContent) {
+        const contentHash = await this.computeContentHash(markdownContent);
+        frontMatter.ai_content_hash = contentHash;
+      }
     }
 
     return frontMatter;
@@ -148,6 +179,9 @@ export class BlogGeneratorService {
       if (manifest.draft.intro.trim() !== standardIntroContent.trim()) {
         // AI intro is different, so use it instead of standard intro
         intro += `${manifest.draft.intro}\n\n`;
+        
+        // Still append the TOC portion even when using AI intro
+        intro += this.generateTOCPortion(manifest);
       } else {
         // AI intro matches standard intro, use standard intro to avoid duplication
         intro += standardIntroContent;
@@ -161,13 +195,10 @@ export class BlogGeneratorService {
   }
 
   /**
-   * Generate standard introduction content (summary, overview, etc.)
+   * Generate TOC portion (Overview and Table of Contents)
    */
-  private generateStandardIntroContent(manifest: Manifest): string {
+  private generateTOCPortion(manifest: Manifest): string {
     let content = '';
-
-    // Add summary
-    content += `${manifest.summary}\n\n`;
 
     // Add clip count and GitHub context info
     const clipCount = manifest.clip_ids.length;
@@ -186,6 +217,21 @@ export class BlogGeneratorService {
     if (manifest.sections.length > 3) {
       content += this.generateTableOfContents(manifest.sections);
     }
+
+    return content;
+  }
+
+  /**
+   * Generate standard introduction content (summary, overview, etc.)
+   */
+  private generateStandardIntroContent(manifest: Manifest): string {
+    let content = '';
+
+    // Add summary
+    content += `${manifest.summary}\n\n`;
+
+    // Add TOC portion
+    content += this.generateTOCPortion(manifest);
 
     return content;
   }
@@ -517,5 +563,16 @@ export class BlogGeneratorService {
       console.error('❌ Failed to list blog posts:', error);
       return [];
     }
+  }
+
+  /**
+   * Compute SHA-256 hash of content for auditability
+   */
+  private async computeContentHash(content: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(content);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toLowerCase();
   }
 }

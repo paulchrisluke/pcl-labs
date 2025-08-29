@@ -46,7 +46,7 @@ export interface DraftingResult {
  */
 export class AIDrafterService {
   private env: Environment;
-  private readonly MODEL = 'gemma-7b-it';
+  private readonly MODEL = '@hf/google/gemma-7b-it';
   private readonly TEMPERATURE = 0.3;
   private readonly TOP_P = 0.9;
   private readonly SEED = 42; // Fixed seed for determinism
@@ -69,7 +69,7 @@ export class AIDrafterService {
       // Check if we already have a draft with same content hash
       if (manifest.gen?.prompt_hash && manifest.draft) {
         const existingPromptHash = await this.calculatePromptHash(manifest);
-        if (existingPromptHash === manifest.gen.prompt_hash) {
+        if (existingPromptHash === manifest.gen.prompt_hash && contentHash === manifest.gen.content_hash) {
           console.log(`✅ Using existing draft (idempotent)`);
           return {
             draft: manifest.draft,
@@ -92,6 +92,7 @@ export class AIDrafterService {
           max_tokens: this.MAX_TOKENS,
         },
         prompt_hash: promptHash,
+        content_hash: contentHash,
         generated_at: new Date().toISOString(),
       };
 
@@ -139,23 +140,38 @@ export class AIDrafterService {
   }
 
   /**
-   * Build prompt for AI generation
+   * Build prompt for AI generation with GitHub context
    */
   private buildPrompt(manifest: Manifest): string {
     const sections = manifest.sections.map((section, index) => {
+      // Extract GitHub context from the paragraph if it exists
+      const githubContext = section.paragraph.includes('GitHub Activity:') 
+        ? section.paragraph.split('GitHub Activity:')[1]?.trim() || ''
+        : '';
+      
       const sectionPrompt = `
 Section ${index + 1}: ${section.title}
 - Bullets: ${section.bullets.join('; ')}
 - Repo: ${section.repo || 'N/A'}
 - PR Links: ${section.pr_links?.join(', ') || 'N/A'}
+- GitHub Context: ${githubContext || 'N/A'}
 - Entities: ${section.entities?.join(', ') || 'N/A'}
 `;
       return sectionPrompt;
     }).join('\n');
 
+    // Count GitHub-related content
+    const githubSections = manifest.sections.filter(section => 
+      section.paragraph.includes('GitHub Activity:')
+    ).length;
+
+    const githubContext = githubSections > 0 
+      ? `\n\nGitHub Integration: This recap includes ${githubSections} sections with linked GitHub activity (commits, pull requests, issues). When writing about these sections, incorporate the GitHub context to show the connection between the development discussion and the actual code changes.`
+      : '';
+
     return `You are a professional developer writing a daily development recap blog post. Generate engaging, concise content based on the following sections.
 
-Style: Professional, technical, developer-focused. Preserve technical terms and names. No hype or marketing language.
+Style: Professional, technical, developer-focused. Preserve technical terms and names. No hype or marketing language. When GitHub activity is mentioned, reference the specific commits, PRs, or issues to show the connection between discussion and implementation.
 
 Structure:
 1. Write a brief intro paragraph (2-3 sentences) that sets up the day's development work
@@ -166,7 +182,7 @@ Manifest:
 Title: ${manifest.title}
 Summary: ${manifest.summary}
 Category: ${manifest.category}
-Tags: ${manifest.tags.join(', ')}
+Tags: ${manifest.tags.join(', ')}${githubContext}
 
 Sections:
 ${sections}
@@ -230,13 +246,13 @@ Generate the content in this exact JSON format:
    * Generate fallback draft when AI fails
    */
   private generateFallbackDraft(manifest: Manifest): AIDraft {
-    const intro = `Today's development session covered ${manifest.sections.length} key areas of work.`;
+    const intro = this.sanitizeText(`Today's development session covered ${manifest.sections.length} key areas of work.`);
     
     const sections = manifest.sections.map(section => ({
-      paragraph: `In this section, we discussed ${section.title.toLowerCase()}. ${section.bullets.join(' ')}`
+      paragraph: this.sanitizeText(`In this section, we discussed ${section.title.toLowerCase()}. ${section.bullets.join(' ')}`)
     }));
 
-    const outro = `This wraps up today's development work and progress.`;
+    const outro = this.sanitizeText(`This wraps up today's development work and progress.`);
 
     return {
       intro,
@@ -254,7 +270,7 @@ Generate the content in this exact JSON format:
     const intro = lines[0] || 'Today\'s development session covered key areas of work.';
     
     const sections = Array.from({ length: expectedSections }, (_, i) => ({
-      paragraph: lines[i + 1] || `Section ${i + 1} content.`
+      paragraph: this.sanitizeText(lines[i + 1] || `Section ${i + 1} content.`)
     }));
 
     const outro = lines[lines.length - 1] || 'This wraps up today\'s development work.';

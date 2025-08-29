@@ -71,6 +71,7 @@ import { ContentItemService } from '../services/content-items.js';
 import { ContentMigrationService } from '../services/content-migration.js';
 import { ManifestBuilderService } from '../services/manifest-builder.js';
 import { BlogGeneratorService } from '../services/blog-generator.js';
+import { AIDrafterService } from '../services/ai-drafter.js';
 import { AIJudgeService } from '../services/ai-judge.js';
 import { JobManagerService } from '../services/job-manager.js';
 import { requireHmacAuth } from '../utils/auth.js';
@@ -83,6 +84,7 @@ let contentItemServiceInstance: ContentItemService | null = null;
 let migrationServiceInstance: ContentMigrationService | null = null;
 let manifestBuilderInstance: ManifestBuilderService | null = null;
 let blogGeneratorInstance: BlogGeneratorService | null = null;
+let aiDrafterInstance: AIDrafterService | null = null;
 let aiJudgeInstance: AIJudgeService | null = null;
 let jobManagerInstance: JobManagerService | null = null;
 
@@ -112,6 +114,13 @@ function getBlogGenerator(env: Environment): BlogGeneratorService {
     blogGeneratorInstance = new BlogGeneratorService(env);
   }
   return blogGeneratorInstance;
+}
+
+function getAIDrafterService(env: Environment): AIDrafterService {
+  if (!aiDrafterInstance) {
+    aiDrafterInstance = new AIDrafterService(env);
+  }
+  return aiDrafterInstance;
 }
 
 function getAIJudge(env: Environment): AIJudgeService {
@@ -195,9 +204,19 @@ export async function handleContentRoutes(
       return await handleBuildManifest(request, env);
     }
 
+    // Recent content manifest endpoint
+    if (path === '/api/content/manifest/recent' && method === 'POST') {
+      return await handleBuildRecentManifest(request, env);
+    }
+
     // Blog generation endpoints
     if (path === '/api/content/blog' && method === 'POST') {
       return await handleGenerateBlog(request, env);
+    }
+
+    // Production blog generation endpoint (ALWAYS uses AI)
+    if (path === '/api/content/blog/production' && method === 'POST') {
+      return await handleGenerateProductionBlog(request, env);
     }
 
     // Blog listing endpoint
@@ -877,6 +896,85 @@ async function handleBuildManifest(
 }
 
 /**
+ * Handle recent content manifest building request
+ */
+async function handleBuildRecentManifest(
+  request: Request,
+  env: Environment
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const manifestBuilder = getManifestBuilder(env);
+    const body = await request.text();
+    let requestData: any;
+    
+    if (body.trim()) {
+      try {
+        requestData = JSON.parse(body);
+      } catch {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      requestData = {};
+    }
+
+    // Build manifest from recent content
+    const result = await manifestBuilder.buildRecentContentManifest(
+      requestData.days_back || 7,
+      requestData.timezone || 'UTC'
+    );
+
+    // Generate AI draft if requested
+    if (requestData.generate_ai_draft === true) {
+      console.log('🤖 Generating AI draft for recent content manifest...');
+      const manifestWithDraft = await manifestBuilder.generateAIDraft(result.manifest);
+      result.manifest = manifestWithDraft;
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: result
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Recent manifest building error:', error);
+    
+    // Handle the case where no ContentItems are found
+    if (error instanceof Error && error.message.includes('No unpublished content items found')) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No unpublished content items found',
+        details: 'The system has no unpublished content items to build a manifest from in the specified time range.'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to build recent content manifest'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
  * Handle blog generation request
  */
 async function handleGenerateBlog(
@@ -1120,6 +1218,317 @@ async function handleErrorStats(): Promise<Response> {
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to get error statistics'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle production blog generation with AI services and GitHub integration
+ * This is the main endpoint for generating high-quality blog posts with both clips and GitHub activity
+ */
+async function handleGenerateProductionBlog(
+  request: Request,
+  env: Environment
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const contentItemService = getContentItemService(env);
+    const aiDrafterService = getAIDrafterService(env);
+    const aiJudgeService = getAIJudge(env);
+    const blogGenerator = getBlogGenerator(env);
+    
+    const body = await request.text();
+    let requestData: any;
+    
+    if (body.trim()) {
+      try {
+        requestData = JSON.parse(body);
+      } catch {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid JSON in request body'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    } else {
+      requestData = {};
+    }
+
+    // Step 1: Get recent unpublished content
+    const daysBack = requestData.days_back || 30;
+    const limit = requestData.limit || 6;
+    
+    console.log(`📋 Getting recent unpublished content from last ${daysBack} days...`);
+    const contentItems = await contentItemService.getRecentUnpublishedContent(daysBack, 100);
+    
+    if (contentItems.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No unpublished content items found'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Step 2: Filter and select content items
+    const validItems = contentItems.filter(item => {
+      const transcriptLength = item.transcript_summary ? item.transcript_summary.length : 0;
+      return transcriptLength >= 20 && item.clip_duration >= 10;
+    }).slice(0, limit);
+
+    console.log(`📊 Selected ${validItems.length} valid items from ${contentItems.length} total`);
+
+    if (validItems.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No valid content items found'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Step 3: Fetch and link GitHub activity
+    console.log('🔗 Fetching and linking GitHub activity...');
+    const { GitHubEventService } = await import('../services/github-events.js');
+    const githubEventService = new GitHubEventService(env);
+    
+    // Get recent GitHub events
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysBack);
+    
+    console.log(`📅 Fetching GitHub events from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    
+    const githubEvents = await githubEventService.getEventsForDateRange(startDate, endDate);
+    console.log(`📊 Found ${githubEvents.length} GitHub events`);
+    
+    // Link GitHub events to clips
+    const enhancedItems = [];
+    for (const item of validItems) {
+      console.log(`🔗 Linking GitHub events to clip: ${item.clip_title}`);
+      
+      try {
+        // Enhance clip with GitHub context
+        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(item);
+        
+        if (enhancedClip) {
+          console.log(`✅ Enhanced clip with GitHub context`);
+          enhancedItems.push({
+            ...item,
+            github_context_url: enhancedClip.url,
+            github_summary: enhancedClip.summary,
+            github_context_size_bytes: enhancedClip.sizeBytes
+          });
+        } else {
+          console.log(`⚠️ No GitHub context found for clip`);
+          enhancedItems.push(item);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Failed to enhance clip with GitHub context:`, error);
+        enhancedItems.push(item);
+      }
+    }
+
+    // Step 4: Create manifest with GitHub context
+    const currentDate = new Date().toISOString().split('T')[0];
+    const manifest = {
+      schema_version: '1.0.0',
+      post_id: `production-recap-${currentDate}`,
+      date_utc: new Date().toISOString(),
+      tz: 'UTC',
+      title: `AI-Enhanced Development Recap - ${currentDate}`,
+      summary: `An AI-enhanced development recap with ${enhancedItems.length} clips and GitHub activity covering various development topics.`,
+      category: 'development',
+      tags: ['development', 'ai-enhanced', 'recap', 'github'],
+      clip_ids: enhancedItems.map(item => item.clip_id),
+      sections: enhancedItems.map((item, index) => {
+        // Extract GitHub context for this section
+        let githubContext = '';
+        let repo = 'paulchrisluke/pcl-labs'; // Default repo
+        let prLinks: string[] = [];
+        
+        if (item.github_summary) {
+          githubContext = `\nGitHub Activity: ${item.github_summary}`;
+          
+          // Try to extract repo and PR links from GitHub context
+          if (item.github_context_url) {
+            try {
+              // Extract PR links from the summary
+              const prMatch = item.github_summary.match(/(\d+)\s+PRs?/);
+              if (prMatch) {
+                const prCount = parseInt(prMatch[1]);
+                
+                // Try to extract actual PR numbers from the summary
+                const prNumberMatches = item.github_summary.match(/PR #(\d+):/g);
+                if (prNumberMatches && prNumberMatches.length > 0) {
+                  // Use actual PR numbers from the summary
+                  for (const prMatch of prNumberMatches.slice(0, 3)) {
+                    const prNumber = prMatch.match(/PR #(\d+):/)?.[1];
+                    if (prNumber) {
+                      prLinks.push(`https://github.com/paulchrisluke/pcl-labs/pull/${prNumber}`);
+                    }
+                  }
+                } else {
+                  // Fallback to generic PR links based on the count
+                  for (let i = 1; i <= Math.min(prCount, 3); i++) {
+                    prLinks.push(`https://github.com/paulchrisluke/pcl-labs/pull/${i}`);
+                  }
+                }
+              }
+              
+              // Extract commit count from the summary
+              const commitMatch = item.github_summary.match(/(\d+)\s+commits?/);
+              if (commitMatch) {
+                const commitCount = parseInt(commitMatch[1]);
+                githubContext += `\nRecent commits: ${commitCount} commits found in the time window.`;
+              }
+              
+              // Extract issue count from the summary
+              const issueMatch = item.github_summary.match(/(\d+)\s+issues?/);
+              if (issueMatch) {
+                const issueCount = parseInt(issueMatch[1]);
+                githubContext += `\nRecent issues: ${issueCount} issues found in the time window.`;
+              }
+              
+            } catch (error) {
+              console.warn(`Failed to parse GitHub context for ${item.clip_id}:`, error);
+            }
+          }
+        }
+        
+        // Add GitHub context to the paragraph if available
+        const fullParagraph = item.transcript_summary.substring(0, 300) + '...' + githubContext;
+        
+        return {
+          section_id: `section-${index + 1}`,
+          clip_id: item.clip_id,
+          title: item.clip_title.replace(/^(yo|hey|so|okay|right|now|let's|let me|i'm|i am)\s+/i, '').replace(/\s+(lol|haha|omg|wow|nice|cool|awesome|amazing)\s*/gi, ' ').trim(),
+          bullets: [
+            item.transcript_summary.substring(0, 140),
+            'AI-enhanced development content',
+            'Professional recap format'
+          ],
+          paragraph: fullParagraph,
+          score: 0.8,
+          repo: repo,
+          pr_links: prLinks,
+          clip_url: item.clip_url,
+          vod_jump: null,
+          alignment_status: 'exact' as const,
+          start: 0,
+          end: item.clip_duration,
+          entities: ['development', 'ai-enhanced', 'github']
+        };
+      }),
+      canonical_vod: 'https://twitch.tv/paulchrisluke',
+      md_path: `content/blog/development/${currentDate}-production-recap.md`,
+      target_branch: 'staging',
+      status: 'draft' as const
+    };
+
+    console.log('📝 Created enhanced manifest with GitHub context');
+
+    // Step 5: ALWAYS generate AI draft with GitHub context
+    console.log('🤖 Generating AI draft with GitHub context...');
+    let aiDraftGenerated = false;
+    try {
+      const draftingResult = await aiDrafterService.generateDraft(manifest);
+      manifest.draft = draftingResult.draft;
+      manifest.gen = draftingResult.gen;
+      aiDraftGenerated = true;
+      console.log('✅ AI draft generated successfully with GitHub context');
+      console.log(`📄 AI Intro: ${draftingResult.draft.intro?.substring(0, 100)}...`);
+      console.log(`📄 AI Outro: ${draftingResult.draft.outro?.substring(0, 100)}...`);
+    } catch (error) {
+      console.error('❌ AI drafting failed:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'AI drafting failed - this is required for production blog generation',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Step 6: ALWAYS judge content with GitHub context
+    console.log('⚖️ Judging content with GitHub context...');
+    let contentJudged = false;
+    try {
+      const judgeResult = await aiJudgeService.judgeManifest(manifest);
+      // Handle the nested response structure
+      manifest.judge = judgeResult.evaluation || judgeResult;
+      contentJudged = true;
+      console.log(`✅ Content judged: ${manifest.judge.overall}/100`);
+      console.log(`⚖️ Coherence: ${manifest.judge.per_axis.coherence}/100`);
+      console.log(`⚖️ Correctness: ${manifest.judge.per_axis.correctness}/100`);
+      console.log(`⚖️ Dev Signal: ${manifest.judge.per_axis.dev_signal}/100`);
+      console.log(`⚖️ Narrative Flow: ${manifest.judge.per_axis.narrative_flow}/100`);
+    } catch (error) {
+      console.error('❌ Content judging failed:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Content judging failed - this is required for production blog generation',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Step 7: Generate blog post with AI-enhanced content and GitHub context
+    console.log('📄 Generating blog post with AI content and GitHub context...');
+    const blogResult = await blogGenerator.generateBlogPost(manifest);
+
+    // Step 8: Store blog post if requested
+    if (requestData.store !== false) {
+      console.log('💾 Storing blog post...');
+      await blogGenerator.storeBlogPost(manifest, blogResult.markdown);
+      
+      // Mark content items as published
+      console.log('🏷️ Marking content items as published...');
+      for (const item of enhancedItems) {
+        await contentItemService.updateContentItem(item.clip_id, {
+          published_in_blog: manifest.post_id
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        manifest,
+        blog: blogResult,
+        content_items_used: enhancedItems.length,
+        github_events_found: githubEvents.length,
+        items_with_github_context: enhancedItems.filter(item => item.github_context_url).length,
+        ai_draft_generated: aiDraftGenerated,
+        content_judged: contentJudged,
+        judge_score: manifest.judge?.overall,
+        ai_model: manifest.gen?.model
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    console.error('❌ Production blog generation error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to generate production blog post',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

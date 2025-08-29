@@ -52,6 +52,7 @@ export interface ContentItem {
   stored_at: ISODateTimeString;
   enhanced_at?: ISODateTimeString | null;
   content_ready_at?: ISODateTimeString | null;
+  published_in_blog?: string | null; // Blog post ID where this content was published
 }
 
 // Section type for manifest

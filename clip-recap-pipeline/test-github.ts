@@ -4,6 +4,30 @@
 
 import crypto from 'crypto';
 
+// Load environment variables from .dev.vars if it exists
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+try {
+  const devVarsPath = join(process.cwd(), '.dev.vars');
+  const devVarsContent = readFileSync(devVarsPath, 'utf8');
+  
+  devVarsContent.split('\n').forEach(line => {
+    if (line.includes('=')) {
+      const firstEqualsIndex = line.indexOf('=');
+      const key = line.substring(0, firstEqualsIndex);
+      const value = line.substring(firstEqualsIndex + 1);
+      if (key && value && !process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  });
+  
+  console.log('✅ Loaded environment variables from .dev.vars');
+} catch (error) {
+  console.log('⚠️ Could not load .dev.vars, using existing environment variables');
+}
+
 async function generateHmacSignature(body: string, timestamp: string, nonce: string, secret: string): Promise<string> {
   const payload = `${body}${timestamp}${nonce}`;
   const hmac = crypto.createHmac('sha256', secret);

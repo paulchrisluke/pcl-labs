@@ -115,6 +115,50 @@ export class ManifestBuilderService {
   }
 
   /**
+   * Build a manifest from recent unpublished content
+   * This is more flexible than daily manifests and works with whatever content is available
+   */
+  async buildRecentContentManifest(
+    daysBack: number = 7,
+    timezone: string = 'UTC'
+  ): Promise<SelectionResult> {
+    try {
+      console.log(`🏗️ Building recent content manifest for last ${daysBack} days...`);
+
+      // Get recent unpublished content items
+      const contentItems = await this.contentItemService.getRecentUnpublishedContent(daysBack);
+      console.log(`📊 Found ${contentItems.length} unpublished content items from last ${daysBack} days`);
+
+      if (contentItems.length === 0) {
+        throw new Error(`No unpublished content items found in the last ${daysBack} days`);
+      }
+
+      // Select and rank ContentItems
+      const selectedItems = await this.selectContentItems(contentItems);
+      console.log(`✅ Selected ${selectedItems.length} content items for manifest`);
+
+      // Build manifest sections
+      const sections = await this.buildManifestSections(selectedItems);
+
+      // Generate manifest metadata with current date
+      const currentDate = new Date().toISOString().split('T')[0];
+      const manifest = await this.generateManifest(currentDate, timezone, selectedItems, sections);
+
+      // Calculate selection metrics
+      const metrics = this.calculateSelectionMetrics(contentItems, selectedItems);
+
+      return {
+        selectedItems,
+        manifest,
+        selectionMetrics: metrics,
+      };
+    } catch (error) {
+      console.error('❌ Failed to build recent content manifest:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Generate AI draft for manifest
    */
   async generateAIDraft(manifest: Manifest): Promise<Manifest> {

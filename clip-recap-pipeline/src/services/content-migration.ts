@@ -255,7 +255,8 @@ export class ContentMigrationService {
 
         // Process objects in this page
         for (const obj of objects.objects) {
-          if (obj.key.endsWith('/meta.json')) {
+          // Look for both old format (clips/[clipId].json) and new format (clips/[clipId]/meta.json)
+          if (obj.key.endsWith('.json') && (obj.key.endsWith('/meta.json') || obj.key.match(/^clips\/[^\/]+\.json$/))) {
             try {
               const object = await this.env.R2_BUCKET.get(obj.key);
               if (object) {
@@ -349,11 +350,13 @@ export class ContentMigrationService {
 
         const objects = await this.env.R2_BUCKET.list(listOptions);
         
-        // Count only meta.json files (one per clip)
-        const metaJsonCount = objects.objects.filter((obj: { key: string }) => obj.key.endsWith('/meta.json')).length;
-        totalCount += metaJsonCount;
+        // Count both old format (clips/[clipId].json) and new format (clips/[clipId]/meta.json)
+        const clipJsonCount = objects.objects.filter((obj: { key: string }) => 
+          obj.key.endsWith('.json') && (obj.key.endsWith('/meta.json') || obj.key.match(/^clips\/[^\/]+\.json$/))
+        ).length;
+        totalCount += clipJsonCount;
         
-        console.log(`📊 Page ${pageCount}: Found ${metaJsonCount} clips, total so far: ${totalCount}`);
+        console.log(`📊 Page ${pageCount}: Found ${clipJsonCount} clips, total so far: ${totalCount}`);
 
         // Update continuation token for next page
         continuationToken = objects.cursor;
@@ -389,7 +392,7 @@ export class ContentMigrationService {
       // Determine processing status
       const processingStatus = this.determineProcessingStatus(clipData, transcript);
 
-      // Upload large objects to R2 and get metadata
+      // Use existing transcript and GitHub context URLs instead of re-uploading
       let transcriptUrl: string | null = null;
       let transcriptSummary: string | null = null;
       let transcriptSizeBytes: number | null = null;
@@ -398,17 +401,18 @@ export class ContentMigrationService {
       let githubContextSizeBytes: number | null = null;
 
       if (transcript) {
-        const transcriptMetadata = await uploadTranscriptToR2(this.env, clipId, transcript);
-        transcriptUrl = transcriptMetadata.url;
-        transcriptSummary = transcriptMetadata.summary;
-        transcriptSizeBytes = transcriptMetadata.sizeBytes;
+        // Use existing transcript URL from clip data
+        transcriptUrl = clipData.transcript?.json?.url || null;
+        transcriptSummary = transcript.text 
+          ? transcript.text.substring(0, 200) + (transcript.text.length > 200 ? '...' : '')
+          : `Transcript with ${transcript.segments.length} segments in ${transcript.language}`;
+        transcriptSizeBytes = clipData.transcript?.json?.size || null;
       }
 
       if (githubContext) {
-        const githubMetadata = await uploadGitHubContextToR2(this.env, clipId, githubContext);
-        githubContextUrl = githubMetadata.url;
-        githubSummary = githubMetadata.summary;
-        githubContextSizeBytes = githubMetadata.sizeBytes;
+        // For now, skip GitHub context upload during migration
+        // We can add this later if needed
+        githubSummary = `GitHub context with ${githubContext.linked_prs?.length || 0} PRs, ${githubContext.linked_commits?.length || 0} commits`;
       }
 
       // Create ContentItem using the sanitized data
@@ -421,7 +425,7 @@ export class ContentMigrationService {
         clip_thumbnail_url: clipData.thumbnail_url,
         clip_duration: clipData.duration || 0,
         clip_view_count: clipData.view_count,
-        clip_created_at: clipData.created_at,
+        clip_created_at: clipData.created_at || clipData.stored_at || new Date().toISOString(),
         broadcaster_name: clipData.broadcaster_name || 'paulchrisluke',
         creator_name: clipData.creator_name || clipData.broadcaster_name || 'paulchrisluke',
 
@@ -670,14 +674,20 @@ export class ContentMigrationService {
    */
   async migrateClipById(clipId: string): Promise<boolean> {
     try {
-      // Get clip metadata
-      const clipKey = `clips/${clipId}/meta.json`;
-      const object = await this.env.R2_BUCKET.get(clipKey);
+      // Try new format first, then fall back to old format
+      let clipKey = `clips/${clipId}/meta.json`;
+      let object = await this.env.R2_BUCKET.get(clipKey);
+      
+      if (!object) {
+        // Try old format
+        clipKey = `clips/${clipId}.json`;
+        object = await this.env.R2_BUCKET.get(clipKey);
+      }
       
       if (!object) {
         const errorMessage = `Clip not found in storage`;
         trackContentMigrationError('clip_not_found_in_storage', errorMessage, { clipId, clipKey });
-        throw new Error(`${errorMessage}: ${clipId} (key: ${clipKey})`);
+        throw new Error(`${errorMessage}: ${clipId} (tried keys: clips/${clipId}/meta.json, clips/${clipId}.json)`);
       }
 
       const clipData: ClipData = await object.json();
