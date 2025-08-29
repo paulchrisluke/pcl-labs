@@ -503,7 +503,15 @@ export class BlogGeneratorService {
    * Generate canonical URL
    */
   private generateCanonicalUrl(manifest: Manifest): string {
-    // Derive the URL suffix from post_kind or fall back to md_path
+    // Check if post_id already contains the post_kind (new format)
+    if (manifest.post_id.includes('-') && manifest.post_kind) {
+      // New format: post_id already includes post_kind (e.g., "2024-01-15-production-recap")
+      // Extract just the date part for the URL
+      const datePart = manifest.post_id.split('-').slice(0, 3).join('-'); // Get YYYY-MM-DD part
+      return `https://paulchrisluke.com/blog/development/${datePart}-${manifest.post_kind}`;
+    }
+    
+    // Legacy format: post_id is just the date, need to add post_kind
     let urlSuffix = 'daily-recap'; // Default fallback
     
     if (manifest.post_kind) {

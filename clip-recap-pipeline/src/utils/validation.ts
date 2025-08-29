@@ -240,28 +240,37 @@ export function validateClipObject(clip: TwitchClip | EnhancedTwitchClip): Valid
 
 // Validation function for days_back parameter
 export function validateDaysBack(daysBack: any): ValidationResult {
-  // Check if it's a number
-  if (typeof daysBack !== 'number' || isNaN(daysBack)) {
-    return { isValid: false, error: 'days_back must be a valid number' };
+  // Handle numeric strings by coercing to number
+  let numericValue: number;
+  
+  if (typeof daysBack === 'string') {
+    const parsed = Number(daysBack);
+    if (isNaN(parsed)) {
+      return { isValid: false, error: 'days_back must be a numeric value' };
+    }
+    numericValue = parsed;
+  } else if (typeof daysBack === 'number') {
+    numericValue = daysBack;
+  } else {
+    return { isValid: false, error: 'days_back must be a number or numeric string' };
   }
 
   // Check if it's an integer
-  if (!Number.isInteger(daysBack)) {
+  if (!Number.isInteger(numericValue)) {
     return { isValid: false, error: 'days_back must be an integer' };
   }
 
   // Clamp to reasonable range (1 to 365 days)
-  const clamped = Math.max(1, Math.min(365, daysBack));
+  const clamped = Math.max(1, Math.min(365, numericValue));
   
-  if (clamped !== daysBack) {
+  if (clamped !== numericValue) {
     return { 
       isValid: true, 
-      sanitizedData: clamped,
-      error: `days_back clamped from ${daysBack} to ${clamped} (valid range: 1-365)`
+      sanitizedData: clamped
     };
   }
 
-  return { isValid: true, sanitizedData: daysBack };
+  return { isValid: true, sanitizedData: numericValue };
 }
 
 // Validation function for timezone parameter

@@ -510,10 +510,11 @@ export class GitHubEventService {
     
     // Calculate confidence score based on the number of events found
     const totalEvents = prs.length + commits.length + issues.length;
-    const confidenceScore = Math.min(95, 50 + (totalEvents * 10)); // Base 50% + 10% per event, max 95%
+    const confidenceScorePercent = Math.min(95, 50 + (totalEvents * 10)); // Base 50% + 10% per event, max 95%
+    const confidenceScore = confidenceScorePercent / 100; // Normalize to 0-1 range for Score01 type
     
     // Create detailed summary with actual content
-    let summary = `GitHub context with ${prs.length} PRs, ${commits.length} commits, ${issues.length} issues (confidence: ${confidenceScore.toFixed(1)}%)`;
+    let summary = `GitHub context with ${prs.length} PRs, ${commits.length} commits, ${issues.length} issues (confidence: ${confidenceScorePercent.toFixed(1)}%)`;
     
     // Add specific details to the summary
     if (prs.length > 0) {
@@ -531,7 +532,7 @@ export class GitHubEventService {
       linked_prs: prs,
       linked_commits: commits,
       linked_issues: issues,
-      confidence_score: confidenceScore,
+      confidence_score: confidenceScore, // Store normalized 0-1 value
       match_reason: 'temporal_proximity' as MatchReason
     };
     

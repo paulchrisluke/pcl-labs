@@ -65,26 +65,13 @@ if (!HMAC_SHARED_SECRET) {
 // Generate HMAC authentication headers
 async function generateAuthHeaders(body: string): Promise<Record<string, string>> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = Math.random().toString(36).substring(2, 18);
+  const nonce = crypto.randomBytes(16).toString('hex');
   
   // Create signature using the same method as the worker
   const payload = `${body}${timestamp}${nonce}`;
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(HMAC_SHARED_SECRET);
-  const messageData = encoder.encode(payload);
-  
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  
-  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-  const signatureHex = Array.from(new Uint8Array(signature))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  const hmac = crypto.createHmac('sha256', HMAC_SHARED_SECRET);
+  hmac.update(payload);
+  const signatureHex = hmac.digest('hex');
   
   return {
     'X-Request-Signature': signatureHex,

@@ -1294,11 +1294,30 @@ async function handleGenerateProductionBlog(
     }
 
     // Step 1: Get recent unpublished content
-    const daysBack = requestData.days_back || 30;
-    const limit = requestData.limit || 6;
+    // Validate and clamp requestData.days_back and requestData.limit
+    const rawDaysBack = requestData.days_back;
+    const rawLimit = requestData.limit;
     
-    console.log(`📋 Getting recent unpublished content from last ${daysBack} days...`);
-    const contentItems = await contentItemService.getRecentUnpublishedContent(daysBack, 100);
+    // Parse and validate days_back
+    let daysBack = 30; // default
+    if (rawDaysBack !== undefined) {
+      const parsedDaysBack = parseInt(String(rawDaysBack));
+      if (!isNaN(parsedDaysBack)) {
+        daysBack = Math.max(1, Math.min(90, parsedDaysBack)); // clamp to 1-90 range
+      }
+    }
+    
+    // Parse and validate limit
+    let limit = 6; // default
+    if (rawLimit !== undefined) {
+      const parsedLimit = parseInt(String(rawLimit));
+      if (!isNaN(parsedLimit)) {
+        limit = Math.max(1, Math.min(50, parsedLimit)); // clamp to 1-50 range
+      }
+    }
+    
+    console.log(`📋 Getting recent unpublished content from last ${daysBack} days (clamped from ${rawDaysBack || 'default'}) with limit ${limit} (clamped from ${rawLimit || 'default'})...`);
+    const contentItems = await contentItemService.getRecentUnpublishedContent(daysBack, limit);
     
     if (contentItems.length === 0) {
       return new Response(JSON.stringify({
@@ -1392,10 +1411,12 @@ async function handleGenerateProductionBlog(
 
     // Step 4: Create manifest with GitHub context
     const currentDate = new Date().toISOString().split('T')[0];
+    const postKind = 'production-recap';
+    const uniquePostId = `${currentDate}-${postKind}`;
     const manifest: Manifest = {
       schema_version: '1.0.0' as const,
-      post_id: currentDate,
-      post_kind: 'production-recap',
+      post_id: uniquePostId,
+      post_kind: postKind,
       date_utc: new Date().toISOString(),
       tz: 'UTC',
       title: `AI-Enhanced Development Recap - ${currentDate}`,
@@ -1564,7 +1585,7 @@ async function handleGenerateProductionBlog(
       console.log('🏷️ Marking content items as published...');
       for (const item of enhancedItems) {
         await contentItemService.updateContentItem(item.clip_id, item.clip_created_at, {
-          published_in_blog: manifest.post_id
+          published_in_blog: manifest.post_id // Using unique post_id to avoid collisions
         });
       }
     }

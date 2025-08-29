@@ -674,16 +674,16 @@ export class ContentMigrationService {
    */
   async migrateClipById(clipId: string): Promise<boolean> {
     try {
-      // Try new format first, then fall back to old format
+      // Get clip metadata - try new format first, then fall back to old format
       let clipKey = `clips/${clipId}/meta.json`;
       let object = await this.env.R2_BUCKET.get(clipKey);
-      
+
       if (!object) {
         // Try old format
         clipKey = `clips/${clipId}.json`;
         object = await this.env.R2_BUCKET.get(clipKey);
       }
-      
+
       if (!object) {
         const errorMessage = `Clip not found in storage`;
         trackContentMigrationError('clip_not_found_in_storage', errorMessage, { clipId, clipKey });
@@ -691,6 +691,26 @@ export class ContentMigrationService {
       }
 
       const clipData: ClipData = await object.json();
+      
+      // Validate clip metadata before conversion (following the same pattern as batch migration)
+      const validation = this.validateClipMetadata(clipData);
+      if (!validation.isValid) {
+        const errorMessage = `Clip metadata validation failed`;
+        trackContentMigrationError('clip_validation_failed', errorMessage, {
+          clipId,
+          clipKey,
+          error: validation.error,
+          clipDataKeys: Object.keys(clipData),
+          clipDataSample: {
+            id: clipData.id || clipData.clip_id,
+            title: clipData.title,
+            url: clipData.url,
+            created_at: clipData.created_at
+          }
+        });
+        throw new Error(`${errorMessage}: ${clipId} - ${validation.error}`);
+      }
+      
       const contentItem = await this.convertClipToContentItem(clipData);
       
       const success = await this.contentItemService.storeContentItem(contentItem);

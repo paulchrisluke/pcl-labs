@@ -98,7 +98,7 @@ export class ManifestBuilderService {
       const sections = await this.buildManifestSections(selectedItems);
 
       // Generate manifest metadata
-      const manifest = await this.generateManifest(date, timezone, selectedItems, sections);
+      const manifest = await this.generateManifest(date, timezone, selectedItems, sections, 'daily-recap');
 
       // Calculate selection metrics
       const metrics = this.calculateSelectionMetrics(contentItems, selectedItems);
@@ -120,7 +120,8 @@ export class ManifestBuilderService {
    */
   async buildRecentContentManifest(
     daysBack: number = 7,
-    timezone: string = 'UTC'
+    timezone: string = 'UTC',
+    kind: string = 'production-recap'
   ): Promise<SelectionResult> {
     try {
       console.log(`🏗️ Building recent content manifest for last ${daysBack} days...`);
@@ -142,7 +143,7 @@ export class ManifestBuilderService {
 
       // Generate manifest metadata with current date
       const currentDate = new Date().toISOString().split('T')[0];
-      const manifest = await this.generateManifest(currentDate, timezone, selectedItems, sections);
+      const manifest = await this.generateManifest(currentDate, timezone, selectedItems, sections, kind);
 
       // Calculate selection metrics
       const metrics = this.calculateSelectionMetrics(contentItems, selectedItems);
@@ -705,7 +706,8 @@ export class ManifestBuilderService {
     date: string,
     timezone: string,
     selectedItems: ContentItem[],
-    sections: ManifestSection[]
+    sections: ManifestSection[],
+    kind: string = 'production-recap'
   ): Promise<Manifest> {
     // Generate title
     const title = await this.generateTitle(selectedItems);
@@ -743,7 +745,7 @@ export class ManifestBuilderService {
     const manifest: Manifest = {
       schema_version: '1.0.0',
       post_id: date,
-      post_kind: 'daily-recap',
+      post_kind: kind,
       date_utc: dateUtc,
       tz: timezone,
       title,
@@ -757,7 +759,7 @@ export class ManifestBuilderService {
       clip_ids: selectedItems.map(item => item.clip_id),
       sections,
       canonical_vod: canonicalVod,
-      md_path: `content/blog/development/${date}-daily-recap.md`,
+      md_path: `content/blog/development/${date}-${kind}.md`,
       target_branch: 'staging',
       status: 'draft',
       judge: undefined,
