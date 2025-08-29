@@ -155,6 +155,11 @@ export async function handleContentRoutes(
       return await handleGenerateBlog(request, env);
     }
 
+    // Blog listing endpoint
+    if (path === '/api/content/blog' && method === 'GET') {
+      return await handleListBlogPosts(request, env);
+    }
+
     // AI judge endpoints
     if (path === '/api/content/judge' && method === 'POST') {
       return await handleJudgeContent(request, env);
@@ -201,6 +206,44 @@ async function handleContentGeneration(
       return new Response(JSON.stringify({
         success: false,
         error: 'Missing required date_range'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Validate date_range format and ordering
+    const startDate = new Date(requestData.date_range.start);
+    const endDate = new Date(requestData.date_range.end);
+    
+    // Check if dates are valid ISO dates
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid or unordered date_range: must be ISO dates with start <= end',
+        details: {
+          start: requestData.date_range.start,
+          end: requestData.date_range.end,
+          startValid: !isNaN(startDate.getTime()),
+          endValid: !isNaN(endDate.getTime())
+        }
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Check if start date is before or equal to end date
+    if (startDate > endDate) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Invalid or unordered date_range: must be ISO dates with start <= end',
+        details: {
+          start: requestData.date_range.start,
+          end: requestData.date_range.end,
+          startTimestamp: startDate.getTime(),
+          endTimestamp: endDate.getTime()
+        }
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
@@ -853,6 +896,76 @@ async function handleGenerateBlog(
     return new Response(JSON.stringify({
       success: false,
       error: 'Failed to generate blog post'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
+
+/**
+ * Handle blog posts listing request
+ */
+async function handleListBlogPosts(
+  request: Request,
+  env: Environment
+): Promise<Response> {
+  // Check authentication
+  const authResponse = await requireHmacAuth(request, env);
+  if (authResponse) {
+    return authResponse;
+  }
+
+  try {
+    const blogGenerator = getBlogGenerator(env);
+    const url = new URL(request.url);
+    const postId = url.searchParams.get('post_id');
+
+    if (postId) {
+      // Get specific blog post
+      const blogContent = await blogGenerator.getBlogPost(postId);
+      
+      if (!blogContent) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Blog post not found'
+        }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          post_id: postId,
+          content: blogContent,
+          word_count: blogContent.split(/\s+/).filter(word => word.length > 0).length,
+          estimated_read_time: Math.ceil(blogContent.split(/\s+/).filter(word => word.length > 0).length / 200)
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } else {
+      // List all blog posts
+      const blogPosts = await blogGenerator.listBlogPosts();
+      
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          blog_posts: blogPosts,
+          total_count: blogPosts.length
+        }
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Blog listing error:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to list blog posts'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

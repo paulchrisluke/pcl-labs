@@ -125,8 +125,27 @@ export async function getTranscriptFromR2(
     const url = new URL(transcriptUrl);
     validateR2Url(url, env);
     
-    // Extract key from URL pathname
-    const key = url.pathname.substring(1); // Remove leading slash
+    // Extract key relative to base URL path
+    const baseUrl = new URL(env.R2_PUBLIC_BASE_URL!);
+    const basePath = baseUrl.pathname;
+    const urlPath = url.pathname;
+    
+    // Derive key by removing base path prefix
+    let key: string;
+    if (basePath === '/' || basePath === '') {
+      // No path prefix, just remove leading slash
+      key = urlPath.substring(1);
+    } else {
+      // Remove base path prefix
+      if (!urlPath.startsWith(basePath)) {
+        throw new Error(`URL path '${urlPath}' does not start with base path '${basePath}'`);
+      }
+      key = urlPath.substring(basePath.length);
+      // Remove leading slash if present
+      if (key.startsWith('/')) {
+        key = key.substring(1);
+      }
+    }
     
     const result = await env.R2_BUCKET.get(key);
     if (!result) {
@@ -153,8 +172,27 @@ export async function getGitHubContextFromR2(
     const url = new URL(githubContextUrl);
     validateR2Url(url, env);
     
-    // Extract key from URL pathname
-    const key = url.pathname.substring(1); // Remove leading slash
+    // Extract key relative to base URL path
+    const baseUrl = new URL(env.R2_PUBLIC_BASE_URL!);
+    const basePath = baseUrl.pathname;
+    const urlPath = url.pathname;
+    
+    // Derive key by removing base path prefix
+    let key: string;
+    if (basePath === '/' || basePath === '') {
+      // No path prefix, just remove leading slash
+      key = urlPath.substring(1);
+    } else {
+      // Remove base path prefix
+      if (!urlPath.startsWith(basePath)) {
+        throw new Error(`URL path '${urlPath}' does not start with base path '${basePath}'`);
+      }
+      key = urlPath.substring(basePath.length);
+      // Remove leading slash if present
+      if (key.startsWith('/')) {
+        key = key.substring(1);
+      }
+    }
     
     const result = await env.R2_BUCKET.get(key);
     if (!result) {

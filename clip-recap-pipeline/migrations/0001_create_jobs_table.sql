@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   updated_at TEXT NOT NULL DEFAULT (datetime('now', 'utc')), -- ISO8601 timestamp
   expires_at TEXT NOT NULL, -- ISO8601 timestamp
   progress_step TEXT,
-  progress_current INTEGER DEFAULT 0,
-  progress_total INTEGER DEFAULT 0,
+  progress_current INTEGER NOT NULL DEFAULT 0,
+  progress_total INTEGER NOT NULL DEFAULT 0,
   request_data TEXT NOT NULL CHECK (json_valid(request_data)), -- JSON string of original request
   results TEXT CHECK (results IS NULL OR json_valid(results)), -- JSON string of results (when completed)
   error_message TEXT, -- Error details (when failed)

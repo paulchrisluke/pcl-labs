@@ -48,7 +48,16 @@ async function generateAuthHeaders(body: string = ''): Promise<Record<string, st
   }
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = Math.random().toString(36).substring(2, 18);
+  
+  // Generate cryptographically secure nonce
+  const nonceArray = new Uint8Array(16);
+  const crypto = globalThis.crypto || (typeof require !== 'undefined' ? require('crypto').webcrypto : null);
+  if (!crypto) {
+    throw new Error('No crypto implementation available');
+  }
+  crypto.getRandomValues(nonceArray);
+  const nonce = Array.from(nonceArray, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, 16);
+  
   const signature = await generateHmacSignature(body, timestamp, nonce, HMAC_SHARED_SECRET);
   
   return {

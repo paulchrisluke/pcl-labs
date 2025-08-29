@@ -46,53 +46,94 @@ export class JobProcessorService {
       await this.jobManager.updateJobStatus(job_id, 'processing', {
         step: 'starting',
         current: 0,
-        total: 5
+        total: 4
       });
 
-      // Step 1: Fetch content items
-      await this.jobManager.updateJobStatus(job_id, 'processing', {
-        step: 'fetching_content_items',
-        current: 1,
-        total: 5
-      });
-
-      const contentItems = await this.contentItemService.listContentItems({
-        date_range: request_data.date_range,
-        limit: 1000
-      });
-
-      console.log(`📊 Found ${contentItems.items.length} content items for job ${job_id}`);
-
-      // Step 2: Build manifest
+      // Step 1: Build manifest
       await this.jobManager.updateJobStatus(job_id, 'processing', {
         step: 'building_manifest',
-        current: 2,
-        total: 5
+        current: 1,
+        total: 4
       });
 
-      // Extract date from date range start (assuming YYYY-MM-DD format)
+      // Validate and handle date range
       const startDate = new Date(request_data.date_range.start);
-      const dateString = startDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      const endDate = new Date(request_data.date_range.end);
       
-      const manifestResult = await this.manifestBuilder.buildDailyManifest(
-        dateString,
-        'UTC' // Default to UTC timezone
-      );
+      // Normalize dates to UTC for consistent comparison
+      const startUTC = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+      const endUTC = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+      
+      // Check if it's a single day or multi-day range
+      const isSingleDay = startUTC.getTime() === endUTC.getTime();
+      
+      let manifestResult: any;
+      let allSelectedItems: any[];
+      
+      if (isSingleDay) {
+        // Single day processing
+        const dateString = startDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        manifestResult = await this.manifestBuilder.buildDailyManifest(
+          dateString,
+          'UTC' // Default to UTC timezone
+        );
+        
+        allSelectedItems = manifestResult.selectedItems;
+        
+      } else {
+        // Multi-day processing
+        const manifestResults: any[] = [];
+        allSelectedItems = [];
+        
+        // Iterate through each day in the range
+        const currentDate = new Date(startUTC);
+        while (currentDate <= endUTC) {
+          const dateString = currentDate.toISOString().split('T')[0];
+          
+          try {
+            const dayManifestResult = await this.manifestBuilder.buildDailyManifest(
+              dateString,
+              'UTC'
+            );
+            
+            manifestResults.push(dayManifestResult);
+            allSelectedItems.push(...dayManifestResult.selectedItems);
+            
+            console.log(`✅ Built manifest for ${dateString} with ${dayManifestResult.selectedItems.length} items`);
+          } catch (error) {
+            console.warn(`⚠️ Failed to build manifest for ${dateString}:`, error);
+            // Continue with other days even if one fails
+          }
+          
+          // Move to next day
+          currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+        }
+        
+        if (manifestResults.length === 0) {
+          throw new Error('No manifests could be built for the specified date range');
+        }
+        
+        // Use the first manifest as the base for the response
+        manifestResult = manifestResults[0];
+        // Update selectedItems to include all days
+        manifestResult.selectedItems = allSelectedItems;
+      }
 
-      // Step 3: AI content judgment
+      // Step 2: AI content judgment
       await this.jobManager.updateJobStatus(job_id, 'processing', {
         step: 'ai_content_judgment',
-        current: 3,
-        total: 5
+        current: 2,
+        total: 4
       });
 
       const judgeResult = await this.aiJudge.judgeManifest(manifestResult.manifest);
 
-      // Step 4: Generate blog post and prepare response
+      // Step 3: Generate blog post and prepare response
       await this.jobManager.updateJobStatus(job_id, 'processing', {
         step: 'preparing_response',
-        current: 4,
-        total: 5
+        current: 3,
+        total: 4
       });
 
       // Generate blog post from manifest to get front_matter
@@ -119,20 +160,20 @@ export class JobProcessorService {
         },
         summary: {
           total_clips: manifestResult.selectedItems.length,
-          total_prs: manifestResult.selectedItems.reduce((sum, item) => sum + (item.github_context_url ? 1 : 0), 0),
-          total_commits: manifestResult.selectedItems.reduce((sum, item) => sum + (item.github_context_url ? 1 : 0), 0),
-          total_issues: manifestResult.selectedItems.reduce((sum, item) => sum + (item.github_context_url ? 1 : 0), 0)
+          total_prs: manifestResult.selectedItems.reduce((sum: number, item: any) => sum + (item.github_context_url ? 1 : 0), 0),
+          total_commits: manifestResult.selectedItems.reduce((sum: number, item: any) => sum + (item.github_context_url ? 1 : 0), 0),
+          total_issues: manifestResult.selectedItems.reduce((sum: number, item: any) => sum + (item.github_context_url ? 1 : 0), 0)
         },
         suggested_title: blogResult.frontMatter.title || manifestResult.manifest.title,
         suggested_tags: sanitizedTags,
         content_score: judgeResult.overall || 0
       };
 
-      // Step 5: Complete job
+      // Step 4: Complete job
       await this.jobManager.updateJobStatus(job_id, 'processing', {
         step: 'completing',
-        current: 5,
-        total: 5
+        current: 4,
+        total: 4
       });
 
       await this.jobManager.updateJobStatus(job_id, 'completed', undefined, response);

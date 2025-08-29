@@ -2317,31 +2317,167 @@ export default {
   async queue(batch: MessageBatch<any>, env: Environment): Promise<void> {
     console.log(`🔄 Processing ${batch.messages.length} queue messages`);
     
-    const { JobProcessorService } = await import('./services/job-processor.js');
-    const processor = new JobProcessorService(env);
-    
-    // Process each message individually with proper ack/retry handling
-    for (const msg of batch.messages) {
+    // Top-level try/catch to guard against catastrophic failures
+    try {
+      // Dynamic import with error handling
+      let JobProcessorService: any;
       try {
-        // Cast message body to JobQueueMessage type
-        const body = msg.body as any;
-        
-        // Process the individual job
-        await processor.processJob(body);
-        
-        // Acknowledge successful message
-        msg.ack();
-        
-        console.log(`✅ Successfully processed job: ${body.job_id}`);
-        
-      } catch (error) {
-        console.error(`❌ Failed to process job: ${msg.body?.job_id || 'unknown'}`, error);
-        
-        // Retry failed message
-        msg.retry();
+        const module = await import('./services/job-processor.js');
+        JobProcessorService = module.JobProcessorService;
+      } catch (importError) {
+        console.error('❌ Failed to import JobProcessorService:', importError);
+        // Ack all messages to prevent infinite retries on import failures
+        for (const msg of batch.messages) {
+          msg.ack();
+        }
+        return;
       }
+      
+      const processor = new JobProcessorService(env);
+      
+      // Process each message individually with proper validation and error handling
+      for (const msg of batch.messages) {
+        try {
+          // Validate message body structure before processing
+          const body = msg.body;
+          
+          // Type validation - ensure body is an object
+          if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            console.error(`❌ Invalid message body type for message ${msg.id}:`, typeof body);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Required field validation
+          if (!body.job_id || typeof body.job_id !== 'string') {
+            console.error(`❌ Missing or invalid job_id in message ${msg.id}:`, body.job_id);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          if (!body.request_data || typeof body.request_data !== 'object') {
+            console.error(`❌ Missing or invalid request_data in message ${msg.id} for job ${body.job_id}`);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Validate request_data structure
+          const requestData = body.request_data;
+          if (!requestData.date_range || 
+              !requestData.date_range.start || 
+              !requestData.date_range.end ||
+              !requestData.content_type) {
+            console.error(`❌ Invalid request_data structure in message ${msg.id} for job ${body.job_id}:`, requestData);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Validate date format (basic ISO string check)
+          const startDate = new Date(requestData.date_range.start);
+          const endDate = new Date(requestData.date_range.end);
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            console.error(`❌ Invalid date format in message ${msg.id} for job ${body.job_id}:`, {
+              start: requestData.date_range.start,
+              end: requestData.date_range.end
+            });
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Validate content_type enum
+          const validContentTypes = ['daily_recap', 'weekly_summary', 'topic_focus'];
+          if (!validContentTypes.includes(requestData.content_type)) {
+            console.error(`❌ Invalid content_type in message ${msg.id} for job ${body.job_id}:`, requestData.content_type);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          console.log(`✅ Message validation passed for job ${body.job_id}`);
+          
+          // Process the validated job
+          await processor.processJob(body);
+          
+          // Acknowledge successful message
+          msg.ack();
+          
+          console.log(`✅ Successfully processed job: ${body.job_id}`);
+          
+        } catch (error) {
+          console.error(`❌ Failed to process job: ${msg.body?.job_id || 'unknown'}`, error);
+          
+          // Determine if this is a retryable error or should be acked
+          const isRetryableError = this.isRetryableError(error);
+          
+          if (isRetryableError) {
+            console.log(`🔄 Retrying job ${msg.body?.job_id || 'unknown'} due to retryable error`);
+            msg.retry();
+          } else {
+            console.log(`🚫 Acknowledging job ${msg.body?.job_id || 'unknown'} due to non-retryable error`);
+            msg.ack(); // Ack non-retryable errors to prevent infinite retries
+          }
+        }
+      }
+      
+      console.log(`✅ Queue batch processing completed for ${batch.messages.length} messages`);
+      
+    } catch (catastrophicError) {
+      console.error('💥 Catastrophic error in queue handler:', catastrophicError);
+      
+      // Ack all remaining messages to prevent infinite retries
+      for (const msg of batch.messages) {
+        try {
+          msg.ack();
+        } catch (ackError) {
+          console.error('Failed to ack message after catastrophic error:', ackError);
+        }
+      }
+      
+      // Re-throw to ensure the error is logged by the runtime
+      throw catastrophicError;
+    }
+  },
+  
+  /**
+   * Determine if an error is retryable
+   */
+  private isRetryableError(error: any): boolean {
+    // Network errors, timeouts, and temporary service unavailability are retryable
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return true;
     }
     
-    console.log(`✅ Queue batch processing completed for ${batch.messages.length} messages`);
+    // Database connection errors
+    if (error instanceof Error && error.message.includes('database')) {
+      return true;
+    }
+    
+    // R2 storage errors
+    if (error instanceof Error && error.message.includes('R2')) {
+      return true;
+    }
+    
+    // AI service errors (temporary unavailability)
+    if (error instanceof Error && error.message.includes('AI')) {
+      return true;
+    }
+    
+    // Rate limiting errors
+    if (error instanceof Error && error.message.includes('rate limit')) {
+      return true;
+    }
+    
+    // Validation errors, authentication errors, and business logic errors are NOT retryable
+    if (error instanceof Error && (
+      error.message.includes('validation') ||
+      error.message.includes('invalid') ||
+      error.message.includes('authentication') ||
+      error.message.includes('unauthorized') ||
+      error.message.includes('not found')
+    )) {
+      return false;
+    }
+    
+    // Default to retryable for unknown errors
+    return true;
   }
 };

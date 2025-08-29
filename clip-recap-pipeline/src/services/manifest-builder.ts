@@ -184,10 +184,10 @@ export class ManifestBuilderService {
     // Filter candidates by minimum requirements
     const filteredCandidates = candidates.filter(item => {
       // Must have valid transcript (either summary or transcript_url)
-      const hasValidSummary = item.transcript_summary && 
-        item.transcript_summary.length >= this.config.minTranscriptLength;
-      const hasTranscriptUrl = item.transcript_url && 
-        (!item.transcript_size_bytes || item.transcript_size_bytes > 0);
+      const hasValidSummary = !!(item.transcript_summary && 
+        item.transcript_summary.length >= this.config.minTranscriptLength);
+      const hasTranscriptUrl = !!(item.transcript_url && 
+        (!item.transcript_size_bytes || item.transcript_size_bytes > 0));
       
       if (!hasValidSummary && !hasTranscriptUrl) {
         return false;
@@ -398,23 +398,63 @@ export class ManifestBuilderService {
   }
 
   /**
+   * Prefetch transcript and GitHub context data for all items to avoid duplicate R2 fetches
+   */
+  private async prefetchItemData(items: ContentItem[]): Promise<Map<string, { transcript: any, githubContext: any }>> {
+    const dataMap = new Map<string, { transcript: any, githubContext: any }>();
+    
+    console.log(`🔄 Prefetching data for ${items.length} items...`);
+    
+    for (const item of items) {
+      const itemData: { transcript: any, githubContext: any } = { transcript: null, githubContext: null };
+      
+      // Prefetch transcript if available
+      if (item.transcript_url) {
+        try {
+          itemData.transcript = await getTranscriptFromR2(this.env, item.transcript_url);
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch transcript for ${item.clip_id}:`, error);
+        }
+      }
+      
+      // Prefetch GitHub context if available
+      if (item.github_context_url) {
+        try {
+          itemData.githubContext = await getGitHubContextFromR2(this.env, item.github_context_url);
+        } catch (error) {
+          console.warn(`⚠️ Failed to fetch GitHub context for ${item.clip_id}:`, error);
+        }
+      }
+      
+      dataMap.set(item.clip_id, itemData);
+    }
+    
+    console.log(`✅ Prefetched data for ${dataMap.size} items`);
+    return dataMap;
+  }
+
+  /**
    * Build manifest sections from selected ContentItems
    */
   private async buildManifestSections(selectedItems: ContentItem[]): Promise<ManifestSection[]> {
     const sections: ManifestSection[] = [];
+    
+    // Prefetch all data to avoid duplicate R2 fetches
+    const itemDataMap = await this.prefetchItemData(selectedItems);
 
     for (let i = 0; i < selectedItems.length; i++) {
       const item = selectedItems[i];
       const sectionId = `section-${i + 1}`;
+      const itemData = itemDataMap.get(item.clip_id) || { transcript: null, githubContext: null };
 
       // Generate section title (normalize clip title)
       const title = this.normalizeClipTitle(item.clip_title);
 
       // Generate bullets from transcript and GitHub context
-      const bullets = await this.generateBullets(item);
+      const bullets = await this.generateBullets(item, itemData);
 
       // Generate paragraph with citations
-      const paragraph = await this.generateParagraph(item);
+      const paragraph = await this.generateParagraph(item, itemData);
 
       // Calculate section score
       const score = this.calculateContentScore(item);
@@ -430,8 +470,8 @@ export class ManifestBuilderService {
         bullets,
         paragraph,
         score,
-        repo: await this.extractRepoFromGitHubContext(item),
-        pr_links: await this.extractPrLinks(item),
+        repo: this.extractRepoFromGitHubContext(item, itemData.githubContext),
+        pr_links: this.extractPrLinks(item, itemData.githubContext),
         clip_url: item.clip_url,
         vod_jump: this.generateVodJump(item),
         alignment_status: alignmentStatus,
@@ -471,18 +511,19 @@ export class ManifestBuilderService {
   /**
    * Generate bullets from transcript and GitHub context
    */
-  private async generateBullets(item: ContentItem): Promise<string[]> {
+  private async generateBullets(item: ContentItem, itemData?: { transcript: any, githubContext: any }): Promise<string[]> {
     const bullets: string[] = [];
     
-    // Get full transcript if available
-    let transcript = null;
-    if (item.transcript_url) {
+    // Use prefetched data if available, otherwise fetch
+    let transcript = itemData?.transcript || null;
+    let githubContext = itemData?.githubContext || null;
+    
+    // Fetch data if not prefetched
+    if (!transcript && item.transcript_url) {
       transcript = await getTranscriptFromR2(this.env, item.transcript_url);
     }
     
-    // Get full GitHub context if available
-    let githubContext = null;
-    if (item.github_context_url) {
+    if (!githubContext && item.github_context_url) {
       githubContext = await getGitHubContextFromR2(this.env, item.github_context_url);
     }
 
@@ -539,18 +580,19 @@ export class ManifestBuilderService {
   /**
    * Generate paragraph with citations
    */
-  private async generateParagraph(item: ContentItem): Promise<string> {
+  private async generateParagraph(item: ContentItem, itemData?: { transcript: any, githubContext: any }): Promise<string> {
     let paragraph = '';
     
-    // Get full transcript if available
-    let transcript = null;
-    if (item.transcript_url) {
+    // Use prefetched data if available, otherwise fetch
+    let transcript = itemData?.transcript || null;
+    let githubContext = itemData?.githubContext || null;
+    
+    // Fetch data if not prefetched
+    if (!transcript && item.transcript_url) {
       transcript = await getTranscriptFromR2(this.env, item.transcript_url);
     }
     
-    // Get full GitHub context if available
-    let githubContext = null;
-    if (item.github_context_url) {
+    if (!githubContext && item.github_context_url) {
       githubContext = await getGitHubContextFromR2(this.env, item.github_context_url);
     }
 
@@ -615,12 +657,7 @@ export class ManifestBuilderService {
   /**
    * Extract repository from GitHub context
    */
-  private async extractRepoFromGitHubContext(item: ContentItem): Promise<string | null> {
-    if (!item.github_context_url) {
-      return null;
-    }
-    
-    const githubContext = await getGitHubContextFromR2(this.env, item.github_context_url);
+  private extractRepoFromGitHubContext(item: ContentItem, githubContext?: any): string | null {
     if (!githubContext?.linked_prs?.length) {
       return null;
     }
@@ -635,16 +672,11 @@ export class ManifestBuilderService {
   /**
    * Extract PR links from GitHub context
    */
-  private async extractPrLinks(item: ContentItem): Promise<string[] | null> {
-    if (!item.github_context_url) {
-      return null;
-    }
-    
-    const githubContext = await getGitHubContextFromR2(this.env, item.github_context_url);
+  private extractPrLinks(item: ContentItem, githubContext?: any): string[] | null {
     if (!githubContext?.linked_prs) return null;
     
     // Convert LinkedPullRequest objects to URLs
-    return githubContext.linked_prs.map(pr => pr.url);
+    return githubContext.linked_prs.map((pr: any) => pr.url);
   }
 
   /**
@@ -769,8 +801,12 @@ export class ManifestBuilderService {
   private async extractRepos(selectedItems: ContentItem[]): Promise<string[]> {
     const repos = new Set<string>();
 
+    // Prefetch GitHub context data for all items
+    const itemDataMap = await this.prefetchItemData(selectedItems);
+
     for (const item of selectedItems) {
-      const repo = await this.extractRepoFromGitHubContext(item);
+      const itemData = itemDataMap.get(item.clip_id);
+      const repo = this.extractRepoFromGitHubContext(item, itemData?.githubContext);
       if (repo) {
         repos.add(repo);
       }

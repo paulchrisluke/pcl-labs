@@ -61,12 +61,12 @@ export interface ManifestSection {
   title: string; // max 80 chars
   bullets: string[]; // 2-4 items, max 140 chars each
   paragraph: string;
-  score: Score01;
+  score?: Score01;
   repo?: string | null;
   pr_links?: string[] | null; // URIs
   clip_url?: string | null;
   vod_jump?: string | null; // URI
-  alignment_status: 'exact' | 'estimated' | 'missing';
+  alignment_status?: 'exact' | 'estimated' | 'missing';
   start: number;
   end: number;
   entities?: string[] | null;

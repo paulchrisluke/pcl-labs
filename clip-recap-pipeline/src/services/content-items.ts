@@ -2,6 +2,51 @@ import type { Environment } from '../types/index.js';
 import type { ContentItem, PaginationCursor } from '../types/content.js';
 import { sanitizeContentItem, validateSchemaVersion } from '../utils/schema-validator.js';
 
+/**
+ * Cursor structure for content item pagination
+ */
+interface ContentItemCursor {
+  y: number; // year
+  m: number; // month (1-12)
+  c?: string; // continuation token for the current month
+}
+
+/**
+ * Helper functions for cursor encoding/decoding
+ */
+function encodeCursor(cursor: ContentItemCursor): string {
+  try {
+    return btoa(JSON.stringify(cursor));
+  } catch (error) {
+    console.error('Failed to encode cursor:', error);
+    throw new Error('Invalid cursor data for encoding');
+  }
+}
+
+function decodeCursor(cursorString: string): ContentItemCursor | null {
+  try {
+    const decoded = atob(cursorString);
+    const parsed = JSON.parse(decoded);
+    
+    // Validate cursor structure
+    if (typeof parsed.y !== 'number' || typeof parsed.m !== 'number') {
+      console.error('Invalid cursor structure:', parsed);
+      return null;
+    }
+    
+    // Validate month range
+    if (parsed.m < 1 || parsed.m > 12) {
+      console.error('Invalid month in cursor:', parsed.m);
+      return null;
+    }
+    
+    return parsed;
+  } catch (error) {
+    console.error('Failed to decode cursor:', error);
+    return null;
+  }
+}
+
 export interface ContentItemQuery {
   date_range?: {
     start: string;
@@ -140,21 +185,21 @@ export class ContentItemService {
         const endDate = new Date(date_range.end);
         const currentDate = new Date(startDate);
         
-        // If a cursor is provided, we need to determine which month to start from
-        // The cursor format should be something like "recaps/content-items/2024/01/some-key"
+        // Parse cursor to determine starting position
+        let decodedCursor: ContentItemCursor | null = null;
         if (cursor) {
-          const cursorParts = cursor.split('/');
-          if (cursorParts.length >= 4) {
-            const cursorYear = parseInt(cursorParts[2]);
-            const cursorMonth = parseInt(cursorParts[3]);
-            const cursorDate = new Date(cursorYear, cursorMonth - 1, 1);
+          decodedCursor = decodeCursor(cursor);
+          if (decodedCursor) {
+            const cursorDate = new Date(decodedCursor.y, decodedCursor.m - 1, 1);
             
             // If the cursor month is within our date range, start from there
             if (cursorDate >= startDate && cursorDate <= endDate) {
-              currentDate.setFullYear(cursorYear);
-              currentDate.setMonth(cursorMonth - 1);
+              currentDate.setFullYear(decodedCursor.y);
+              currentDate.setMonth(decodedCursor.m - 1);
               currentDate.setDate(1);
             }
+          } else {
+            console.warn('⚠️ Invalid cursor provided, starting from beginning of date range');
           }
         }
         
@@ -168,18 +213,9 @@ export class ContentItemService {
           let monthCursor: string | undefined = undefined;
           let monthHasMore = true;
           
-          // If this is the first month we're processing and we have a cursor, use it
-          // We need to check if this is the month where the cursor points to
-          if (cursor) {
-            const cursorParts = cursor.split('/');
-            if (cursorParts.length >= 4) {
-              const cursorYear = parseInt(cursorParts[2]);
-              const cursorMonth = parseInt(cursorParts[3]);
-              
-              if (year === cursorYear && month === String(cursorMonth).padStart(2, '0')) {
-                monthCursor = cursor;
-              }
-            }
+          // If this is the first month we're processing and we have a valid decoded cursor, use it
+          if (decodedCursor && year === decodedCursor.y && month === String(decodedCursor.m).padStart(2, '0')) {
+            monthCursor = decodedCursor.c;
           }
           
           while (monthHasMore && items.length < limit) {
@@ -233,15 +269,24 @@ export class ContentItemService {
             monthCursor = monthObjects.cursor;
             
             if (monthHasMore && items.length < limit) {
-              nextCursor = monthObjects.cursor;
+              // Create next cursor with current year, month, and continuation token
+              const nextCursorData: ContentItemCursor = {
+                y: year,
+                m: parseInt(month),
+                c: monthObjects.cursor
+              };
+              nextCursor = encodeCursor(nextCursorData);
             }
           }
           
           if (hasMore) break;
           
-          // Move to next month
+          // Move to next month and reset continuation token
           currentDate.setMonth(currentDate.getMonth() + 1);
           currentDate.setDate(1);
+          
+          // Reset decodedCursor to null when moving to next month
+          decodedCursor = null;
         }
         
         return {
@@ -255,6 +300,7 @@ export class ContentItemService {
         };
       } else {
         // Simple listing without date range using cursor-based pagination
+        // For simple listing, we use the cursor directly as it's not date-range specific
         const objects = await this.env.R2_BUCKET.list({ 
           prefix,
           limit,
@@ -300,7 +346,7 @@ export class ContentItemService {
           pagination: {
             has_next: objects.truncated,
             has_prev: !!cursor,
-            next_cursor: objects.cursor,
+            next_cursor: objects.cursor, // For simple listing, use R2 cursor directly
             prev_cursor: cursor
           }
         };

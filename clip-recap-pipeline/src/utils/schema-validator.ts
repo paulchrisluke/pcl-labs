@@ -11,6 +11,97 @@ export interface ValidationResult {
 }
 
 /**
+ * Validate format constraints
+ */
+function validateFormat(value: string, format: string): string | null {
+  switch (format) {
+    case 'email':
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        return 'must be a valid email address';
+      }
+      break;
+    case 'uri':
+      try {
+        new URL(value);
+      } catch {
+        return 'must be a valid URI';
+      }
+      break;
+    case 'date':
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(value) || isNaN(Date.parse(value))) {
+        return 'must be a valid date in YYYY-MM-DD format';
+      }
+      break;
+    case 'date-time':
+      if (isNaN(Date.parse(value))) {
+        return 'must be a valid ISO date-time string';
+      }
+      break;
+  }
+  return null;
+}
+
+/**
+ * Validate array item against schema
+ */
+function validateArrayItem(item: any, itemSchema: any, fieldPath: string): ValidationResult {
+  const errors: string[] = [];
+  
+  if (itemSchema.type === 'string') {
+    if (typeof item !== 'string') {
+      errors.push(`Field '${fieldPath}' must be a string`);
+    } else {
+      if (itemSchema.maxLength && item.length > itemSchema.maxLength) {
+        errors.push(`Field '${fieldPath}' must be at most ${itemSchema.maxLength} characters long`);
+      }
+      if (itemSchema.format) {
+        const formatError = validateFormat(item, itemSchema.format);
+        if (formatError) {
+          errors.push(`Field '${fieldPath}': ${formatError}`);
+        }
+      }
+    }
+  } else if (itemSchema.type === 'number') {
+    if (typeof item !== 'number' || isNaN(item)) {
+      errors.push(`Field '${fieldPath}' must be a valid number`);
+    }
+  } else if (itemSchema.type === 'integer') {
+    if (typeof item !== 'number' || isNaN(item) || !Number.isInteger(item)) {
+      errors.push(`Field '${fieldPath}' must be a valid integer`);
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Validate object against schema
+ */
+function validateObject(obj: any, objSchema: any, fieldPath: string): ValidationResult {
+  const errors: string[] = [];
+  
+  // Check for additional properties if not allowed
+  if (objSchema.additionalProperties === false) {
+    const allowedProps = Object.keys(objSchema.properties || {});
+    const actualProps = Object.keys(obj);
+    const extraProps = actualProps.filter(prop => !allowedProps.includes(prop));
+    if (extraProps.length > 0) {
+      errors.push(`Field '${fieldPath}' contains disallowed properties: ${extraProps.join(', ')}`);
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+/**
  * Convert JSON Schema to our validation schema format
  */
 function convertJsonSchemaToValidationSchema(jsonSchema: any): any {
@@ -24,31 +115,53 @@ function convertJsonSchemaToValidationSchema(jsonSchema: any): any {
         schema[propName] = { 
           type: 'string', 
           required: jsonSchema.required?.includes(propName) || false,
-          maxLength: prop.maxLength
+          maxLength: prop.maxLength,
+          minLength: prop.minLength,
+          enum: prop.enum,
+          format: prop.format,
+          pattern: prop.pattern,
+          const: prop.const
         };
-      } else if (prop.type === 'number' || prop.type === 'integer') {
+      } else if (prop.type === 'number') {
         schema[propName] = { 
           type: 'number', 
           required: jsonSchema.required?.includes(propName) || false,
           min: prop.minimum,
-          max: prop.maximum
+          max: prop.maximum,
+          enum: prop.enum,
+          const: prop.const
+        };
+      } else if (prop.type === 'integer') {
+        schema[propName] = { 
+          type: 'integer', 
+          required: jsonSchema.required?.includes(propName) || false,
+          min: prop.minimum,
+          max: prop.maximum,
+          enum: prop.enum,
+          const: prop.const
         };
       } else if (prop.type === 'boolean') {
         schema[propName] = { 
           type: 'boolean', 
-          required: jsonSchema.required?.includes(propName) || false
+          required: jsonSchema.required?.includes(propName) || false,
+          enum: prop.enum,
+          const: prop.const
         };
       } else if (prop.type === 'array') {
         schema[propName] = { 
           type: 'array', 
           required: jsonSchema.required?.includes(propName) || false,
           maxItems: prop.maxItems,
-          minItems: prop.minItems
+          minItems: prop.minItems,
+          uniqueItems: prop.uniqueItems,
+          items: prop.items
         };
       } else if (prop.type === 'object') {
         schema[propName] = { 
           type: 'object', 
-          required: jsonSchema.required?.includes(propName) || false
+          required: jsonSchema.required?.includes(propName) || false,
+          properties: prop.properties,
+          additionalProperties: prop.additionalProperties
         };
       } else if (Array.isArray(prop.type)) {
         // Handle union types like ["string", "null"]
@@ -59,31 +172,53 @@ function convertJsonSchemaToValidationSchema(jsonSchema: any): any {
             schema[propName] = { 
               type: 'string', 
               required: false,
-              maxLength: prop.maxLength
+              maxLength: prop.maxLength,
+              minLength: prop.minLength,
+              enum: prop.enum,
+              format: prop.format,
+              pattern: prop.pattern,
+              const: prop.const
             };
-          } else if (type === 'number' || type === 'integer') {
+          } else if (type === 'number') {
             schema[propName] = { 
               type: 'number', 
               required: false,
               min: prop.minimum,
-              max: prop.maximum
+              max: prop.maximum,
+              enum: prop.enum,
+              const: prop.const
+            };
+          } else if (type === 'integer') {
+            schema[propName] = { 
+              type: 'integer', 
+              required: false,
+              min: prop.minimum,
+              max: prop.maximum,
+              enum: prop.enum,
+              const: prop.const
             };
           } else if (type === 'boolean') {
             schema[propName] = { 
               type: 'boolean', 
-              required: false
+              required: false,
+              enum: prop.enum,
+              const: prop.const
             };
           } else if (type === 'array') {
             schema[propName] = { 
               type: 'array', 
               required: false,
               maxItems: prop.maxItems,
-              minItems: prop.minItems
+              minItems: prop.minItems,
+              uniqueItems: prop.uniqueItems,
+              items: prop.items
             };
           } else if (type === 'object') {
             schema[propName] = { 
               type: 'object', 
-              required: false
+              required: false,
+              properties: prop.properties,
+              additionalProperties: prop.additionalProperties
             };
           }
         }
@@ -126,6 +261,48 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
         continue;
       }
       if (value !== null && value !== undefined) {
+        // Validate minLength
+        if (fieldConfig.minLength !== undefined && value.length < fieldConfig.minLength) {
+          errors.push(`Field '${field}' must be at least ${fieldConfig.minLength} characters long`);
+          continue;
+        }
+        
+        // Validate maxLength
+        if (fieldConfig.maxLength !== undefined && value.length > fieldConfig.maxLength) {
+          errors.push(`Field '${field}' must be at most ${fieldConfig.maxLength} characters long`);
+          continue;
+        }
+        
+        // Validate enum
+        if (fieldConfig.enum && !fieldConfig.enum.includes(value)) {
+          errors.push(`Field '${field}' must be one of: ${fieldConfig.enum.join(', ')}`);
+          continue;
+        }
+        
+        // Validate const
+        if (fieldConfig.const !== undefined && value !== fieldConfig.const) {
+          errors.push(`Field '${field}' must be exactly '${fieldConfig.const}'`);
+          continue;
+        }
+        
+        // Validate format
+        if (fieldConfig.format) {
+          const formatError = validateFormat(value, fieldConfig.format);
+          if (formatError) {
+            errors.push(`Field '${field}': ${formatError}`);
+            continue;
+          }
+        }
+        
+        // Validate pattern
+        if (fieldConfig.pattern) {
+          const regex = new RegExp(fieldConfig.pattern);
+          if (!regex.test(value)) {
+            errors.push(`Field '${field}' must match pattern: ${fieldConfig.pattern}`);
+            continue;
+          }
+        }
+        
         sanitizedData[field] = value;
       }
     } else if (fieldConfig.type === 'number') {
@@ -142,6 +319,48 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
           errors.push(`Field '${field}' must be at most ${fieldConfig.max}`);
           continue;
         }
+        
+        // Validate enum
+        if (fieldConfig.enum && !fieldConfig.enum.includes(value)) {
+          errors.push(`Field '${field}' must be one of: ${fieldConfig.enum.join(', ')}`);
+          continue;
+        }
+        
+        // Validate const
+        if (fieldConfig.const !== undefined && value !== fieldConfig.const) {
+          errors.push(`Field '${field}' must be exactly ${fieldConfig.const}`);
+          continue;
+        }
+        
+        sanitizedData[field] = value;
+      }
+    } else if (fieldConfig.type === 'integer') {
+      if (value !== null && value !== undefined && (typeof value !== 'number' || isNaN(value) || !Number.isInteger(value))) {
+        errors.push(`Field '${field}' must be a valid integer`);
+        continue;
+      }
+      if (value !== null && value !== undefined) {
+        if (fieldConfig.min !== undefined && value < fieldConfig.min) {
+          errors.push(`Field '${field}' must be at least ${fieldConfig.min}`);
+          continue;
+        }
+        if (fieldConfig.max !== undefined && value > fieldConfig.max) {
+          errors.push(`Field '${field}' must be at most ${fieldConfig.max}`);
+          continue;
+        }
+        
+        // Validate enum
+        if (fieldConfig.enum && !fieldConfig.enum.includes(value)) {
+          errors.push(`Field '${field}' must be one of: ${fieldConfig.enum.join(', ')}`);
+          continue;
+        }
+        
+        // Validate const
+        if (fieldConfig.const !== undefined && value !== fieldConfig.const) {
+          errors.push(`Field '${field}' must be exactly ${fieldConfig.const}`);
+          continue;
+        }
+        
         sanitizedData[field] = value;
       }
     } else if (fieldConfig.type === 'boolean') {
@@ -150,6 +369,18 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
         continue;
       }
       if (value !== null && value !== undefined) {
+        // Validate enum
+        if (fieldConfig.enum && !fieldConfig.enum.includes(value)) {
+          errors.push(`Field '${field}' must be one of: ${fieldConfig.enum.join(', ')}`);
+          continue;
+        }
+        
+        // Validate const
+        if (fieldConfig.const !== undefined && value !== fieldConfig.const) {
+          errors.push(`Field '${field}' must be exactly ${fieldConfig.const}`);
+          continue;
+        }
+        
         sanitizedData[field] = value;
       }
     } else if (fieldConfig.type === 'array') {
@@ -166,6 +397,24 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
           errors.push(`Field '${field}' must have at most ${fieldConfig.maxItems} items`);
           continue;
         }
+        
+        // Validate uniqueItems
+        if (fieldConfig.uniqueItems && value.length !== new Set(value).size) {
+          errors.push(`Field '${field}' must contain unique items`);
+          continue;
+        }
+        
+        // Validate array items if schema is provided
+        if (fieldConfig.items) {
+          for (let i = 0; i < value.length; i++) {
+            const itemValidation = validateArrayItem(value[i], fieldConfig.items, `${field}[${i}]`);
+            if (!itemValidation.isValid) {
+              errors.push(...itemValidation.errors);
+              continue;
+            }
+          }
+        }
+        
         sanitizedData[field] = value;
       }
     } else if (fieldConfig.type === 'object') {
@@ -174,6 +423,15 @@ function validateData(data: any, schema: any, requiredFields: string[] = []): Va
         continue;
       }
       if (value !== null && value !== undefined) {
+        // Validate object properties if schema is provided
+        if (fieldConfig.properties) {
+          const objectValidation = validateObject(value, fieldConfig, field);
+          if (!objectValidation.isValid) {
+            errors.push(...objectValidation.errors);
+            continue;
+          }
+        }
+        
         sanitizedData[field] = value;
       }
     }

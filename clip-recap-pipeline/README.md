@@ -95,6 +95,36 @@ CONTENT_REPO_MAIN_BRANCH = "main"
 
 **Tip**: Only credentials, private keys, and sensitive tokens should be stored as secrets. Repository metadata like owner, name, and branch names are safe to store as plain-text variables.
 
+### Secret Management
+
+#### HMAC Shared Secret
+
+The `HMAC_SHARED_SECRET` is used for API authentication and must be stored securely:
+
+```bash
+# Store the real secret with Wrangler (production/development)
+wrangler secret put HMAC_SHARED_SECRET
+```
+
+**Important**: Never commit the real secret value to the repository. The `.dev.vars` file contains a placeholder (`HMAC_SHARED_SECRET=REPLACE_ME`) for security.
+
+#### Local Development Override
+
+For local development, you can override environment variables by creating a `.dev.vars.local` file (which is git-ignored):
+
+```bash
+# Create .dev.vars.local for local development
+echo "HMAC_SHARED_SECRET=your-local-secret-here" > .dev.vars.local
+echo "DISABLE_AUTH=true" >> .dev.vars.local
+```
+
+This allows you to:
+- Use a different secret for local testing
+- Disable authentication for easier local development
+- Override any other environment variables as needed
+
+**Note**: The `.dev.vars.local` file is automatically ignored by git, so your local overrides won't be committed to the repository.
+
 ### Development
 
 ```bash
