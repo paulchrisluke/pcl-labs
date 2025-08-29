@@ -1,5 +1,5 @@
 import type { Environment } from '../types/index.js';
-import type { Manifest, ManifestSection, AIDraft, AIGenerationMetadata } from '../types/content.js';
+import type { Manifest, AIDraft, AIGenerationMetadata } from '../types/content.js';
 
 // Simple hash function for idempotency (since crypto is not available in Workers)
 function simpleHash(str: string): string {
@@ -175,7 +175,7 @@ Generate the content in this exact JSON format:
           if (parsed.sections.length === expectedSections) {
             return {
               intro: this.sanitizeText(parsed.intro),
-              sections: parsed.sections.map((s: any) => ({
+                             sections: parsed.sections.map((s: { paragraph?: string }) => ({
                 paragraph: this.sanitizeText(s.paragraph || '')
               })),
               outro: this.sanitizeText(parsed.outro),
