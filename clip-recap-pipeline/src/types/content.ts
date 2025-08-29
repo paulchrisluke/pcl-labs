@@ -79,6 +79,27 @@ export interface JudgeResult {
   version?: string | null;
 }
 
+// AI Draft generation metadata
+export interface AIGenerationMetadata {
+  model: string;
+  params: {
+    temperature: number;
+    top_p: number;
+    seed: number;
+  };
+  prompt_hash: string;
+  generated_at: ISODateTimeString;
+}
+
+// AI Draft content
+export interface AIDraft {
+  intro: string;
+  sections: Array<{
+    paragraph: string;
+  }>;
+  outro: string;
+}
+
 // Social blurbs type
 export interface SocialBlurbs {
   bluesky?: string | null; // max 260 chars
@@ -110,6 +131,10 @@ export interface Manifest {
 
   judge?: JudgeResult;
   social_blurbs?: SocialBlurbs;
+  
+  // AI Drafting fields
+  draft?: AIDraft;
+  gen?: AIGenerationMetadata;
 }
 
 // Content generation request

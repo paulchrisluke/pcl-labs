@@ -6,6 +6,7 @@ import { ContentItemService } from './content-items.js';
 import { sanitizeManifest } from '../utils/schema-validator.js';
 import { calculateWeightedContentScore, calculateDetailedScore } from '../utils/scoring.js';
 import { DEFAULT_SCORING_CONFIG } from '../config/scoring.js';
+import { AIDrafterService } from './ai-drafter.js';
 
 
 
@@ -38,11 +39,13 @@ export interface SelectionResult {
 export class ManifestBuilderService {
   private env: Environment;
   private contentItemService: ContentItemService;
+  private aiDrafterService: AIDrafterService;
   private config: SelectionConfig;
 
   constructor(env: Environment, config?: Partial<SelectionConfig>) {
     this.env = env;
     this.contentItemService = new ContentItemService(env);
+    this.aiDrafterService = new AIDrafterService(env);
     this.config = {
       clipBudgetMin: 6,
       clipBudgetMax: 12,
@@ -108,6 +111,33 @@ export class ManifestBuilderService {
     } catch (error) {
       console.error('❌ Failed to build daily manifest:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Generate AI draft for manifest
+   */
+  async generateAIDraft(manifest: Manifest): Promise<Manifest> {
+    try {
+      console.log(`🤖 Generating AI draft for manifest ${manifest.post_id}...`);
+
+      // Generate AI draft
+      const draftingResult = await this.aiDrafterService.generateDraft(manifest);
+
+      // Update manifest with AI draft
+      const updatedManifest: Manifest = {
+        ...manifest,
+        draft: draftingResult.draft,
+        gen: draftingResult.gen,
+      };
+
+      console.log(`✅ AI draft generated for ${manifest.post_id}`);
+
+      return updatedManifest;
+    } catch (error) {
+      console.error('❌ Failed to generate AI draft:', error);
+      // Return manifest without AI draft on failure
+      return manifest;
     }
   }
 

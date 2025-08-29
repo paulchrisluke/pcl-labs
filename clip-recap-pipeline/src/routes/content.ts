@@ -837,6 +837,13 @@ async function handleBuildManifest(
       requestData.timezone || 'UTC'
     );
 
+    // Generate AI draft if requested
+    if (requestData.generate_ai_draft === true) {
+      console.log('🤖 Generating AI draft for manifest...');
+      const manifestWithDraft = await manifestBuilder.generateAIDraft(result.manifest);
+      result.manifest = manifestWithDraft;
+    }
+
     return new Response(JSON.stringify({
       success: true,
       data: result

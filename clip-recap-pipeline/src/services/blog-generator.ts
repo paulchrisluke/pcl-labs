@@ -96,6 +96,13 @@ export class BlogGeneratorService {
       frontMatter.judge_version = manifest.judge.version;
     }
 
+    // Add AI generation metadata if available
+    if (manifest.gen) {
+      frontMatter.ai_generated = true;
+      frontMatter.ai_model = manifest.gen.model;
+      frontMatter.ai_generated_at = manifest.gen.generated_at;
+    }
+
     return frontMatter;
   }
 
@@ -108,8 +115,18 @@ export class BlogGeneratorService {
     // Add introduction
     content += this.generateIntroduction(manifest);
 
+    // Add AI-generated intro if available
+    if (manifest.draft?.intro) {
+      content += `${manifest.draft.intro}\n\n`;
+    }
+
     // Add sections
-    content += this.generateSections(manifest.sections);
+    content += this.generateSections(manifest.sections, manifest);
+
+    // Add AI-generated outro if available
+    if (manifest.draft?.outro) {
+      content += `\n${manifest.draft.outro}\n\n`;
+    }
 
     // Add conclusion
     content += this.generateConclusion(manifest);
@@ -170,7 +187,7 @@ export class BlogGeneratorService {
   /**
    * Generate sections content
    */
-  private generateSections(sections: ManifestSection[]): string {
+  private generateSections(sections: ManifestSection[], manifest: Manifest): string {
     let sectionsContent = '';
 
     sections.forEach((section, index) => {
@@ -192,9 +209,11 @@ export class BlogGeneratorService {
         sectionsContent += '\n';
       }
 
-      // Add paragraph
-      if (section.paragraph) {
-        sectionsContent += `${section.paragraph}\n\n`;
+      // Add paragraph - use AI-generated if available, fallback to existing
+      const aiParagraph = manifest.draft?.sections?.[index]?.paragraph;
+      const paragraph = aiParagraph || section.paragraph;
+      if (paragraph) {
+        sectionsContent += `${paragraph}\n\n`;
       }
 
       // Add GitHub context if available
