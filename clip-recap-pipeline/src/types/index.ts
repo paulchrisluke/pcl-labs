@@ -3,6 +3,8 @@ export interface Environment {
   ai: any; // Workers AI binding
   VECTORIZE: any; // Vectorize binding
   R2_BUCKET: any; // R2 bucket binding
+  JOB_STORE: D1Database; // D1 database for job state management
+  JOB_QUEUE: Queue; // Queue for background job processing
   TWITCH_CLIENT_ID: string;
   TWITCH_CLIENT_SECRET: string;
   TWITCH_BROADCASTER_ID: string;
@@ -21,7 +23,12 @@ export interface Environment {
   CONTENT_REPO_MAIN_BRANCH: string;
   AUDIO_PROCESSOR_URL?: string;
   HMAC_SHARED_SECRET: string;
+  DISABLE_AUTH?: string; // Set to 'true' or '1' to disable authentication for testing
   WORKER_ORIGIN?: string; // Origin header for API requests (set via wrangler secret put), defaults to production worker URL
+  R2_PUBLIC_BASE_URL?: string; // Public base URL for R2 objects (required for content storage operations)
+  JOB_CLEANUP_NOTIFY_THRESHOLD?: string; // Threshold for job cleanup notifications (optional, defaults to 10)
+  WRANGLER_DEV?: string; // Set to 'true' when running in wrangler dev mode
+  NODE_ENV?: string; // Node environment (development, production, etc.)
 }
 
 // Health endpoint response interface
@@ -39,6 +46,12 @@ export type ISODateTimeString = string;
 // Shared union types for clip-GitHub linking
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
 export type MatchReason = 'temporal_proximity' | 'content_analysis' | 'manual_override';
+
+// Content categorization
+export type ContentCategory = 'development' | 'gaming' | 'tutorial' | 'review' | 'other';
+
+// Score type for 0-1 scale values
+export type Score01 = number;
 
 // GitHub event action types
 export type PullRequestAction = 'opened' | 'edited' | 'closed' | 'reopened' | 'synchronize' | 'ready_for_review' | 'converted_to_draft';
@@ -92,14 +105,14 @@ export interface BlogPost {
 
 // Judge evaluation types
 export interface JudgeResult {
-  overall: number;
+  overall: Score01;
   per_axis: {
-    coherence: number;
-    correctness: number;
-    dev_signal: number;
-    narrative_flow: number;
-    length: number;
-    safety: number;
+    coherence: Score01;
+    correctness: Score01;
+    dev_signal: Score01;
+    narrative_flow: Score01;
+    length: Score01;
+    safety: Score01;
   };
   reasons: string[];
   action: 'approve' | 'needs-polish';
@@ -234,9 +247,11 @@ export interface GitHubIssueEvent extends GitHubEvent {
 
 // Clip-GitHub Linking Types
 export interface GitHubContext {
-  linked_prs: LinkedPullRequest[];
-  linked_commits: LinkedCommit[];
-  linked_issues: LinkedIssue[];
+  linked_prs?: LinkedPullRequest[];
+  linked_commits?: LinkedCommit[];
+  linked_issues?: LinkedIssue[];
+  confidence_score?: Score01;
+  match_reason?: MatchReason;
 }
 
 export interface LinkedPullRequest {
@@ -253,6 +268,8 @@ export interface LinkedCommit {
   message: string;
   url: string;
   timestamp: ISODateTimeString;
+  confidence: ConfidenceLevel;
+  match_reason: MatchReason;
 }
 
 export interface LinkedIssue {

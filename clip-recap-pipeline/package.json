@@ -19,8 +19,11 @@
     "test:deduplication": "npx tsx test-deduplication.ts",
     "test:transcription": "npx tsx test-transcription.ts",
     "test:github-events": "npx tsx test-github-events.ts",
-    "test:all": "npm run test:health && npm run test:twitch && npm run test && npm run test:pipeline && npm run test:deduplication && npm run test:audio && npm run test:transcription && npm run test:github-events",
-    "test:local": "echo '⚠️  Local tests require secrets not available in local dev' && echo 'To test locally:' && echo '  1. Start dev server: npm run dev (runs on http://127.0.0.1:8787)' && echo '  2. Set WORKER_URL=http://127.0.0.1:8787' && echo '  3. Run: WORKER_URL=http://127.0.0.1:8787 npm run test:all' && echo '  4. Or test against production: npm run test:all' && echo 'Note: Use .dev.vars file or --remote flag to access secrets'",
+    "test:content": "npx tsx test-content-api.ts",
+    "test:scoring": "npx tsx test-scoring-unit.ts",
+    "test:job-management": "npx tsx test-job-management.ts",
+    "test:all": "npm run test:health && npm run test:twitch && npm run test && npm run test:pipeline && npm run test:deduplication && npm run test:audio && npm run test:transcription && npm run test:github-events && npm run test:content && npm run test:scoring && npm run test:job-management",
+    "test:local": "echo '⚠️  Local tests require secrets not available in local dev' && echo 'To test locally:' && echo '  1. Start dev server: npm run dev (runs on http://127.0.0.1:8787)' && echo '  2. Set WORKER_URL=http://127.0.0.1:8787' && echo '  3. Run: WORKER_URL=http://127.0.0.1:8787 npm run test:all' && echo '  4. Or test against production: npm run test:all' && echo 'Note: Use .dev.vars file or --remote flag to access secrets' && echo '' && echo 'Content API Test Options:' && echo '  - MOCK_CONTENT_API_URL: Use mock endpoint instead of live API' && echo '  - HMAC_SHARED_SECRET: Secret for HMAC authentication' && echo '  - DISABLE_AUTH: Set to true to disable authentication' && echo '  - Example: DISABLE_AUTH=true npm run test:content'",
     "type-check": "tsc --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
@@ -38,10 +41,14 @@
   "author": "Paul Chris Luke",
   "license": "MIT",
   "dependencies": {
-    "@octokit/rest": "^21.0.0"
+    "@octokit/rest": "^21.0.0",
+    "luxon": "^3.7.1",
+    "ulid": "^3.0.1",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.0.0",
+    "@types/luxon": "^3.7.1",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0",
     "eslint": "^9.8.0",

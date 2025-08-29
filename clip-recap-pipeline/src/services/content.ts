@@ -637,14 +637,14 @@ Format as JSON:
       console.error('AI response parsing failed:', error);
       // Fallback
       return {
-        overall: 80,
+        overall: 0.8,
         per_axis: {
-          coherence: 18,
-          correctness: 20,
-          dev_signal: 16,
-          narrative_flow: 14,
-          length: 8,
-          safety: 6
+          coherence: 0.18,
+          correctness: 0.20,
+          dev_signal: 0.16,
+          narrative_flow: 0.14,
+          length: 0.08,
+          safety: 0.06
         },
         reasons: ['AI parsing failed, using fallback'],
         action: 'approve'
@@ -694,17 +694,17 @@ Format as JSON:
           head_sha: headSha,
           status: 'completed',
           completed_at: new Date().toISOString(),
-          conclusion: judgeResult.overall >= 80 ? 'success' : 'neutral',
+          conclusion: judgeResult.overall >= 0.8 ? 'success' : 'neutral',
           output: {
-            title: `Content Quality Score: ${judgeResult.overall}/100`,
+            title: `Content Quality Score: ${Math.round(judgeResult.overall * 100)}/100`,
             summary: `Judge evaluation completed`,
             text: [
               '## Judge Results',
               '',
-              `**Overall Score**: ${judgeResult.overall}/100`,
+              `**Overall Score**: ${Math.round(judgeResult.overall * 100)}/100`,
               '',
               '**Breakdown:**',
-              ...Object.entries(judgeResult.per_axis).map(([k, v]) => `- ${k}: ${v}`),
+              ...Object.entries(judgeResult.per_axis).map(([k, v]) => `- ${k}: ${Math.round(v * 100)}`),
               '',
               '**Reasons:**',
               ...judgeResult.reasons.map((r: any) => `- ${r}`),

@@ -22,11 +22,13 @@ compatibility_flags = ["nodejs_compat"]
 # 0 2 * * *  -> Daily at 02:00 UTC (= 09:00 ICT) - main pipeline
 # 0 * * * *  -> Every hour - token validation
 # 0 */6 * * * -> Every 6 hours - transcription pipeline
+# 0 */12 * * * -> Every 12 hours - job cleanup
 [triggers]
 crons = [
   "0 2 * * *",
   "0 * * * *",
-  "0 */6 * * *"
+  "0 */6 * * *",
+  "0 */12 * * *"
 ]
 
 # AI binding for AI model access
@@ -44,6 +46,8 @@ binding = "R2_BUCKET"
 bucket_name = "clip-recap-assets"
 preview_bucket_name = "clip-recap-assets"
 
+
+
 # All sensitive data is stored as secrets using wrangler secret put
 # Run 'npx wrangler secret list' to see current secrets
 # 
@@ -55,3 +59,4 @@ preview_bucket_name = "clip-recap-assets"
 # GITHUB_TOKEN_BLAWBY
 # GITHUB_TOKEN_PAULCHRISLUKE
 # WORKER_ORIGIN (optional - defaults to production worker URL)
+# R2_PUBLIC_BASE_URL (optional - public base URL for R2 objects)

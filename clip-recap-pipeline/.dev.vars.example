@@ -1,2 +1,3 @@
 AUDIO_PROCESSOR_URL=http://localhost:8000
-HMAC_SHARED_SECRET=REPLACE_WITH_BASE64_32B
+HMAC_SHARED_SECRET=use-a-32-plus-character-random-secret-here-for-security
+DISABLE_AUTH=false  # keep false in dev/prod and never commit real secrets

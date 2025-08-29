@@ -1,4 +1,5 @@
 import type { Environment } from '../types/index.js';
+import { uploadTranscriptToR2 } from '../utils/content-storage.js';
 
 export interface TranscriptSegment {
   start: number;
@@ -16,8 +17,28 @@ export interface TranscriptResult {
   redacted: boolean;
 }
 
+export interface TranscriptMetadata {
+  url: string;
+  summary: string;
+  sizeBytes: number;
+}
+
 export class TranscriptionService {
   constructor(private env: Environment) {}
+
+  /**
+   * Build R2 object URL with configurable base URL
+   */
+  private buildR2Url(key: string): string {
+    const baseUrl = this.env.R2_PUBLIC_BASE_URL?.trim();
+    if (baseUrl) {
+      // Remove trailing slashes from base URL
+      const cleanBase = baseUrl.replace(/\/+$/, '');
+      return `${cleanBase}/${key}`;
+    }
+    // Fall back to just the key if no base URL is configured
+    return key;
+  }
 
   /**
    * Redact PII from transcript text
@@ -131,16 +152,18 @@ export class TranscriptionService {
 
   /**
    * Transcribe audio file using Workers AI Whisper
+   * Returns metadata for ContentItem instead of full transcript
    */
-  async transcribeClip(clipId: string): Promise<TranscriptResult | null> {
+  async transcribeClip(clipId: string): Promise<TranscriptMetadata | null> {
     try {
       console.log(`🎤 Starting transcription for clip ${clipId}`);
 
       // Check if already transcribed
       const existingTranscript = await this.env.R2_BUCKET.get(`transcripts/${clipId}.json`);
       if (existingTranscript) {
-        console.log(`📝 Transcript already exists for ${clipId}, skipping`);
-        return await existingTranscript.json() as TranscriptResult;
+        console.log(`📝 Transcript already exists for ${clipId}, generating metadata`);
+        const transcript = await existingTranscript.json() as TranscriptResult;
+        return await this.generateTranscriptMetadata(clipId, transcript);
       }
 
       // Get WAV audio file from R2 (16-bit PCM, mono, 16kHz)
@@ -173,6 +196,7 @@ export class TranscriptionService {
         console.error('❌ Invalid WAV header (missing RIFF). Aborting transcription.');
         return null;
       }
+
       // Call Whisper API with base64-encoded audio
       const whisperResponse = await this.env.ai.run('@cf/openai/whisper-large-v3-turbo', {
         audio: base64Audio
@@ -219,17 +243,28 @@ export class TranscriptionService {
         redacted: true
       };
 
-      // Store transcript files
-      await this.storeTranscript(clipId, transcript);
+      // Store transcript and return metadata
+      const metadata = await this.storeTranscriptAndGetMetadata(clipId, transcript);
 
       console.log(`💾 Transcript stored for ${clipId}`);
-      return transcript;
+      return metadata;
 
     } catch (error) {
       console.error(`❌ Transcription failed for ${clipId}:`, error);
       console.error(`❌ Error details:`, error instanceof Error ? error.stack : error);
       return null;
     }
+  }
+
+  /**
+   * Store transcript and return metadata for ContentItem
+   */
+  private async storeTranscriptAndGetMetadata(clipId: string, transcript: TranscriptResult): Promise<TranscriptMetadata> {
+    // Store in multiple formats as before
+    await this.storeTranscript(clipId, transcript);
+    
+    // Generate metadata for ContentItem
+    return await this.generateTranscriptMetadata(clipId, transcript);
   }
 
   /**
@@ -284,6 +319,25 @@ export class TranscriptionService {
         },
       }
     );
+  }
+
+  /**
+   * Generate transcript metadata for ContentItem
+   */
+  private async generateTranscriptMetadata(clipId: string, transcript: TranscriptResult): Promise<TranscriptMetadata> {
+    const transcriptJson = JSON.stringify(transcript, null, 2);
+    const sizeBytes = new TextEncoder().encode(transcriptJson).length;
+    
+    // Generate R2 URL
+    const key = `transcripts/${clipId}.json`;
+    const url = this.buildR2Url(key);
+    
+    // Generate summary (first 200 characters of transcript text)
+    const summary = transcript.text 
+      ? transcript.text.substring(0, 200) + (transcript.text.length > 200 ? '...' : '')
+      : `Transcript with ${transcript.segments.length} segments in ${transcript.language}`;
+    
+    return { url, summary, sizeBytes };
   }
 
   /**

@@ -123,21 +123,28 @@ async function testTranscriptionService() {
   console.log('=' .repeat(50));
   
   const testClipId = 'test-clip-123';
-  const transcript = await transcriptionService.transcribeClip(testClipId);
+  const transcriptMetadata = await transcriptionService.transcribeClip(testClipId);
   
-  if (transcript) {
+  if (transcriptMetadata) {
     console.log('✅ Transcription successful!');
-    console.log(`📊 Clip ID: ${transcript.clip_id}`);
-    console.log(`🎤 Model: ${transcript.model}`);
-    console.log(`🌍 Language: ${transcript.language}`);
-    console.log(`📝 Text: ${transcript.text}`);
-    console.log(`🔢 Segments: ${transcript.segments.length}`);
-    console.log(`🔒 Redacted: ${transcript.redacted}`);
+    console.log(`📊 URL: ${transcriptMetadata.url}`);
+    console.log(`📝 Summary: ${transcriptMetadata.summary}`);
+    console.log(`📏 Size: ${transcriptMetadata.sizeBytes} bytes`);
     
-    // Show segments
-    transcript.segments.forEach((segment, index) => {
-      console.log(`  ${index + 1}. [${segment.start}s - ${segment.end}s]: ${segment.text}`);
-    });
+    // Get the full transcript for additional details
+    const fullTranscript = await transcriptionService.getTranscript(testClipId);
+    if (fullTranscript) {
+      console.log(`🎤 Model: ${fullTranscript.model}`);
+      console.log(`🌍 Language: ${fullTranscript.language}`);
+      console.log(`📝 Text: ${fullTranscript.text}`);
+      console.log(`🔢 Segments: ${fullTranscript.segments.length}`);
+      console.log(`🔒 Redacted: ${fullTranscript.redacted}`);
+      
+      // Show segments
+      fullTranscript.segments.forEach((segment, index) => {
+        console.log(`  ${index + 1}. [${segment.start}s - ${segment.end}s]: ${segment.text}`);
+      });
+    }
   } else {
     console.log('❌ Transcription failed');
   }

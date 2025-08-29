@@ -24,11 +24,11 @@ export class DiscordService {
     const embed: DiscordEmbed = {
       title: '🎬 Daily Dev Recap Ready for Review',
       description: `A new daily development recap has been generated and is ready for review!`,
-      color: judgeResult.overall >= 80 ? 0x00ff00 : 0xffa500, // Green if good, orange if needs review
+      color: judgeResult.overall >= 0.8 ? 0x00ff00 : 0xffa500, // Green if good, orange if needs review
       fields: [
         {
           name: '📊 Quality Score',
-          value: `${judgeResult.overall}/100`,
+          value: `${Math.round(judgeResult.overall * 100)}/100`,
           inline: true
         },
         {
@@ -93,6 +93,34 @@ export class DiscordService {
       })),
       footer: {
         text: 'Twitch Clip Recap Pipeline - Token Validation'
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    await this.sendDiscordMessage(embed);
+  }
+
+  async notifyJobCleanup(deletedCount: number): Promise<void> {
+    console.log(`Sending job cleanup notification to Discord for ${deletedCount} deleted jobs...`);
+    
+    const embed: DiscordEmbed = {
+      title: '🧹 Job Cleanup Completed',
+      description: 'Expired job records have been cleaned up from the database.',
+      color: 0x00ff00, // Green
+      fields: [
+        {
+          name: '🗑️ Jobs Removed',
+          value: `${deletedCount} expired jobs`,
+          inline: true
+        },
+        {
+          name: '⏰ Cleanup Time',
+          value: new Date().toLocaleString(),
+          inline: true
+        }
+      ],
+      footer: {
+        text: 'Twitch Clip Recap Pipeline - Job Cleanup'
       },
       timestamp: new Date().toISOString()
     };

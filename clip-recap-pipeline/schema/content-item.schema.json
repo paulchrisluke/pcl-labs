@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["schema_version", "clip_id", "clip_title", "clip_url", "clip_duration", "clip_created_at", "processing_status", "stored_at"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "clip_id": { "type": "string" },
+    "clip_title": { "type": "string" },
+    "clip_url": { "type": "string", "format": "uri" },
+    "clip_embed_url": { "type": ["string", "null"], "format": "uri" },
+    "clip_thumbnail_url": { "type": ["string", "null"], "format": "uri" },
+    "clip_duration": { "type": "number", "minimum": 0 },
+    "clip_view_count": { "type": ["integer", "null"], "minimum": 0 },
+    "clip_created_at": { "type": "string", "format": "date-time" },
+    "broadcaster_name": { "type": ["string", "null"] },
+    "creator_name": { "type": ["string", "null"] },
+
+    "processing_status": { "type": "string", "enum": ["pending","audio_ready","transcribed","enhanced","ready_for_content"] },
+    "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+
+    "transcript_url": { "type": ["string", "null"], "format": "uri" },
+    "transcript_summary": { "type": ["string", "null"] },
+    "transcript_size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+
+    "github_context_url": { "type": ["string", "null"], "format": "uri" },
+    "github_summary": { "type": ["string", "null"] },
+    "github_context_size_bytes": { "type": ["integer", "null"], "minimum": 0 },
+
+    "content_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "content_tags": { "type": ["array", "null"], "items": { "type": "string" } },
+    "content_category": { "type": ["string", "null"], "enum": ["development","gaming","tutorial","review","other"] },
+
+    "stored_at": { "type": "string", "format": "date-time" },
+    "enhanced_at": { "type": ["string", "null"], "format": "date-time" },
+    "content_ready_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "audio_ready" }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "transcribed" }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_summary": { "type": ["string", "null"] }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "enhanced" }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_summary": { "type": ["string", "null"] },
+          "github_context_url": { "type": ["string", "null"], "format": "uri" },
+          "github_summary": { "type": ["string", "null"] }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "processing_status": { "const": "ready_for_content" }
+        }
+      },
+      "then": {
+        "properties": {
+          "audio_file_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_url": { "type": ["string", "null"], "format": "uri" },
+          "transcript_summary": { "type": ["string", "null"] },
+          "github_context_url": { "type": ["string", "null"], "format": "uri" },
+          "github_summary": { "type": ["string", "null"] },
+          "content_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "content_tags": { "type": ["array", "null"], "items": { "type": "string" } },
+          "content_ready_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      }
+    }
+  ]
+}

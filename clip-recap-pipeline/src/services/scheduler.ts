@@ -5,6 +5,7 @@ import { ContentService } from './content.js';
 import { DiscordService } from './discord.js';
 import { TranscriptionService } from './transcribe.js';
 import { DeduplicationService } from './deduplication.js';
+import { JobManagerService } from './job-manager.js';
 
 export async function handleScheduled(
   event: ScheduledEvent,
@@ -28,6 +29,12 @@ export async function handleScheduled(
   // Handle transcription pipeline (every 6 hours)
   if (event.cron === "0 */6 * * *") {
     await handleTranscriptionPipeline(env);
+    return;
+  }
+  
+  // Handle job cleanup (every 12 hours)
+  if (event.cron === "0 */12 * * *") {
+    await handleJobCleanup(env);
     return;
   }
   
@@ -432,6 +439,43 @@ export async function handleTranscriptionPipeline(env: Environment): Promise<voi
     
   } catch (error) {
     console.error('❌ Transcription pipeline failed:', error);
+    
+    // Send error notification to Discord
+    try {
+      const discordService = new DiscordService(env);
+      await discordService.notifyError(error);
+    } catch (discordError) {
+      console.error('Failed to send error notification:', discordError);
+    }
+  }
+}
+
+/**
+ * Handle job cleanup for expired jobs
+ * This runs every 12 hours to clean up expired job records
+ */
+async function handleJobCleanup(env: Environment): Promise<void> {
+  console.log('🧹 Starting job cleanup...');
+  
+  try {
+    const jobManager = new JobManagerService(env);
+    const result = await jobManager.cleanupExpiredJobs();
+    
+    console.log(`✅ Job cleanup completed: ${result.deleted} expired jobs removed`);
+    
+    // Send notification if significant cleanup occurred
+    const notifyThreshold = Number(env.JOB_CLEANUP_NOTIFY_THRESHOLD ?? 10);
+    if (result.deleted > notifyThreshold) {
+      try {
+        const discordService = new DiscordService(env);
+        await discordService.notifyJobCleanup(result.deleted);
+      } catch (discordError) {
+        console.error('Failed to send job cleanup notification:', discordError);
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Job cleanup failed:', error);
     
     // Send error notification to Discord
     try {

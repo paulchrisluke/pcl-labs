@@ -95,6 +95,38 @@ CONTENT_REPO_MAIN_BRANCH = "main"
 
 **Tip**: Only credentials, private keys, and sensitive tokens should be stored as secrets. Repository metadata like owner, name, and branch names are safe to store as plain-text variables.
 
+### Secret Management
+
+#### HMAC Shared Secret
+
+The `HMAC_SHARED_SECRET` is used for API authentication and must be stored securely:
+
+```bash
+# Store the real secret with Wrangler (production/development)
+wrangler secret put HMAC_SHARED_SECRET
+```
+
+**Important**: Never commit the real secret value to the repository. The `.dev.vars` file contains a placeholder (`HMAC_SHARED_SECRET=REPLACE_ME`) for security.
+
+#### Local Development Override
+
+For local development, you can override environment variables by creating a `.dev.vars.local` file (which is git-ignored):
+
+```bash
+# Create .dev.vars.local for local development
+echo "HMAC_SHARED_SECRET=your-local-secret-here" > .dev.vars.local
+echo "DISABLE_AUTH=true" >> .dev.vars.local
+```
+
+This allows you to:
+- Use a different secret for local testing
+- Disable authentication for easier local development
+- Override any other environment variables as needed
+
+**Note**: The `.dev.vars.local` file is automatically ignored by git, so your local overrides won't be committed to the repository.
+
+⚠️ **Security Warning**: `DISABLE_AUTH=true` is strictly for local development (wrangler dev/localhost) and must never be set or honored in staging/production environments. The authentication bypass only works in local development contexts to prevent accidental auth bypass in deployed environments.
+
 ### Development
 
 ```bash
@@ -150,6 +182,11 @@ bucket_name = "clip-recap"
 [[kv_namespaces]]
 binding = "STATE_KV"
 id = "your-kv-namespace-id-here"  # Replace with actual KV namespace ID per environment
+
+# KV namespace for migration failure tracking
+[[kv_namespaces]]
+binding = "MIGRATION_FAILURES"
+id = "your-migration-failures-kv-id-here"  # Replace with actual KV namespace ID per environment
 ```
 
 **Environment-Specific Configuration**:
@@ -784,6 +821,146 @@ The `requireHmacAuth` middleware enforces HMAC-based authentication for protecte
 - **HMAC Validation**: Uses `X-Request-Signature`, `X-Request-Timestamp`, and `X-Request-Nonce` headers for secure authentication
 - **Security**: Prevents mixed authentication methods and ensures consistent HMAC-only authentication flow
 - **Testing**: Unit tests in `test-auth.ts` verify Authorization header rejection and HMAC validation behavior
+
+## Content Migration and Failure Tracking
+
+The pipeline includes a robust content migration system that tracks failed clips during the migration process from legacy clip format to the new ContentItem format.
+
+### Migration Failure Tracking
+
+The system uses Cloudflare KV storage to track migration failures across sessions:
+
+- **Persistent Storage**: Failures are stored in KV namespace `MIGRATION_FAILURES`
+- **Session Management**: Each migration session has a unique ID for tracking
+- **Failure Types**: Tracks various failure types (storage_failed, conversion_failed, validation_failed, etc.)
+- **Detailed Context**: Stores error messages, timestamps, and contextual data
+
+### Migration Endpoints
+
+#### `GET /api/content/migration-status`
+**Authentication:** Required
+
+Get current migration status including failure count.
+
+**HMAC Example:**
+```bash
+# Generate signature for GET request (empty body)
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body=""
+message="$body$timestamp$nonce"
+signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
+
+# Make request
+curl -X GET "https://your-worker.your-subdomain.workers.dev/api/content/migration-status" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "total_clips": 150,
+    "migrated_clips": 120,
+    "pending_clips": 25,
+    "failed_clips": 5
+  }
+}
+```
+
+#### `GET /api/content/migration-failures`
+**Authentication:** Required
+
+Get detailed failure information for the current migration session.
+
+**HMAC Example:**
+```bash
+# Generate signature for GET request (empty body)
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body=""
+message="$body$timestamp$nonce"
+signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
+
+# Make request
+curl -X GET "https://your-worker.your-subdomain.workers.dev/api/content/migration-failures" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "failures": [
+      {
+        "clipId": "clip123",
+        "errorType": "storage_failed",
+        "errorMessage": "Failed to store ContentItem for clip",
+        "context": { "clipId": "clip123" },
+        "timestamp": "2024-01-01T00:00:00.000Z"
+      }
+    ],
+    "count": 1
+  }
+}
+```
+
+#### `POST /api/content/migration-session/start`
+**Authentication:** Required
+
+Start a new migration session and clear previous failure tracking.
+
+**HMAC Example:**
+```bash
+# Generate signature for POST request with empty body
+timestamp=$(date +%s)
+nonce=$(openssl rand -hex 16)
+body=""
+message="$body$timestamp$nonce"
+signature=$(echo -n "$message" | openssl dgst -sha256 -hmac "$HMAC_SHARED_SECRET" -binary | xxd -p)
+
+# Make request
+curl -X POST "https://your-worker.your-subdomain.workers.dev/api/content/migration-session/start" \
+  -H "X-Request-Signature: hex:$signature" \
+  -H "X-Request-Timestamp: $timestamp" \
+  -H "X-Request-Nonce: $nonce" \
+  -H "Content-Type: application/json"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "sessionId": "migration_1704067200000_abc123",
+    "message": "New migration session started. Previous failure tracking has been cleared."
+  }
+}
+```
+
+### Migration Service Methods
+
+The `ContentMigrationService` provides these methods for failure tracking:
+
+- `startNewMigrationSession()`: Start a new session and clear previous failures
+- `getMigrationFailures()`: Get detailed failure information
+- `getMigrationStatus()`: Get overall migration status with accurate failure count
+
+### Failure Tracking Integration
+
+Failures are automatically tracked in these scenarios:
+
+- **Storage Failures**: When ContentItem storage fails
+- **Conversion Failures**: When clip data conversion fails
+- **Validation Failures**: When clip metadata validation fails
+- **JSON Parse Failures**: When clip metadata JSON parsing fails
+- **Read Failures**: When clip metadata cannot be read from R2
 
 ## Content Structure
 

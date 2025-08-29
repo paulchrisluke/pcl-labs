@@ -131,19 +131,47 @@ export function createForbiddenResponse(message: string = 'Forbidden'): Response
 /**
  * HMAC authentication middleware
  * Rejects requests with Authorization header before any HMAC validation
+ * 
+ * @param request - The request to authenticate
+ * @param env - Environment variables
+ * @param body - Optional body string. If not provided, will read from request
+ * @returns Response if authentication failed, null if successful
  */
 export async function requireHmacAuth(
   request: Request,
   env: Environment,
-  body: string = ''
+  body?: string
 ): Promise<Response | null> {
+  // Check for DISABLE_AUTH environment variable and local development context
+  const disableAuth = env.DISABLE_AUTH === 'true' || env.DISABLE_AUTH === '1';
+  const isLocalDev = env.WRANGLER_DEV === 'true' || 
+                    env.NODE_ENV === 'development' || 
+                    request.headers.get('host')?.includes('localhost') ||
+                    request.headers.get('host')?.includes('127.0.0.1');
+  
+  if (disableAuth && isLocalDev) {
+    console.log('🔓 Authentication disabled via DISABLE_AUTH environment variable in local development context');
+    return null; // Allow request to proceed
+  }
+  
   // Check for Authorization header first - reject immediately if present
   if (request.headers.has('authorization')) {
     return createUnauthorizedResponse('Authorization header not allowed with HMAC authentication');
   }
   
+  // If body is not provided, read it from a cloned request to avoid consuming the stream
+  let requestBody = body ?? '';
+  if (body === undefined) {
+    try {
+      const clonedRequest = request.clone();
+      requestBody = await clonedRequest.text();
+    } catch (error) {
+      return createUnauthorizedResponse('Failed to read request body for authentication');
+    }
+  }
+  
   // Proceed with HMAC validation
-  const isValid = await verifyHmacSignature(request, env, body);
+  const isValid = await verifyHmacSignature(request, env, requestBody);
   if (!isValid) {
     return createUnauthorizedResponse('HMAC authentication required');
   }

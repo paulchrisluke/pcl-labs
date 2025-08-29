@@ -9,8 +9,16 @@ import type {
   LinkedCommit,
   LinkedIssue,
   TemporalMatchingConfig,
-  TwitchClip
+  TwitchClip,
+  MatchReason
 } from '../types/index.js';
+import { uploadGitHubContextToR2 } from '../utils/content-storage.js';
+
+export interface GitHubContextMetadata {
+  url: string;
+  summary: string;
+  sizeBytes: number;
+}
 
 export class GitHubEventService {
   private config: TemporalMatchingConfig;
@@ -450,7 +458,9 @@ export class GitHubEventService {
                 sha: commit.id,
                 message: commit.message,
                 url: commit.url,
-                timestamp: commit.timestamp
+                timestamp: commit.timestamp,
+                confidence,
+                match_reason: 'temporal_proximity'
               });
             }
           }
@@ -478,28 +488,29 @@ export class GitHubEventService {
   }
 
   /**
-   * Enhance a clip with GitHub context
+   * Enhance a clip with GitHub context and return metadata
+   * Returns metadata for ContentItem instead of embedding full context
    */
   async enhanceClipWithGitHubContext(
     clip: TwitchClip,
     repository?: string
-  ): Promise<TwitchClip & { github_context?: GitHubContext }> {
+  ): Promise<GitHubContextMetadata | null> {
     const { prs, commits, issues } = await this.findEventsForClip(clip, repository);
     
     if (prs.length === 0 && commits.length === 0 && issues.length === 0) {
-      return clip;
+      return null;
     }
     
     const githubContext: GitHubContext = {
       linked_prs: prs,
       linked_commits: commits,
-      linked_issues: issues
+      linked_issues: issues,
+      confidence_score: 0.8, // Default confidence score
+      match_reason: 'temporal_proximity' as MatchReason
     };
     
-    return {
-      ...clip,
-      github_context: githubContext
-    };
+    // Upload to R2 and return metadata
+    return await uploadGitHubContextToR2(this.env, clip.id, githubContext);
   }
 
   /**

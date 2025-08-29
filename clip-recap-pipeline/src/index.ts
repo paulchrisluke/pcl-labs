@@ -2,7 +2,9 @@ import type { Environment, TwitchTokenResponse, HealthResponse } from './types/i
 import { validateClipId, validateClipData, validateClipObject } from './utils/validation.js';
 import { handleScheduled } from './services/scheduler.js';
 import { handleWebhook } from './services/webhooks.js';
-import { handleGitHubRequest } from './routes/github.js';
+
+import { handleContentRoutes } from './routes/content.js';
+import { handleJobRoutes } from './routes/jobs.js';
 import { generateStatusPage } from './status-page.js';
 import { calculateUptime } from './utils/uptime.js';
 
@@ -250,13 +252,13 @@ async function handleGitHubEventsRequest(request: Request, env: Environment): Pr
           });
         }
         
-        const enhancedClip = await githubEventService.enhanceClipWithGitHubContext(clip, repository);
+        const enhancedClipMetadata = await githubEventService.enhanceClipWithGitHubContext(clip, repository);
         
         return new Response(JSON.stringify({
           success: true,
-          clip: enhancedClip,
-          hasGitHubContext: !!enhancedClip.github_context,
-          githubContext: enhancedClip.github_context
+          clip: clip,
+          hasGitHubContext: !!enhancedClipMetadata,
+          githubContextMetadata: enhancedClipMetadata
         }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
@@ -358,6 +360,11 @@ export default {
     
 
     
+    // Content generation endpoints - handle before authentication gates for public access
+    if (url.pathname.startsWith('/api/content/') || url.pathname.startsWith('/api/runs/')) {
+      return handleContentRoutes(request, env, url);
+    }
+
     // Environment variable validation for API routes
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/validate-') || url.pathname.startsWith('/webhook/')) {
       // Validate required environment variables for security
@@ -1238,16 +1245,16 @@ export default {
         const { TranscriptionService } = await import('./services/transcribe.js');
         const transcriptionService = new TranscriptionService(env);
 
-        const transcript = await transcriptionService.transcribeClip(testClipId);
+        const transcriptMetadata = await transcriptionService.transcribeClip(testClipId);
 
-        if (transcript && transcript.segments && transcript.segments.length > 0) {
+        if (transcriptMetadata) {
           return new Response(JSON.stringify({
             success: true,
             message: 'Real transcription pipeline test completed successfully',
             clip_id: testClipId,
             audio_processed: true,
             audio_file_size: (audioResult as any).results?.results?.[0]?.clip_info?.file_size || 'unknown',
-            transcript: transcript
+            transcript_metadata: transcriptMetadata
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -1255,10 +1262,10 @@ export default {
         } else {
           return new Response(JSON.stringify({
             success: false,
-            error: 'Transcription completed but no transcript segments found',
+            error: 'Transcription completed but no transcript metadata found',
             clip_id: testClipId,
             audio_processed: true,
-            transcript: transcript
+            transcript_metadata: null
           }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
@@ -1317,13 +1324,13 @@ export default {
         const { TranscriptionService } = await import('./services/transcribe.js');
         const transcriptionService = new TranscriptionService(env);
         
-        const transcript = await transcriptionService.transcribeClip(clipId);
+        const transcriptMetadata = await transcriptionService.transcribeClip(clipId);
         
-        if (transcript) {
+        if (transcriptMetadata) {
           return new Response(JSON.stringify({
             success: true,
             message: `Force re-transcription completed for ${clipId}`,
-            transcript: transcript
+            transcript_metadata: transcriptMetadata
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
@@ -1406,13 +1413,13 @@ export default {
           }
           
           console.log(`🎤 Transcribing validated clip ${clipId}...`);
-          const transcript = await transcriptionService.transcribeClip(clipId);
+          const transcriptMetadata = await transcriptionService.transcribeClip(clipId);
           
-          if (transcript) {
+          if (transcriptMetadata) {
             return new Response(JSON.stringify({
               success: true,
               message: `Transcription completed for ${clipId}`,
-              transcript: transcript
+              transcript_metadata: transcriptMetadata
             }), {
               status: 200,
               headers: { 'Content-Type': 'application/json' }
@@ -1918,6 +1925,13 @@ export default {
       return handleGitHubEventsRequest(request, env);
     }
 
+    // Job management endpoints
+    if (url.pathname === '/api/jobs' || url.pathname.startsWith('/api/jobs/')) {
+      return handleJobRoutes(request, env, url);
+    }
+
+
+
     // Webhook endpoints
     if (url.pathname === '/webhook/github') {
       return handleWebhook(request, env, ctx);
@@ -2300,5 +2314,172 @@ export default {
 
   async scheduled(event: ScheduledEvent, env: Environment, ctx: ExecutionContext): Promise<void> {
     await handleScheduled(event, env, ctx);
+  },
+
+  async queue(batch: MessageBatch<any>, env: Environment): Promise<void> {
+    console.log(`🔄 Processing ${batch.messages.length} queue messages`);
+    
+    // Top-level try/catch to guard against catastrophic failures
+    try {
+      // Dynamic import with error handling
+      let JobProcessorService: any;
+      try {
+        const module = await import('./services/job-processor.js');
+        JobProcessorService = module.JobProcessorService;
+      } catch (importError) {
+        console.error('❌ Failed to import JobProcessorService:', importError);
+        // Ack all messages to prevent infinite retries on import failures
+        for (const msg of batch.messages) {
+          msg.ack();
+        }
+        return;
+      }
+      
+      const processor = new JobProcessorService(env);
+      
+      // Process each message individually with proper validation and error handling
+      for (const msg of batch.messages) {
+        try {
+          // Validate message body structure before processing
+          const body = msg.body;
+          
+          // Type validation - ensure body is an object
+          if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            console.error(`❌ Invalid message body type for message ${msg.id}:`, typeof body);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Required field validation
+          if (!body.job_id || typeof body.job_id !== 'string') {
+            console.error(`❌ Missing or invalid job_id in message ${msg.id}:`, body.job_id);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          if (!body.request_data || typeof body.request_data !== 'object') {
+            console.error(`❌ Missing or invalid request_data in message ${msg.id} for job ${body.job_id}`);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Validate request_data structure
+          const requestData = body.request_data;
+          if (!requestData.date_range || 
+              !requestData.date_range.start || 
+              !requestData.date_range.end ||
+              !requestData.content_type) {
+            console.error(`❌ Invalid request_data structure in message ${msg.id} for job ${body.job_id}:`, requestData);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Validate date format (basic ISO string check)
+          const startDate = new Date(requestData.date_range.start);
+          const endDate = new Date(requestData.date_range.end);
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            console.error(`❌ Invalid date format in message ${msg.id} for job ${body.job_id}:`, {
+              start: requestData.date_range.start,
+              end: requestData.date_range.end
+            });
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          // Validate content_type enum
+          const validContentTypes = ['daily_recap', 'weekly_summary', 'topic_focus'];
+          if (!validContentTypes.includes(requestData.content_type)) {
+            console.error(`❌ Invalid content_type in message ${msg.id} for job ${body.job_id}:`, requestData.content_type);
+            msg.ack(); // Ack invalid messages to prevent infinite retries
+            continue;
+          }
+          
+          console.log(`✅ Message validation passed for job ${body.job_id}`);
+          
+          // Process the validated job
+          await processor.processJob(body);
+          
+          // Acknowledge successful message
+          msg.ack();
+          
+          console.log(`✅ Successfully processed job: ${body.job_id}`);
+          
+        } catch (error) {
+          console.error(`❌ Failed to process job: ${msg.body?.job_id || 'unknown'}`, error);
+          
+          // Determine if this is a retryable error or should be acked
+          const isRetryableError = this.isRetryableError(error);
+          
+          if (isRetryableError) {
+            console.log(`🔄 Retrying job ${msg.body?.job_id || 'unknown'} due to retryable error`);
+            msg.retry();
+          } else {
+            console.log(`🚫 Acknowledging job ${msg.body?.job_id || 'unknown'} due to non-retryable error`);
+            msg.ack(); // Ack non-retryable errors to prevent infinite retries
+          }
+        }
+      }
+      
+      console.log(`✅ Queue batch processing completed for ${batch.messages.length} messages`);
+      
+    } catch (catastrophicError) {
+      console.error('💥 Catastrophic error in queue handler:', catastrophicError);
+      
+      // Ack all remaining messages to prevent infinite retries
+      for (const msg of batch.messages) {
+        try {
+          msg.ack();
+        } catch (ackError) {
+          console.error('Failed to ack message after catastrophic error:', ackError);
+        }
+      }
+      
+      // Re-throw to ensure the error is logged by the runtime
+      throw catastrophicError;
+    }
+  },
+  
+  /**
+   * Determine if an error is retryable
+   */
+  isRetryableError(error: any): boolean {
+    // Network errors, timeouts, and temporary service unavailability are retryable
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return true;
+    }
+    
+    // Database connection errors
+    if (error instanceof Error && error.message.includes('database')) {
+      return true;
+    }
+    
+    // R2 storage errors
+    if (error instanceof Error && error.message.includes('R2')) {
+      return true;
+    }
+    
+    // AI service errors (temporary unavailability)
+    if (error instanceof Error && error.message.includes('AI')) {
+      return true;
+    }
+    
+    // Rate limiting errors
+    if (error instanceof Error && error.message.includes('rate limit')) {
+      return true;
+    }
+    
+    // Validation errors, authentication errors, and business logic errors are NOT retryable
+    if (error instanceof Error && (
+      error.message.includes('validation') ||
+      error.message.includes('invalid') ||
+      error.message.includes('authentication') ||
+      error.message.includes('unauthorized') ||
+      error.message.includes('not found')
+    )) {
+      return false;
+    }
+    
+    // Default to retryable for unknown errors
+    return true;
   }
 };
