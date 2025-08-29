@@ -121,7 +121,7 @@ export class ManifestBuilderService {
   async buildRecentContentManifest(
     daysBack: number = 7,
     timezone: string = 'UTC',
-    kind: string = 'production-recap'
+    kind: 'daily-recap' | 'production-recap' | 'weekly-summary' | 'topic-focus' = 'production-recap'
   ): Promise<SelectionResult> {
     try {
       console.log(`🏗️ Building recent content manifest for last ${daysBack} days...`);
@@ -707,7 +707,7 @@ export class ManifestBuilderService {
     timezone: string,
     selectedItems: ContentItem[],
     sections: ManifestSection[],
-    kind: string = 'production-recap'
+    kind: 'daily-recap' | 'production-recap' | 'weekly-summary' | 'topic-focus' = 'production-recap'
   ): Promise<Manifest> {
     // Generate title
     const title = await this.generateTitle(selectedItems);
