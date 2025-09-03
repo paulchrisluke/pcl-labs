@@ -22,20 +22,21 @@
         >
           <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200">
             <img 
-              :src="post.imageThumbnail" 
-              :alt="post.imageAlt" 
+              :src="getImageUrl(post)" 
+              :alt="post.imageAlt || post.title" 
               class="object-cover object-center h-full w-full group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out"
               loading="lazy"
               decoding="async"
+              @error="handleImageError"
             />
           </div>
           <h3 class="mt-4 text-sm text-gray-700">
               <span class="absolute inset-0" />
               {{ post.title }}
           </h3>
-          <p class="mt-1 text-sm text-gray-500">{{ post.tags?.[0] || '' }}</p>
+          <p class="mt-1 text-sm text-gray-500">{{ getFirstTag(post) }}</p>
           <p v-if="post.date" class="mt-1 text-xs text-gray-400">
-            {{ new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) }}
+            {{ formatDate(post.date) }}
           </p>
         </nuxt-link>
       </div>
@@ -73,4 +74,42 @@ const displayedPosts = computed(() => {
 const showSeeAllLink = computed(() => {
   return props.blogData.length > (props.limit || Infinity);
 });
+
+// Helper functions for the new API data structure
+const getImageUrl = (post) => {
+  // Check for assets first, then fallback to imageThumbnail
+  if (post.assets?.images?.[0]) {
+    return post.assets.images[0];
+  }
+  if (post.imageThumbnail) {
+    return post.imageThumbnail;
+  }
+  // Return placeholder if no image available
+  return '/img/blog-placeholder.jpg';
+};
+
+const getFirstTag = (post) => {
+  if (post.tags && post.tags.length > 0) {
+    return post.tags[0];
+  }
+  return '';
+};
+
+const formatDate = (dateString) => {
+  try {
+    return new Date(dateString).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
+};
+
+const handleImageError = (event) => {
+  // Fallback to placeholder if image fails to load
+  event.target.src = '/img/blog-placeholder.jpg';
+};
 </script>
