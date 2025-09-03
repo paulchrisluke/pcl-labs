@@ -77,13 +77,16 @@ const showSeeAllLink = computed(() => {
 
 // Helper functions for the new API data structure
 const getImageUrl = (post) => {
-  // Check for assets first, then fallback to imageThumbnail
+  // Check for the imageThumbnail first (which now includes the improved logic)
+  if (post.imageThumbnail && post.imageThumbnail !== '/img/blog-placeholder.jpg') {
+    return post.imageThumbnail;
+  }
+  
+  // Check for assets if available
   if (post.assets?.images?.[0]) {
     return post.assets.images[0];
   }
-  if (post.imageThumbnail) {
-    return post.imageThumbnail;
-  }
+  
   // Return placeholder if no image available
   return '/img/blog-placeholder.jpg';
 };
@@ -103,7 +106,6 @@ const formatDate = (dateString) => {
       day: 'numeric' 
     });
   } catch (error) {
-    console.error('Error formatting date:', error);
     return '';
   }
 };

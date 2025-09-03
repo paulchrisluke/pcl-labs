@@ -50,7 +50,24 @@ export const useQuillApi = () => {
     try {
       const response = await $fetch<string>(`${baseUrl}/api/blog/${date}`)
       // Parse the YAML + markdown response
-      return parseBlogResponse(response)
+      const parsedBlog = parseBlogResponse(response)
+      
+      if (!parsedBlog) {
+        throw new Error('Failed to parse blog response')
+      }
+      
+      // Try to fetch story images if available
+      try {
+        const storyImages = await fetchBlogAssets(date)
+        if (storyImages && storyImages.images && storyImages.images.length > 0) {
+          parsedBlog.storyImages = storyImages.images
+        }
+      } catch (assetError) {
+        // Story images are optional, don't fail the whole request
+        console.warn(`Could not fetch story images for ${date}:`, assetError)
+      }
+      
+      return parsedBlog
     } catch (error) {
       console.error(`Error fetching blog for ${date}:`, error)
       throw error
@@ -90,15 +107,22 @@ export const useQuillApi = () => {
     }
   }
 
-  // Get available blog dates (this would need to be implemented on your API)
+  // Get available blog dates from the API
   const getAvailableBlogs = async () => {
     try {
-      // For now, we'll return the known dates from your API docs
-      // You could add an endpoint like /api/blogs to get all available dates
+      // Try to fetch from the API first
+      const response = await $fetch<string[]>(`${baseUrl}/api/blogs`)
+      if (response && Array.isArray(response)) {
+        return response
+      }
+      
+      // Fallback to known dates if API endpoint doesn't exist yet
+      console.warn('API endpoint /api/blogs not available, using fallback dates')
       return ['2025-08-27', '2025-08-29']
     } catch (error) {
-      console.error('Error fetching available blogs:', error)
-      return []
+      console.warn('Error fetching available blogs from API, using fallback dates:', error)
+      // Fallback to known dates if API is unavailable
+      return ['2025-08-27', '2025-08-29']
     }
   }
 

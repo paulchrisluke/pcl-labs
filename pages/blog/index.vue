@@ -43,53 +43,52 @@ const { getAvailableBlogs, fetchBlog } = useQuillApi()
 // Fetch blog content from Quill API
 const { data: blogData } = await useAsyncData('blog-all', async () => {
   try {
-    console.log('Starting Quill API blog content fetch...');
-    
     // Get available blog dates
     const availableDates = await getAvailableBlogs()
-    console.log('Available blog dates:', availableDates);
     
-    // Fetch all available blogs
-    const allBlogs = []
-    for (const date of availableDates) {
-      try {
-        const blogContent = await fetchBlog(date)
-        // Use the API data directly - no transformation needed
-        const blogPost = {
-          _id: `blog_${blogContent.date}`,
-          _path: `/blog/${blogContent.date}`,
-          title: blogContent.frontmatter?.title || 'Blog Post',
-          content: blogContent.content?.raw || '',
-          date: blogContent.date,
-          tags: blogContent.frontmatter?.tags ? [blogContent.frontmatter.tags] : [],
-          imageThumbnail: blogContent.frontmatter?.image || '/img/blog-placeholder.jpg',
-          imageAlt: blogContent.frontmatter?.title || 'Blog Post',
-          description: blogContent.frontmatter?.description || blogContent.content?.raw?.substring(0, 150) + '...',
-          author: blogContent.frontmatter?.author || 'Paul Chris Luke',
-          lead: blogContent.frontmatter?.lead || ''
+    // Fetch all available blogs in parallel
+    const allBlogs = await Promise.all(
+      availableDates.map(async (date) => {
+        try {
+          const blogContent = await fetchBlog(date)
+          if (!blogContent) return null
+          
+          return {
+            _id: `blog_${blogContent.date}`,
+            _path: `/blog/${blogContent.date}`,
+            title: blogContent.frontmatter?.title || 'Blog Post',
+            content: blogContent.content?.raw || '',
+            date: blogContent.date,
+            tags: blogContent.frontmatter?.tags || [],
+            imageThumbnail: blogContent.storyImages?.[0] || 
+                           blogContent.frontmatter?.og?.image || 
+                           blogContent.frontmatter?.og?.['og:image'] || 
+                           blogContent.frontmatter?.image || 
+                           `/stories/${blogContent.date.replace(/-/g, '/')}/story_${blogContent.date.replace(/-/g, '')}_pr42_01_intro.png` ||
+                           '/img/blog-placeholder.jpg',
+            imageAlt: blogContent.frontmatter?.title || 'Blog Post',
+            description: blogContent.frontmatter?.description || blogContent.content?.raw?.substring(0, 150) + '...',
+            author: blogContent.frontmatter?.author || 'Paul Chris Luke',
+            lead: blogContent.frontmatter?.lead || ''
+          }
+        } catch (error) {
+          return null
         }
-        allBlogs.push(blogPost)
-      } catch (error) {
-        console.error(`Error fetching blog for ${date}:`, error)
-        // Continue with other dates if one fails
-      }
-    }
+      })
+    )
     
-    // Sort by date (newest first)
-    const sortedBlogs = allBlogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    // Filter out failed fetches and sort by date (newest first)
+    const sortedBlogs = allBlogs
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     
-    console.log('Blog content length:', sortedBlogs?.length);
-    console.log('Blog content:', sortedBlogs);
+    return sortedBlogs
     
-    return sortedBlogs;
   } catch (error) {
-    console.error('Blog content fetch error:', error);
-    return [];
+    return []
   }
-});
-
-console.log('Final blog data:', blogData.value);
-
+  })
+ 
 // Add Schema.org structured data for blog listing
 useHead({
   script: [

@@ -62,6 +62,7 @@
 <script setup>
 import { useRoute, useAsyncData, createError } from 'nuxt/app'
 import { computed, watch } from 'vue'
+import { marked } from 'marked'
 
 const route = useRoute()
 const { fetchBlog } = useQuillApi()
@@ -108,7 +109,12 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
       date: blogData.date,
       tags: blogData.frontmatter?.tags ? [blogData.frontmatter.tags] : [],
       description: blogData.frontmatter?.description || blogData.content?.raw?.substring(0, 150) + '...',
-      imageThumbnail: blogData.frontmatter?.og?.['og:image'] || blogData.frontmatter?.image || '/img/blog-placeholder.jpg',
+      imageThumbnail: blogData.storyImages?.[0] || 
+                     blogData.frontmatter?.og?.image || 
+                     blogData.frontmatter?.og?.['og:image'] || 
+                     blogData.frontmatter?.image || 
+                     `/stories/${blogData.date.replace(/-/g, '/')}/story_${blogData.date.replace(/-/g, '')}_pr42_01_intro.png` ||
+                     '/img/blog-placeholder.jpg',
       author: blogData.frontmatter?.author || 'Paul Chris Luke',
       lead: blogData.frontmatter?.lead || ''
     }
@@ -154,31 +160,13 @@ const readingTime = computed(() => {
   return Math.ceil(wordCount / wordsPerMinute)
 })
 
-// Format content for display (convert markdown-like content to HTML)
+// Format content for display using proper markdown parsing
 const formattedContent = computed(() => {
   if (!blog.value?.content) return ''
   
-  // Simple markdown to HTML conversion for basic formatting
-  let content = blog.value.content
-  
-  // Convert headers
-  content = content.replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>')
-  content = content.replace(/^## (.*$)/gim, '<h2 class="text-2xl font-semibold mt-8 mb-4">$1</h2>')
-  content = content.replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-10 mb-5">$1</h1>')
-  
-  // Convert paragraphs
-  content = content.replace(/^(?!<[h|ul|ol|li])(.*$)/gim, '<p class="mb-4 leading-relaxed">$1</p>')
-  
-  // Convert lists
-  content = content.replace(/^\* (.*$)/gim, '<li class="ml-6 mb-2">$1</li>')
-  content = content.replace(/(<li.*<\/li>)/s, '<ul class="list-disc mb-4">$1</ul>')
-  
-  // Convert bold and italic
-  content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  content = content.replace(/\*(.*?)\*/g, '<em>$1</em>')
-  
-  // Convert links
-  content = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-indigo-400 hover:text-indigo-300 underline" target="_blank" rel="noopener noreferrer">$1</a>')
+  // Use marked library for proper markdown parsing
+  // This will work with the prose classes for consistent styling
+  let content = marked(blog.value.content)
   
   // Handle embedded video tags (already in HTML format) with enhanced SEO
   content = content.replace(/<video controls src="([^"]+)"><\/video>/g, '<div class="my-8"><video controls src="$1" class="w-full rounded-lg shadow-lg" preload="metadata" poster="$1" width="800" height="450"><p>Your browser does not support the video tag.</p></video></div>')
