@@ -227,36 +227,43 @@ useHead({
 })
 
 // Enhanced Schema.org structured data
-useJsonld(() => ({
-  '@context': 'https://schema.org',
-  '@type': 'Article',
-  headline: blog.value?.title,
-  description: blog.value?.description,
-  image: blog.value?.imageThumbnail,
-  author: {
-    '@type': 'Person',
-    name: blog.value?.author || 'Paul Chris Luke',
-    url: 'https://paulchrisluke.com'
-  },
-  publisher: {
-    '@type': 'Organization',
-    name: 'PCL Labs',
-    url: 'https://paulchrisluke.com',
-    logo: {
-      '@type': 'ImageObject',
-      url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
-      width: 200,
-      height: 50
+useHead({
+  script: [
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: blog.value?.title,
+        description: blog.value?.description,
+        image: blog.value?.imageThumbnail,
+        author: {
+          '@type': 'Person',
+          name: blog.value?.author || 'Paul Chris Luke',
+          url: 'https://paulchrisluke.com'
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: 'PCL Labs',
+          url: 'https://paulchrisluke.com',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
+            width: 200,
+            height: 50
+          }
+        },
+        datePublished: blog.value?.date,
+        dateModified: blog.value?.date,
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': `https://paulchrisluke.com${route.path}`
+        },
+        articleSection: 'Technology',
+        keywords: blog.value?.tags?.join(', '),
+        wordCount: blog.value?.content ? blog.value.content.length : 0
+      })
     }
-  },
-  datePublished: blog.value?.date,
-  dateModified: blog.value?.date,
-  mainEntityOfPage: {
-    '@type': 'WebPage',
-    '@id': `https://paulchrisluke.com${route.path}`
-  },
-  articleSection: 'Technology',
-  keywords: blog.value?.tags?.join(', '),
-  wordCount: blog.value?.content ? blog.value.content.length : 0
-}))
+  ]
+})
 </script>

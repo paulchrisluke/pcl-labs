@@ -5,6 +5,8 @@
 
 <script setup>
 import { useAsyncData } from 'nuxt/app'
+import { useSeoMeta } from '#imports'
+import { useQuillApi } from '~/composables/useQuillApi'
 
 useSeoMeta({
   title: 'Blog - PCL Labs',
@@ -89,34 +91,41 @@ const { data: blogData } = await useAsyncData('blog-all', async () => {
 console.log('Final blog data:', blogData.value);
 
 // Add Schema.org structured data for blog listing
-useJsonld(() => ({
-  '@context': 'https://schema.org',
-  '@type': 'Blog',
-  name: 'PCL Labs Blog',
-  description: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development.',
-  url: 'https://paulchrisluke.com/blog',
-  publisher: {
-    '@type': 'Organization',
-    name: 'PCL Labs',
-    url: 'https://paulchrisluke.com',
-    logo: {
-      '@type': 'ImageObject',
-      url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
-      width: 200,
-      height: 50
+useHead({
+  script: [
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Blog',
+        name: 'PCL Labs Blog',
+        description: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development.',
+        url: 'https://paulchrisluke.com/blog',
+        publisher: {
+          '@type': 'Organization',
+          name: 'PCL Labs',
+          url: 'https://paulchrisluke.com',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
+            width: 200,
+            height: 50
+          }
+        },
+        blogPost: blogData.value?.map(blog => ({
+          '@type': 'BlogPosting',
+          headline: blog.title,
+          description: blog.description,
+          author: {
+            '@type': 'Person',
+            name: blog.author
+          },
+          datePublished: blog.date,
+          url: `https://paulchrisluke.com${blog._path}`,
+          image: blog.imageThumbnail
+        })) || []
+      })
     }
-  },
-  blogPost: blogData.value?.map(blog => ({
-    '@type': 'BlogPosting',
-    headline: blog.title,
-    description: blog.description,
-    author: {
-      '@type': 'Person',
-      name: blog.author
-    },
-    datePublished: blog.date,
-    url: `https://paulchrisluke.com${blog._path}`,
-    image: blog.imageThumbnail
-  })) || []
-}))
+  ]
+})
 </script>
