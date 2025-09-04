@@ -212,37 +212,11 @@ const formattedContent = computed(() => {
   
   // Handle embedded video tags (already in HTML format) with enhanced SEO
   content = content.replace(/<video controls src="([^"]+)"><\/video>/g, (match, src) => {
-    // Generate poster image path from video path
-    const posterPath = src.replace(/\.(mp4|webm|ogg)$/, '_poster.jpg')
-    const videoId = 'video-' + Math.random().toString(36).substr(2, 9)
+    // Use a fallback poster image since the generated poster paths might not exist
+    const posterPath = 'https://paulchrisluke.com/PCL-about-header.webp'
     
-    return '<div class="my-8 max-w-2xl mx-auto">' +
-      '<div id="' + videoId + '-container" class="relative cursor-pointer group" onclick="playVideo(\'' + videoId + '\', \'' + src + '\')">' +
-        '<img ' +
-          'src="' + posterPath + '" ' +
-          'alt="Video thumbnail" ' +
-          'class="w-full rounded-lg shadow-lg transition-transform duration-300 group-hover:scale-105" ' +
-          'width="600" ' +
-          'height="400" ' +
-          'onerror="this.src=\'https://paulchrisluke.com/PCL-about-header.webp\'"' +
-        '/>' +
-        '<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg group-hover:bg-opacity-40 transition-all duration-300">' +
-          '<div class="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-all duration-300">' +
-            '<svg class="w-8 h-8 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">' +
-              '<path d="M8 5v14l11-7z"/>' +
-            '</svg>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      '<video ' +
-        'id="' + videoId + '" ' +
-        'class="w-full rounded-lg shadow-lg hidden" ' +
-        'controls ' +
-        'preload="none" ' +
-        'width="600" ' +
-        'height="400"' +
-      '>' +
-        '<source src="' + src + '" type="video/mp4">' +
+    return '<div class="my-8 max-w-lg mx-auto">' +
+      '<video controls src="' + src + '" class="w-full rounded-lg shadow-lg" preload="metadata" poster="' + posterPath + '" width="400" height="300">' +
         '<p>Your browser does not support the video tag.</p>' +
       '</video>' +
     '</div>'
@@ -253,7 +227,7 @@ const formattedContent = computed(() => {
 
 // Enhanced SEO meta tags using new API structure
 useHead({
-  title: blog.value ? `${blog.value.seo_title || blog.value.title} - PCL Labs Blog` : 'Blog - PCL Labs',
+  title: blog.value ? (blog.value.seo_title || blog.value.title) + ' - PCL Labs Blog' : 'Blog - PCL Labs',
   meta: [
     // Basic meta tags with enhanced SEO data
     { name: 'description', content: blog.value?.seo_description || blog.value?.description || 'Blog post from PCL Labs' },
@@ -274,7 +248,7 @@ useHead({
     { property: 'og:title', content: blog.value?.seo_title || blog.value?.title || 'Blog - PCL Labs' },
     { property: 'og:description', content: blog.value?.seo_description || blog.value?.description || 'Blog post from PCL Labs' },
     { property: 'og:type', content: 'article' },
-    { property: 'og:url', content: blog.value?.canonical_url || `https://paulchrisluke.com${route.path}` },
+    { property: 'og:url', content: blog.value?.canonical_url || 'https://paulchrisluke.com' + route.path },
     { property: 'og:image', content: blog.value?.imageThumbnail || 'https://paulchrisluke.com/PCL-about-header.webp' },
     { property: 'og:image:alt', content: blog.value?.title || 'PCL Labs Blog Post' },
     { property: 'og:image:width', content: '1200' },
@@ -299,7 +273,7 @@ useHead({
     { name: 'language', content: 'en' }
   ],
   link: [
-    { rel: 'canonical', href: blog.value?.canonical_url || `https://paulchrisluke.com${route.path}` },
+    { rel: 'canonical', href: blog.value?.canonical_url || 'https://paulchrisluke.com' + route.path },
     { rel: 'alternate', type: 'application/rss+xml', title: 'PCL Labs Blog RSS Feed', href: 'https://paulchrisluke.com/rss.xml' }
   ]
 })
@@ -350,12 +324,12 @@ useHead({
         dateModified: blog.value?.last_modified || blog.value?.date,
         mainEntityOfPage: {
           '@type': 'WebPage',
-          '@id': blog.value?.canonical_url || `https://paulchrisluke.com${route.path}`
+          '@id': blog.value?.canonical_url || 'https://paulchrisluke.com' + route.path
         },
         articleSection: blog.value?.category || 'Technology',
         keywords: blog.value?.keywords?.join(', ') || blog.value?.tags?.join(', '),
         wordCount: blog.value?.word_count || (blog.value?.content ? blog.value.content.length : 0),
-        timeRequired: blog.value?.reading_time ? `PT${blog.value.reading_time}M` : undefined,
+        timeRequired: blog.value?.reading_time ? 'PT' + blog.value.reading_time + 'M' : undefined,
         inLanguage: 'en-US',
         isPartOf: {
           '@type': 'Blog',
@@ -384,24 +358,4 @@ useHead({
   ]
 })
 
-// Video play function for click-to-play functionality
-const playVideo = (videoId: string, src: string) => {
-  const container = document.getElementById(`${videoId}-container`)
-  const video = document.getElementById(videoId) as HTMLVideoElement
-  
-  if (container && video) {
-    // Hide the poster image container
-    container.style.display = 'none'
-    
-    // Show and play the video
-    video.classList.remove('hidden')
-    video.src = src
-    video.play()
-  }
-}
-
-// Make the function globally available
-if (process.client) {
-  (window as any).playVideo = playVideo
-}
 </script>
