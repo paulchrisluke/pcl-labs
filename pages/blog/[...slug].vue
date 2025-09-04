@@ -78,7 +78,7 @@ import { computed, watch } from 'vue'
 import { marked } from 'marked'
 
 const route = useRoute()
-const { getBlogMetadata, fetchBlog, fetchBlogMarkdown } = useQuillApi()
+const { getBlogMetadata, fetchBlog, transformBlogData } = useQuillApi()
 
 // Parse the slug to get date
 const parseSlug = computed(() => {
@@ -131,91 +131,13 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
       })
     }
     
-    const fullContent = blogData.content.body
+    // Transform the API data into frontend format
+    const transformedBlog = transformBlogData(blogData, blogMetadata)
     
-    // Use the image field from API, or generate story image path if available
-    let imageThumbnail = blogData.frontmatter?.og?.["og:image"] || 
-                        blogData.frontmatter?.schema?.article?.image ||
-                        blogData.image || 
-                        blogMetadata.image
-    if (blogMetadata.story_count > 0) {
-      const datePath = blogMetadata.date.replace(/-/g, '/')
-      const dateId = blogMetadata.date.replace(/-/g, '')
-      imageThumbnail = `/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
-    }
+    // Add route-specific data
+    transformedBlog._path = route.path
     
-    // Use enhanced data from new API structure - fail if required data is missing
-    const title = blogData.frontmatter?.title || 
-                 blogData.seo_title || 
-                 blogMetadata.title
-    
-    if (!title) {
-      throw createError({ 
-        statusCode: 500, 
-        statusMessage: 'Blog title is missing' 
-      })
-    }
-    
-    const description = blogData.frontmatter?.description || 
-                       blogData.frontmatter?.lead || 
-                       blogData.seo_description ||
-                       blogMetadata.lead || 
-                       blogMetadata.description
-    
-    if (!description) {
-      throw createError({ 
-        statusCode: 500, 
-        statusMessage: 'Blog description is missing' 
-      })
-    }
-    
-    const tags = blogData.frontmatter?.tags || 
-                blogData.keywords || 
-                blogMetadata.tags || []
-    const author = blogData.frontmatter?.author || 
-                  blogData.author || 
-                  blogMetadata.author
-    
-    if (!author) {
-      throw createError({ 
-        statusCode: 500, 
-        statusMessage: 'Blog author is missing' 
-      })
-    }
-    
-    return {
-      _id: `blog_${blogMetadata.date}`,
-      _path: route.path,
-      title,
-      content: fullContent,
-      date: blogMetadata.date,
-      tags,
-      description,
-      imageThumbnail,
-      author,
-      lead: description,
-      canonical_url: blogMetadata.canonical_url,
-      story_count: blogMetadata.story_count,
-      has_video: blogMetadata.has_video,
-      // Enhanced SEO data from new API
-      seo_title: blogData.seo_title || title,
-      seo_description: blogData.seo_description || description,
-      keywords: blogData.keywords || tags,
-      reading_time: blogData.reading_time || blogMetadata.reading_time,
-      word_count: blogData.word_count || blogMetadata.word_count,
-      last_modified: blogData.last_modified || blogMetadata.last_modified || blogMetadata.date,
-      category: blogData.category || blogMetadata.category,
-      featured: blogData.featured || blogMetadata.featured || false,
-      // Additional data from digest
-      github_events: blogData.github_events || [],
-      story_packets: blogData.story_packets || [],
-      metadata: blogData.metadata || {},
-      related_posts: blogData.related_posts || [],
-      // Enhanced content structure
-      table_of_contents: blogData.table_of_contents || [],
-      social_shares: blogData.social_shares || {},
-      analytics: blogData.analytics || {}
-    }
+    return transformedBlog
   } catch (error) {
     // If it's already a Nuxt error, rethrow it
     if (error.statusCode) {

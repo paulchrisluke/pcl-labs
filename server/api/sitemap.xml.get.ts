@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
     setHeader(event, 'Cache-Control', 'public, max-age=3600') // Cache for 1 hour
     
     // Fetch sitemap from the Quill API
-    const sitemapData = await $fetch('https://quill-blog-api.paulchrisluke.workers.dev/sitemap.xml')
+    const sitemapData = await $fetch('https://api.paulchrisluke.com/sitemap.xml')
     
     // Return the sitemap data directly from the API
     return sitemapData

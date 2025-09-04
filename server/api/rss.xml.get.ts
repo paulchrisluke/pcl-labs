@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
     setHeader(event, 'Cache-Control', 'public, max-age=1800') // Cache for 30 minutes
     
     // Fetch RSS feed from the Quill API
-    const rssData = await $fetch('https://quill-blog-api.paulchrisluke.workers.dev/rss.xml')
+    const rssData = await $fetch('https://api.paulchrisluke.com/rss.xml')
     
     // Return the RSS data directly from the API
     return rssData

@@ -1,14 +1,21 @@
 
+import type { 
+  BlogIndexResponse, 
+  BlogMetadata, 
+  BlogPostResponse, 
+  BlogPost,
+  ApiError 
+} from '~/types/blog'
 
 export const useQuillApi = () => {
   const config = useRuntimeConfig()
-  const baseUrl = 'https://quill-blog-api.paulchrisluke.workers.dev'
+  const baseUrl = 'https://api.paulchrisluke.com'
 
   // Fetch complete blog data for a specific date using the new digest endpoint
-  const fetchBlog = async (date: string) => {
+  const fetchBlog = async (date: string): Promise<BlogPostResponse> => {
     try {
       // Use the new digest endpoint URL structure
-      const response = await $fetch(`${baseUrl}/blogs/${date}/API-v3-${date}_digest.json`)
+      const response = await $fetch<BlogPostResponse>(`${baseUrl}/blogs/${date}/API-v3-${date}_digest.json`)
       
       // The API now returns structured JSON with enhanced SEO data
       if (!response) {
@@ -23,14 +30,14 @@ export const useQuillApi = () => {
   }
 
   // Get available blogs from the new API endpoint with enhanced SEO data
-  const getAvailableBlogs = async () => {
+  const getAvailableBlogs = async (): Promise<BlogMetadata[]> => {
     try {
-      // Fetch from the new /blogs endpoint that returns structured data with SEO metadata
-      const response = await $fetch(`${baseUrl}/blogs`)
+      // Fetch from the new /blogs/index.json endpoint that returns structured data with SEO metadata
+      const response = await $fetch<BlogIndexResponse>(`${baseUrl}/blogs/index.json`)
       
       // Handle different response structures
       if (response && Array.isArray(response)) {
-        return response
+        return response as unknown as BlogMetadata[]
       } else if (response && response.blogs && Array.isArray(response.blogs)) {
         return response.blogs
       }
@@ -45,7 +52,7 @@ export const useQuillApi = () => {
   }
 
   // Get blog metadata for a specific date from the blogs list
-  const getBlogMetadata = async (date: string) => {
+  const getBlogMetadata = async (date: string): Promise<BlogMetadata | null> => {
     try {
       const blogs = await getAvailableBlogs()
       return blogs.find(blog => blog.date === date) || null
@@ -93,12 +100,62 @@ export const useQuillApi = () => {
     return fetchBlog(date)
   }
 
+  // Transform API data into frontend format
+  const transformBlogData = (apiData: BlogPostResponse, metadata: BlogMetadata): BlogPost => {
+    const fullContent = apiData.content.body
+    
+    // Use the image field from API, or generate story image path if available
+    let imageThumbnail = apiData.frontmatter?.og?.["og:image"] || 
+                        apiData.frontmatter?.schema?.blogPosting?.image ||
+                        metadata.image || 
+                        metadata.og_image ||
+                        metadata.thumbnail
+    
+    if (metadata.story_count > 0) {
+      const datePath = metadata.date.replace(/-/g, '/')
+      const dateId = metadata.date.replace(/-/g, '')
+      imageThumbnail = `/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
+    }
+    
+    return {
+      _id: `blog_${metadata.date}`,
+      _path: `/blog/${metadata.date}`,
+      title: apiData.frontmatter?.title || metadata.title,
+      content: fullContent,
+      date: metadata.date,
+      tags: apiData.frontmatter?.tags || metadata.tags || [],
+      description: apiData.frontmatter?.description || metadata.description,
+      imageThumbnail,
+      author: apiData.frontmatter?.author || metadata.author,
+      lead: apiData.frontmatter?.description || metadata.lead,
+      canonical_url: metadata.canonical_url,
+      story_count: metadata.story_count,
+      has_video: metadata.has_video,
+      seo_title: apiData.frontmatter?.og?.["og:title"] || apiData.frontmatter?.title,
+      seo_description: apiData.frontmatter?.og?.["og:description"] || apiData.frontmatter?.description,
+      keywords: apiData.metadata?.keywords || apiData.frontmatter?.tags || [],
+      reading_time: metadata.reading_time,
+      word_count: metadata.word_count,
+      last_modified: metadata.last_modified || metadata.date,
+      category: metadata.category,
+      featured: metadata.featured || false,
+      github_events: [],
+      story_packets: apiData.story_packets || [],
+      metadata: apiData.metadata || {},
+      related_posts: [],
+      table_of_contents: [],
+      social_shares: {},
+      analytics: {}
+    }
+  }
+
   return {
     fetchBlog,
     getAvailableBlogs,
     getBlogMetadata,
     getSitemap,
     getRssFeed,
+    transformBlogData,
     // Legacy methods (deprecated)
     fetchBlogMarkdown,
     fetchBlogDigest,
