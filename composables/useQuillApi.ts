@@ -107,8 +107,14 @@ export const useQuillApi = () => {
     // Prioritize story images, then API images, then fallback to hero images
     let imageThumbnail = null
     
-    // First priority: Story images if available
-    if (metadata.story_count > 0 && apiData.story_packets && apiData.story_packets.length > 0) {
+    // First priority: API's OG image if it's a proper story image (not generic logo)
+    if (apiData.frontmatter?.og?.["og:image"] && 
+        !apiData.frontmatter.og["og:image"].includes('pcl-labs-logo.svg') &&
+        apiData.frontmatter.og["og:image"].includes('stories/')) {
+      imageThumbnail = apiData.frontmatter.og["og:image"]
+    }
+    // Second priority: Story images if available
+    else if (metadata.story_count > 0 && apiData.story_packets && apiData.story_packets.length > 0) {
       // Try to use the first story packet's intro thumbnail
       const firstStory = apiData.story_packets[0]
       if (firstStory.video && firstStory.video.thumbnails && firstStory.video.thumbnails.intro) {
@@ -120,7 +126,7 @@ export const useQuillApi = () => {
         imageThumbnail = `https://api.paulchrisluke.com/assets/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
       }
     }
-    // Second priority: Direct image fields from metadata
+    // Third priority: Direct image fields from metadata
     else if (metadata.image) {
       imageThumbnail = metadata.image
     }
@@ -130,12 +136,13 @@ export const useQuillApi = () => {
     else if (metadata.thumbnail) {
       imageThumbnail = metadata.thumbnail
     }
-    // Third priority: API frontmatter images (but avoid generic logo)
+    // Fourth priority: Other API frontmatter images (but avoid generic logo)
     else if (apiData.frontmatter?.og?.["og:image"] && 
              !apiData.frontmatter.og["og:image"].includes('pcl-labs-logo.svg')) {
       imageThumbnail = apiData.frontmatter.og["og:image"]
     }
-    else if (apiData.frontmatter?.schema?.blogPosting?.image) {
+    else if (apiData.frontmatter?.schema?.blogPosting?.image && 
+             !apiData.frontmatter.schema.blogPosting.image.includes('pcl-labs-logo.svg')) {
       imageThumbnail = apiData.frontmatter.schema.blogPosting.image
     }
     // Final fallback: Use a proper hero image instead of logo
