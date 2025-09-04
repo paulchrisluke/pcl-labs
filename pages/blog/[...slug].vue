@@ -211,15 +211,23 @@ const formattedContent = computed(() => {
   content = uniqueLines.join('\n')
   
   // Handle embedded video tags (already in HTML format) with enhanced SEO
-  content = content.replace(/<video controls src="([^"]+)"><\/video>/g, (match, src) => {
-    // Use a fallback poster image since the generated poster paths might not exist
-    const posterPath = 'https://paulchrisluke.com/PCL-about-header.webp'
+  content = content.replace(/<video[^>]*><\/video>/g, (match) => {
+    // Extract the existing video attributes
+    const srcMatch = match.match(/src="([^"]+)"/)
+    const posterMatch = match.match(/poster="([^"]+)"/)
     
-    return '<div class="my-8 max-w-lg mx-auto">' +
-      '<video controls src="' + src + '" class="w-full rounded-lg shadow-lg" preload="metadata" poster="' + posterPath + '" width="400" height="300">' +
-        '<p>Your browser does not support the video tag.</p>' +
-      '</video>' +
-    '</div>'
+    if (srcMatch) {
+      const src = srcMatch[1]
+      const poster = posterMatch ? posterMatch[1] : 'https://paulchrisluke.com/PCL-about-header.webp'
+      
+      return '<div class="my-8 max-w-lg mx-auto">' +
+        '<video controls src="' + src + '" class="w-full rounded-lg shadow-lg" preload="metadata" poster="' + poster + '" width="400" height="300">' +
+          '<p>Your browser does not support the video tag.</p>' +
+        '</video>' +
+      '</div>'
+    }
+    
+    return match // Return original if no src found
   })
   
   return content
