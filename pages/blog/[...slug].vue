@@ -214,7 +214,7 @@ const formattedContent = computed(() => {
   content = content.replace(/<video controls src="([^"]+)"><\/video>/g, (match, src) => {
     // Generate poster image path from video path
     const posterPath = src.replace(/\.(mp4|webm|ogg)$/, '_poster.jpg')
-    return `<div class="my-8"><video controls src="${src}" class="w-full rounded-lg shadow-lg" preload="metadata" poster="${posterPath}" width="800" height="450"><p>Your browser does not support the video tag.</p></video></div>`
+    return `<div class="my-8 max-w-2xl mx-auto"><video controls src="${src}" class="w-full rounded-lg shadow-lg" preload="metadata" poster="${posterPath}" width="600" height="400"><p>Your browser does not support the video tag.</p></video></div>`
   })
   
   return content
