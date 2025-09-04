@@ -108,10 +108,17 @@ export const useQuillApi = () => {
     let imageThumbnail = null
     
     // First priority: Story images if available
-    if (metadata.story_count > 0) {
-      const datePath = metadata.date.replace(/-/g, '/')
-      const dateId = metadata.date.replace(/-/g, '')
-      imageThumbnail = `https://api.paulchrisluke.com/assets/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
+    if (metadata.story_count > 0 && apiData.story_packets && apiData.story_packets.length > 0) {
+      // Try to use the first story packet's intro thumbnail
+      const firstStory = apiData.story_packets[0]
+      if (firstStory.video && firstStory.video.thumbnails && firstStory.video.thumbnails.intro) {
+        imageThumbnail = `https://api.paulchrisluke.com/assets/${firstStory.video.thumbnails.intro}`
+      } else {
+        // Fallback to the old story image path
+        const datePath = metadata.date.replace(/-/g, '/')
+        const dateId = metadata.date.replace(/-/g, '')
+        imageThumbnail = `https://api.paulchrisluke.com/assets/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
+      }
     }
     // Second priority: Direct image fields from metadata
     else if (metadata.image) {
