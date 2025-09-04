@@ -214,40 +214,38 @@ const formattedContent = computed(() => {
   content = content.replace(/<video controls src="([^"]+)"><\/video>/g, (match, src) => {
     // Generate poster image path from video path
     const posterPath = src.replace(/\.(mp4|webm|ogg)$/, '_poster.jpg')
-    const videoId = `video-${Math.random().toString(36).substr(2, 9)}`
+    const videoId = 'video-' + Math.random().toString(36).substr(2, 9)
     
-    return `
-      <div class="my-8 max-w-2xl mx-auto">
-        <div id="${videoId}-container" class="relative cursor-pointer group" onclick="playVideo('${videoId}', '${src}')">
-          <img 
-            src="${posterPath}" 
-            alt="Video thumbnail" 
-            class="w-full rounded-lg shadow-lg transition-transform duration-300 group-hover:scale-105"
-            width="600" 
-            height="400"
-            onerror="this.src='https://paulchrisluke.com/PCL-about-header.webp'"
-          />
-          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg group-hover:bg-opacity-40 transition-all duration-300">
-            <div class="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-all duration-300">
-              <svg class="w-8 h-8 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <video 
-          id="${videoId}" 
-          class="w-full rounded-lg shadow-lg hidden" 
-          controls 
-          preload="none"
-          width="600" 
-          height="400"
-        >
-          <source src="${src}" type="video/mp4">
-          <p>Your browser does not support the video tag.</p>
-        </video>
-      </div>
-    `
+    return '<div class="my-8 max-w-2xl mx-auto">' +
+      '<div id="' + videoId + '-container" class="relative cursor-pointer group" onclick="playVideo(\'' + videoId + '\', \'' + src + '\')">' +
+        '<img ' +
+          'src="' + posterPath + '" ' +
+          'alt="Video thumbnail" ' +
+          'class="w-full rounded-lg shadow-lg transition-transform duration-300 group-hover:scale-105" ' +
+          'width="600" ' +
+          'height="400" ' +
+          'onerror="this.src=\'https://paulchrisluke.com/PCL-about-header.webp\'"' +
+        '/>' +
+        '<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg group-hover:bg-opacity-40 transition-all duration-300">' +
+          '<div class="bg-white bg-opacity-90 rounded-full p-4 group-hover:bg-opacity-100 transition-all duration-300">' +
+            '<svg class="w-8 h-8 text-gray-800 ml-1" fill="currentColor" viewBox="0 0 24 24">' +
+              '<path d="M8 5v14l11-7z"/>' +
+            '</svg>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<video ' +
+        'id="' + videoId + '" ' +
+        'class="w-full rounded-lg shadow-lg hidden" ' +
+        'controls ' +
+        'preload="none" ' +
+        'width="600" ' +
+        'height="400"' +
+      '>' +
+        '<source src="' + src + '" type="video/mp4">' +
+        '<p>Your browser does not support the video tag.</p>' +
+      '</video>' +
+    '</div>'
   })
   
   return content
