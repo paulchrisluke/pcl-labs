@@ -1,6 +1,28 @@
 <template>
     <ServiceGrid />
-    <BlogList :blogData="blogData" />
+    <div v-if="pending" class="bg-white py-16">
+      <div class="mx-auto max-w-2xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p class="mt-4 text-gray-600">Loading blog posts...</p>
+        </div>
+      </div>
+    </div>
+    <BlogList v-else-if="blogData && blogData.length > 0" :blogData="blogData" />
+    <div v-else-if="error" class="bg-white py-16">
+      <div class="mx-auto max-w-2xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+        <div class="text-center">
+          <p class="text-red-600">Error loading blog posts. Please try again later.</p>
+        </div>
+      </div>
+    </div>
+    <div v-else class="bg-white py-16">
+      <div class="mx-auto max-w-2xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
+        <div class="text-center">
+          <p class="text-gray-600">No blog posts available.</p>
+        </div>
+      </div>
+    </div>
 </template>
 
 <script setup>
@@ -19,6 +41,8 @@ useSeoMeta({
   ogUrl: 'https://paulchrisluke.com/blog',
   ogImage: 'https://paulchrisluke.com/PCL-about-header.webp',
   ogImageAlt: 'PCL Labs Blog - Digital Marketing and Web Development Insights',
+  ogImageWidth: '1200',
+  ogImageHeight: '675',
   ogSiteName: 'PCL Labs',
   ogLocale: 'en_US',
   // Twitter
@@ -33,63 +57,43 @@ useSeoMeta({
 
 useHead({
   link: [
-    { rel: 'canonical', href: 'https://paulchrisluke.com/blog' }
+    { rel: 'canonical', href: 'https://paulchrisluke.com/blog' },
+    { rel: 'alternate', type: 'application/rss+xml', title: 'PCL Labs Blog RSS Feed', href: 'https://paulchrisluke.com/rss.xml' },
+    { rel: 'sitemap', type: 'application/xml', title: 'Sitemap', href: 'https://paulchrisluke.com/sitemap.xml' }
+  ],
+  meta: [
+    { name: 'robots', content: 'index, follow, max-image-preview:large' },
+    { name: 'language', content: 'en' },
+    { name: 'geo.region', content: 'US' },
+    { name: 'geo.placename', content: 'United States' },
+    { name: 'news_keywords', content: 'digital marketing, e-commerce, web development, SEO, conversion optimization, Shopify, legal marketing, PCL-Labs, Paul Chris Luke, AI automation, content generation' }
   ]
 })
 
 // Use the Quill API composable
-const { getAvailableBlogs, fetchBlog } = useQuillApi()
+const { getAvailableBlogs } = useQuillApi()
 
 // Fetch blog content from Quill API
-const { data: blogData } = await useAsyncData('blog-all', async () => {
-  try {
-    // Get available blog dates
-    const availableDates = await getAvailableBlogs()
-    
-    // Fetch all available blogs in parallel
-    const allBlogs = await Promise.all(
-      availableDates.map(async (date) => {
-        try {
-          const blogContent = await fetchBlog(date)
-          if (!blogContent) return null
-          
-          return {
-            _id: `blog_${blogContent.date}`,
-            _path: `/blog/${blogContent.date}`,
-            title: blogContent.frontmatter?.title || 'Blog Post',
-            content: blogContent.content?.raw || '',
-            date: blogContent.date,
-            tags: blogContent.frontmatter?.tags || [],
-            imageThumbnail: blogContent.storyImages?.[0] || 
-                           blogContent.frontmatter?.og?.image || 
-                           blogContent.frontmatter?.og?.['og:image'] || 
-                           blogContent.frontmatter?.image || 
-                           `/stories/${blogContent.date.replace(/-/g, '/')}/story_${blogContent.date.replace(/-/g, '')}_pr42_01_intro.png` ||
-                           '/img/blog-placeholder.jpg',
-            imageAlt: blogContent.frontmatter?.title || 'Blog Post',
-            description: blogContent.frontmatter?.description || blogContent.content?.raw?.substring(0, 150) + '...',
-            author: blogContent.frontmatter?.author || 'Paul Chris Luke',
-            lead: blogContent.frontmatter?.lead || ''
-          }
-        } catch (error) {
-          return null
-        }
-      })
-    )
-    
-    // Filter out failed fetches and sort by date (newest first)
-    const sortedBlogs = allBlogs
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    
-    return sortedBlogs
-    
-  } catch (error) {
-    return []
+const { data: blogData, pending, error } = await useAsyncData('blog-all', async () => {
+  const blogs = await getAvailableBlogs()
+  
+  // Debug: Log what fields are available in the /blogs endpoint
+  console.log('Blogs from /blogs endpoint:', blogs)
+  if (blogs.length > 0) {
+    console.log('First blog fields:', Object.keys(blogs[0]))
+    console.log('First blog data:', blogs[0])
   }
-  })
+  
+  // Simple transformation - just add the path and sort by date
+  return blogs.map(blog => ({
+    ...blog,
+    _path: `/blog/${blog.date}`,
+    // Add image field for BlogList component compatibility
+    image: blog.image || blog.og_image || blog.thumbnail
+  })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+})
  
-// Add Schema.org structured data for blog listing
+// Add enhanced Schema.org structured data for blog listing
 useHead({
   script: [
     {
@@ -100,6 +104,7 @@ useHead({
         name: 'PCL Labs Blog',
         description: 'Insights, tips, and strategies for digital marketing, e-commerce optimization, and web development.',
         url: 'https://paulchrisluke.com/blog',
+        inLanguage: 'en-US',
         publisher: {
           '@type': 'Organization',
           name: 'PCL Labs',
@@ -109,7 +114,21 @@ useHead({
             url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
             width: 200,
             height: 50
-          }
+          },
+          sameAs: [
+            'https://twitter.com/paulchrisluke',
+            'https://github.com/paulchrisluke'
+          ]
+        },
+        author: {
+          '@type': 'Person',
+          name: 'Paul Chris Luke',
+          url: 'https://paulchrisluke.com',
+          sameAs: [
+            'https://twitter.com/paulchrisluke',
+            'https://github.com/paulchrisluke',
+            'https://linkedin.com/in/paulchrisluke'
+          ]
         },
         blogPost: blogData.value?.map(blog => ({
           '@type': 'BlogPosting',
@@ -117,12 +136,22 @@ useHead({
           description: blog.description,
           author: {
             '@type': 'Person',
-            name: blog.author
+            name: blog.author,
+            url: 'https://paulchrisluke.com'
           },
           datePublished: blog.date,
           url: `https://paulchrisluke.com${blog._path}`,
-          image: blog.imageThumbnail
-        })) || []
+          image: blog.image
+        })) || [],
+        // Additional blog metadata
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: 'https://paulchrisluke.com/blog?q={search_term_string}'
+          },
+          'query-input': 'required name=search_term_string'
+        }
       })
     }
   ]

@@ -4,133 +4,104 @@ export const useQuillApi = () => {
   const config = useRuntimeConfig()
   const baseUrl = 'https://quill-blog-api.paulchrisluke.workers.dev'
 
-  // Parse YAML frontmatter and markdown content
-  const parseBlogResponse = (response: string) => {
-    try {
-      // Split on the first --- to separate frontmatter from content
-      const parts = response.split('---')
-      if (parts.length < 3) {
-        throw new Error('Invalid blog format')
-      }
-      
-      const frontmatter = parts[1].trim()
-      const content = parts.slice(2).join('---').trim()
-      
-      // Parse frontmatter (simple YAML parsing)
-      const frontmatterObj: any = {}
-      frontmatter.split('\n').forEach(line => {
-        const colonIndex = line.indexOf(':')
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim()
-          let value = line.substring(colonIndex + 1).trim()
-          
-          // Remove quotes if present
-          if ((value.startsWith("'") && value.endsWith("'")) || 
-              (value.startsWith('"') && value.endsWith('"'))) {
-            value = value.slice(1, -1)
-          }
-          
-          frontmatterObj[key] = value
-        }
-      })
-      
-      return {
-        frontmatter: frontmatterObj,
-        content: { raw: content },
-        date: frontmatterObj.date
-      }
-    } catch (error) {
-      console.error('Error parsing blog response:', error)
-      return null
-    }
-  }
-
-  // Fetch complete blog data for a specific date
+  // Fetch complete blog data for a specific date using the new digest endpoint
   const fetchBlog = async (date: string) => {
     try {
-      const response = await $fetch<string>(`${baseUrl}/api/blog/${date}`)
-      // Parse the YAML + markdown response
-      const parsedBlog = parseBlogResponse(response)
+      // Use the new digest endpoint URL structure
+      const response = await $fetch(`${baseUrl}/blogs/${date}/API-v3-${date}_digest.json`)
       
-      if (!parsedBlog) {
-        throw new Error('Failed to parse blog response')
+      // The API now returns structured JSON with enhanced SEO data
+      if (!response) {
+        throw new Error('Failed to fetch blog data')
       }
       
-      // Try to fetch story images if available
-      try {
-        const storyImages = await fetchBlogAssets(date)
-        if (storyImages && storyImages.images && storyImages.images.length > 0) {
-          parsedBlog.storyImages = storyImages.images
-        }
-      } catch (assetError) {
-        // Story images are optional, don't fail the whole request
-        console.warn(`Could not fetch story images for ${date}:`, assetError)
-      }
-      
-      return parsedBlog
+      return response
     } catch (error) {
       console.error(`Error fetching blog for ${date}:`, error)
       throw error
     }
   }
 
-  // Fetch markdown content for a specific date
-  const fetchBlogMarkdown = async (date: string) => {
-    try {
-      const response = await $fetch(`${baseUrl}/api/blog/${date}/markdown`)
-      return response
-    } catch (error) {
-      console.error(`Error fetching blog markdown for ${date}:`, error)
-      throw error
-    }
-  }
-
-  // Fetch digest data for a specific date
-  const fetchBlogDigest = async (date: string) => {
-    try {
-      const response = await $fetch(`${baseUrl}/api/blog/${date}/digest`)
-      return response
-    } catch (error) {
-      console.error(`Error fetching blog digest for ${date}:`, error)
-      throw error
-    }
-  }
-
-  // Fetch assets for a specific date
-  const fetchBlogAssets = async (date: string) => {
-    try {
-      const response = await $fetch(`${baseUrl}/api/assets/blog/${date}`)
-      return response
-    } catch (error) {
-      console.error(`Error fetching blog assets for ${date}:`, error)
-      throw error
-    }
-  }
-
-  // Get available blog dates from the API
+  // Get available blogs from the new API endpoint with enhanced SEO data
   const getAvailableBlogs = async () => {
     try {
-      // Try to fetch from the API first
-      const response = await $fetch<string[]>(`${baseUrl}/api/blogs`)
+      // Fetch from the new /blogs endpoint that returns structured data with SEO metadata
+      const response = await $fetch(`${baseUrl}/blogs`)
+      
+      // Handle different response structures
       if (response && Array.isArray(response)) {
         return response
+      } else if (response && response.blogs && Array.isArray(response.blogs)) {
+        return response.blogs
       }
       
-      // Fallback to known dates if API endpoint doesn't exist yet
-      console.warn('API endpoint /api/blogs not available, using fallback dates')
-      return ['2025-08-27', '2025-08-29']
+      // If no response, return empty array
+      return []
     } catch (error) {
-      console.warn('Error fetching available blogs from API, using fallback dates:', error)
-      // Fallback to known dates if API is unavailable
-      return ['2025-08-27', '2025-08-29']
+      console.warn('Error fetching available blogs from API:', error)
+      // Return empty array for clean empty state
+      return []
     }
+  }
+
+  // Get blog metadata for a specific date from the blogs list
+  const getBlogMetadata = async (date: string) => {
+    try {
+      const blogs = await getAvailableBlogs()
+      return blogs.find(blog => blog.date === date) || null
+    } catch (error) {
+      console.error(`Error fetching blog metadata for ${date}:`, error)
+      return null
+    }
+  }
+
+  // Get sitemap data from the new API endpoint
+  const getSitemap = async () => {
+    try {
+      const response = await $fetch(`${baseUrl}/sitemap.xml`)
+      return response
+    } catch (error) {
+      console.error('Error fetching sitemap:', error)
+      throw error
+    }
+  }
+
+  // Get RSS feed data from the new API endpoint
+  const getRssFeed = async () => {
+    try {
+      const response = await $fetch(`${baseUrl}/rss.xml`)
+      return response
+    } catch (error) {
+      console.error('Error fetching RSS feed:', error)
+      throw error
+    }
+  }
+
+  // Legacy methods for backward compatibility (deprecated)
+  const fetchBlogMarkdown = async (date: string) => {
+    console.warn('fetchBlogMarkdown is deprecated, use fetchBlog instead')
+    return fetchBlog(date)
+  }
+
+  const fetchBlogDigest = async (date: string) => {
+    console.warn('fetchBlogDigest is deprecated, use fetchBlog instead')
+    return fetchBlog(date)
+  }
+
+  const fetchBlogAssets = async (date: string) => {
+    console.warn('fetchBlogAssets is deprecated, assets are now included in fetchBlog response')
+    return fetchBlog(date)
   }
 
   return {
     fetchBlog,
+    getAvailableBlogs,
+    getBlogMetadata,
+    getSitemap,
+    getRssFeed,
+    // Legacy methods (deprecated)
     fetchBlogMarkdown,
     fetchBlogDigest,
-    fetchBlogAssets,
-    getAvailableBlogs
+    fetchBlogAssets
   }
 }
