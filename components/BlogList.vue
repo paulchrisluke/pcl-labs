@@ -88,7 +88,7 @@ const showSeeAllLink = computed(() => {
 
 // Simple image helper - use what the API provides
 const getImageUrl = (post) => {
-  return post.image || null;
+  return post.imageThumbnail || post.image || null;
 };
 
 const getFirstTag = (post) => {

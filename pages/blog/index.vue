@@ -75,13 +75,32 @@ const { getAvailableBlogs } = useQuillApi()
 
 // Fetch blog content from Quill API
 const { data: blogData, pending, error } = await useAsyncData('blog-all', async () => {
+  const { getAvailableBlogs, fetchBlog, transformBlogData } = useQuillApi()
   const blogs = await getAvailableBlogs()
   
-  // Simple transformation - just add the path and sort by date
-  return blogs.map(blog => ({
-    ...blog,
-    _path: `/blog/${blog.date}`
-  })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  // Fetch full blog data for each post to get images
+  const blogsWithImages = await Promise.all(
+    blogs.map(async (blog) => {
+      try {
+        const fullBlogData = await fetchBlog(blog.date)
+        const transformedBlog = transformBlogData(fullBlogData, blog)
+        return {
+          ...transformedBlog,
+          _path: `/blog/${blog.date}`
+        }
+      } catch (error) {
+        console.error(`Failed to fetch blog ${blog.date}:`, error)
+        // Return basic blog data without image if fetch fails
+        return {
+          ...blog,
+          _path: `/blog/${blog.date}`,
+          imageThumbnail: null
+        }
+      }
+    })
+  )
+  
+  return blogsWithImages.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 })
  
 // Add enhanced Schema.org structured data for blog listing
