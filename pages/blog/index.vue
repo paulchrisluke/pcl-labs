@@ -77,19 +77,10 @@ const { getAvailableBlogs } = useQuillApi()
 const { data: blogData, pending, error } = await useAsyncData('blog-all', async () => {
   const blogs = await getAvailableBlogs()
   
-  // Debug: Log what fields are available in the /blogs endpoint
-  console.log('Blogs from /blogs endpoint:', blogs)
-  if (blogs.length > 0) {
-    console.log('First blog fields:', Object.keys(blogs[0]))
-    console.log('First blog data:', blogs[0])
-  }
-  
   // Simple transformation - just add the path and sort by date
   return blogs.map(blog => ({
     ...blog,
-    _path: `/blog/${blog.date}`,
-    // Add image field for BlogList component compatibility
-    image: blog.image || blog.og_image || blog.thumbnail
+    _path: `/blog/${blog.date}`
   })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 })
  

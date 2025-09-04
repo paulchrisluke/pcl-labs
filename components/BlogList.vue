@@ -23,15 +23,15 @@
           <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200">
             <!-- Show actual image if available -->
             <img 
-              v-if="getImageUrl(post) && getImageUrl(post) !== '/img/blog-placeholder.jpg'"
+              v-if="getImageUrl(post)"
               :src="getImageUrl(post)" 
-              :alt="post.imageAlt || post.title" 
+              :alt="post.title" 
               class="object-cover object-center h-full w-full group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out"
               loading="lazy"
               decoding="async"
               @error="handleImageError"
             />
-            <!-- Show placeholder heroicon if no image -->
+            <!-- Show placeholder if no image -->
             <div 
               v-else
               class="h-full w-full bg-gray-700 flex items-center justify-center object-cover object-center"
@@ -86,47 +86,9 @@ const showSeeAllLink = computed(() => {
   return props.blogData.length > (props.limit || Infinity);
 });
 
-// Helper functions for the new API data structure
+// Simple image helper - use what the API provides
 const getImageUrl = (post) => {
-  // Debug: Log what we're getting
-  console.log('Blog post data:', {
-    title: post.title,
-    image: post.image,
-    frontmatter: post.frontmatter,
-    story_count: post.story_count,
-    date: post.date
-  });
-  
-  // Check for image in frontmatter.og["og:image"] first
-  if (post.frontmatter?.og?.["og:image"]) {
-    console.log('Using frontmatter.og["og:image"]:', post.frontmatter.og["og:image"]);
-    return post.frontmatter.og["og:image"];
-  }
-  
-  // Check for image in frontmatter.schema.article.image
-  if (post.frontmatter?.schema?.article?.image) {
-    console.log('Using frontmatter.schema.article.image:', post.frontmatter.schema.article.image);
-    return post.frontmatter.schema.article.image;
-  }
-  
-  // Use the direct image field from the API
-  if (post.image) {
-    console.log('Using post.image:', post.image);
-    return post.image;
-  }
-  
-  // Check for story images if available
-  if (post.story_count > 0) {
-    const datePath = post.date.replace(/-/g, '/')
-    const dateId = post.date.replace(/-/g, '')
-    const storyImage = `/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
-    console.log('Using story image:', storyImage);
-    return storyImage;
-  }
-  
-  // Return placeholder if no image available
-  console.log('No image found, using placeholder');
-  return '/img/blog-placeholder.jpg';
+  return post.image || null;
 };
 
 const getFirstTag = (post) => {
