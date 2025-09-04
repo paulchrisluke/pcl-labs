@@ -104,17 +104,36 @@ export const useQuillApi = () => {
   const transformBlogData = (apiData: BlogPostResponse, metadata: BlogMetadata): BlogPost => {
     const fullContent = apiData.content.body
     
-    // Use the image field from API, or generate story image path if available
-    let imageThumbnail = apiData.frontmatter?.og?.["og:image"] || 
-                        apiData.frontmatter?.schema?.blogPosting?.image ||
-                        metadata.image || 
-                        metadata.og_image ||
-                        metadata.thumbnail
+    // Prioritize story images, then API images, then fallback to hero images
+    let imageThumbnail = null
     
+    // First priority: Story images if available
     if (metadata.story_count > 0) {
       const datePath = metadata.date.replace(/-/g, '/')
       const dateId = metadata.date.replace(/-/g, '')
-      imageThumbnail = `/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
+      imageThumbnail = `https://api.paulchrisluke.com/assets/stories/${datePath}/story_${dateId}_pr42_01_intro.png`
+    }
+    // Second priority: Direct image fields from metadata
+    else if (metadata.image) {
+      imageThumbnail = metadata.image
+    }
+    else if (metadata.og_image) {
+      imageThumbnail = metadata.og_image
+    }
+    else if (metadata.thumbnail) {
+      imageThumbnail = metadata.thumbnail
+    }
+    // Third priority: API frontmatter images (but avoid generic logo)
+    else if (apiData.frontmatter?.og?.["og:image"] && 
+             !apiData.frontmatter.og["og:image"].includes('pcl-labs-logo.svg')) {
+      imageThumbnail = apiData.frontmatter.og["og:image"]
+    }
+    else if (apiData.frontmatter?.schema?.blogPosting?.image) {
+      imageThumbnail = apiData.frontmatter.schema.blogPosting.image
+    }
+    // Final fallback: Use a proper hero image instead of logo
+    else {
+      imageThumbnail = 'https://paulchrisluke.com/PCL-about-header.webp'
     }
     
     return {
