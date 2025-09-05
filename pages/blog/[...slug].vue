@@ -64,6 +64,7 @@
 import { useRoute, useAsyncData, createError } from 'nuxt/app'
 import { computed, watch } from 'vue'
 import { marked } from 'marked'
+import { useBlogApi } from '@/composables/useBlogApi'
 
 const route = useRoute()
 const { fetchBlog } = useBlogApi()
