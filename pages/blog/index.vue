@@ -347,22 +347,14 @@ const handleImageError = (event) => {
   const target = event.target
   const currentSrc = target.src
   
-  // Prevent infinite loop: if current src is already a fallback or data URI, remove error listener
-  if (currentSrc.includes('blog-placeholder.jpg') || 
-      currentSrc.startsWith('data:image')) {
+  // Prevent infinite loop: if current src is already the placeholder, remove error listener
+  if (currentSrc.includes('blog-placeholder.jpg')) {
     target.removeEventListener('error', handleImageError)
     return
   }
   
-  // Try primary fallback first (existing header image)
-  if (!currentSrc.includes('PCL-about-header.webp')) {
-    target.src = '/PCL-about-header.webp'
-    return
-  }
-  
-  // Ultimate fallback: simple data URI placeholder (when header image also fails)
-  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzZiNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
-  target.removeEventListener('error', handleImageError)
+  // Fallback to our placeholder stock image
+  target.src = '/img/blog-placeholder.jpg'
 }
 
 // Toggle tag expansion for a specific post

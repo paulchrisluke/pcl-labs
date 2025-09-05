@@ -172,8 +172,17 @@ const formattedContent = computed(() => {
 
 // Handle image loading errors
 const handleImageError = (event) => {
-  // Fallback to placeholder if image fails to load
-  event.target.src = '/img/blog-placeholder.jpg'
+  const target = event.target
+  const currentSrc = target.src
+  
+  // Prevent infinite loop: if current src is already the placeholder, remove error listener
+  if (currentSrc.includes('blog-placeholder.jpg')) {
+    target.removeEventListener('error', handleImageError)
+    return
+  }
+  
+  // Fallback to our placeholder stock image
+  target.src = '/img/blog-placeholder.jpg'
 }
 
 // Enhanced SEO meta tags

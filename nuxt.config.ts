@@ -14,6 +14,10 @@ export default defineNuxtConfig({
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'shortcut icon', type: 'image/x-icon', href: '/favicon.ico' }
+      ],
       // Todo: cleanup this fallback option https://nuxtseo.com/nuxt-seo/guides/configuring-modules
       // title: 'Default Title', // Default title
       // meta: [
