@@ -25,19 +25,45 @@ interface ApiBlogData {
 }
 
 interface ApiBlogIndexItem {
-  date: string
-  canonical_url?: string
-  title?: string
-  description?: string
-  tags?: string[]
-  author?: string
-  api_url?: string
-  story_count?: number
-  has_video?: boolean
+  '@type': string
+  headline: string
+  description: string
+  url: string
+  datePublished: string
+  author: {
+    '@type': string
+    name: string
+  }
+  publisher: {
+    '@type': string
+    name: string
+    logo: {
+      '@type': string
+      url: string
+    }
+  }
 }
 
 interface ApiBlogIndexResponse {
-  blogs?: ApiBlogIndexItem[]
+  '@context': string
+  '@type': string
+  name: string
+  url: string
+  description: string
+  author: {
+    '@type': string
+    name: string
+    url: string
+  }
+  publisher: {
+    '@type': string
+    name: string
+    logo: {
+      '@type': string
+      url: string
+    }
+  }
+  blogPost: ApiBlogIndexItem[]
 }
 
 // Canonical blog DTO interface
@@ -57,9 +83,6 @@ interface BlogData {
   wordCount: number
   timeRequired: string
   url: string
-  apiUrl: string
-  storyCount: number
-  hasVideo: boolean
   schema: any
   headers: any
 }
@@ -107,7 +130,7 @@ export const useBlogApi = () => {
     }
     
     const data = apiData as Record<string, any>
-    return Array.isArray(data.blogs)
+    return Array.isArray(data.blogPost)
   }
 
   // Transform API data to match our frontend structure with type safety
@@ -134,9 +157,6 @@ export const useBlogApi = () => {
       wordCount: data.wordCount || 0,
       timeRequired: data.timeRequired || 'PT3M',
       url: data.url || '',
-      apiUrl: '', // Will be populated by fetchBlog
-      storyCount: 0, // Will be populated by fetchBlog
-      hasVideo: false, // Will be populated by fetchBlog
       schema: data.schema || null,
       headers: data.headers || null
     }
@@ -207,11 +227,6 @@ export const useBlogApi = () => {
         const apiData = await response.json()
         const transformedData = transformApiData(apiData)
         
-        // Populate the additional fields that fetchAllBlogs includes
-        transformedData.apiUrl = `${API_BASE_URL}/${date}/${date}_page.publish.json`
-        transformedData.storyCount = 0 // Individual blog doesn't have story count
-        transformedData.hasVideo = transformedData.content.includes('<video') || transformedData.content.includes('youtube.com') || transformedData.content.includes('vimeo.com')
-        
         console.log(`Successfully fetched blog for date ${date}`)
         return transformedData
         
@@ -245,24 +260,21 @@ export const useBlogApi = () => {
   // Transform blog index item to consistent DTO
   const transformBlogIndexItem = (blog: ApiBlogIndexItem): BlogData => {
     return {
-      _id: blog.date,
-      _path: blog.canonical_url?.replace('https://paulchrisluke.com', '') || `/blog/${blog.date}`,
-      title: blog.title || '',
+      _id: blog.datePublished,
+      _path: blog.url?.replace('https://paulchrisluke.com', '') || `/blog/${blog.datePublished}`,
+      title: blog.headline || '',
       content: '', // Content is not included in the index, only in individual blog endpoints
-      date: blog.date || '',
-      dateModified: blog.date || '', // Index doesn't have modified date
-      tags: blog.tags || [],
+      date: blog.datePublished || '',
+      dateModified: blog.datePublished || '', // Index doesn't have modified date
+      tags: [], // Tags not available in index
       imageThumbnail: '', // Index doesn't include images
-      imageAlt: blog.title || 'PCL Labs Blog Post',
+      imageAlt: blog.headline || 'PCL Labs Blog Post',
       description: blog.description || '',
-      author: blog.author || 'Paul Chris Luke',
+      author: blog.author?.name || 'Paul Chris Luke',
       lead: blog.description || '',
       wordCount: 0, // Not available in index
       timeRequired: 'PT3M', // Default value
-      url: blog.canonical_url || '',
-      apiUrl: blog.api_url || '',
-      storyCount: blog.story_count || 0,
-      hasVideo: blog.has_video || false,
+      url: blog.url || '',
       schema: null, // Not included in index
       headers: null // Not included in index
     }
@@ -286,9 +298,9 @@ export const useBlogApi = () => {
       
       const validatedData = apiData as ApiBlogIndexResponse
       
-      // Transform the blogs array from the API response
-      if (validatedData.blogs && Array.isArray(validatedData.blogs)) {
-        return validatedData.blogs.map(blog => transformBlogIndexItem(blog))
+      // Transform the blogPost array from the API response
+      if (validatedData.blogPost && Array.isArray(validatedData.blogPost)) {
+        return validatedData.blogPost.map(blog => transformBlogIndexItem(blog))
       }
       
       return []
@@ -316,10 +328,10 @@ export const useBlogApi = () => {
       
       const validatedData = apiData as ApiBlogIndexResponse
       
-      // Return just the dates from the blogs array
-      if (validatedData.blogs && Array.isArray(validatedData.blogs)) {
-        return validatedData.blogs
-          .map(blog => blog.date)
+      // Return just the dates from the blogPost array
+      if (validatedData.blogPost && Array.isArray(validatedData.blogPost)) {
+        return validatedData.blogPost
+          .map(blog => blog.datePublished)
           .filter(date => date) // Filter out empty dates
           .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
       }
