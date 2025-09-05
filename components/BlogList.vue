@@ -75,7 +75,7 @@ const showSeeAllLink = computed(() => {
   return props.blogData.length > (props.limit || Infinity);
 });
 
-// Helper functions for the new API data structure
+// Helper functions for the mock data structure
 const getImageUrl = (post) => {
   // Check for the imageThumbnail first (which now includes the improved logic)
   if (post.imageThumbnail && post.imageThumbnail !== '/img/blog-placeholder.jpg') {

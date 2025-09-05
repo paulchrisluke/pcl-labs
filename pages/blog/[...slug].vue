@@ -39,6 +39,7 @@
               width="1200"
               height="675"
               fetchpriority="high"
+              @error="handleImageError"
             />
             <div class="relative" aria-hidden="true">
               <div class="absolute -inset-x-20 bottom-0 bg-gradient-to-t from-gray-900 pt-[7%]" />
@@ -65,7 +66,7 @@ import { computed, watch } from 'vue'
 import { marked } from 'marked'
 
 const route = useRoute()
-const { fetchBlog } = useQuillApi()
+const { fetchBlog } = useMockBlog()
 
 // Parse the slug to get date
 const parseSlug = computed(() => {
@@ -78,7 +79,7 @@ const parseSlug = computed(() => {
   return null
 })
 
-// Fetch the blog content from Quill API
+// Fetch the blog content from mock API
 const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async () => {
   try {
     const slugInfo = parseSlug.value
@@ -90,7 +91,7 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
       })
     }
     
-    // Fetch blog data from API
+    // Fetch blog data from mock API
     const blogData = await fetchBlog(slugInfo.date)
     
     if (!blogData) {
@@ -100,24 +101,8 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
       })
     }
     
-    // Use the API data directly - no transformation needed
-    return {
-      _id: `blog_${blogData.date}`,
-      _path: route.path,
-      title: blogData.frontmatter?.title || 'Blog Post',
-      content: blogData.content?.raw || '',
-      date: blogData.date,
-      tags: blogData.frontmatter?.tags ? [blogData.frontmatter.tags] : [],
-      description: blogData.frontmatter?.description || blogData.content?.raw?.substring(0, 150) + '...',
-      imageThumbnail: blogData.storyImages?.[0] || 
-                     blogData.frontmatter?.og?.image || 
-                     blogData.frontmatter?.og?.['og:image'] || 
-                     blogData.frontmatter?.image || 
-                     `/stories/${blogData.date.replace(/-/g, '/')}/story_${blogData.date.replace(/-/g, '')}_pr42_01_intro.png` ||
-                     '/img/blog-placeholder.jpg',
-      author: blogData.frontmatter?.author || 'Paul Chris Luke',
-      lead: blogData.frontmatter?.lead || ''
-    }
+    // Return the mock data directly (already in the correct format)
+    return blogData
   } catch (error) {
     // If it's already a Nuxt error, rethrow it
     if (error.statusCode) {
@@ -173,6 +158,12 @@ const formattedContent = computed(() => {
   
   return content
 })
+
+// Handle image loading errors
+const handleImageError = (event) => {
+  // Fallback to placeholder if image fails to load
+  event.target.src = '/img/blog-placeholder.jpg'
+}
 
 // Enhanced SEO meta tags
 useHead({
