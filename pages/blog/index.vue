@@ -58,12 +58,12 @@
           <div class="relative aspect-[9/16] rounded-2xl overflow-hidden bg-gray-800 shadow-2xl group-hover:shadow-indigo-500/25 transition-shadow duration-300 group-hover:scale-105 transform-gpu">
             <!-- Image -->
             <div class="absolute inset-0">
-              <img
-                :src="post.imageThumbnail"
-                :alt="post.title"
-                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 transform-gpu"
-                @error="handleImageError"
-              />
+                          <img
+              :src="post.imageThumbnail || '/img/blog-placeholder.jpg'"
+              :alt="post.title"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 transform-gpu"
+              @error="handleImageError"
+            />
               <!-- Gradient Overlay -->
               <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             </div>
@@ -204,7 +204,7 @@
 <script setup>
 import { useAsyncData } from 'nuxt/app'
 import { useSeoMeta } from '#imports'
-import { useMockBlog } from '~/composables/useMockBlog'
+import { useBlogApi } from '~/composables/useBlogApi'
 
 useSeoMeta({
   title: 'Blog - PCL Labs',
@@ -235,15 +235,15 @@ useHead({
   ]
 })
 
-// Use the mock blog composable
-const { fetchAllBlogs } = useMockBlog()
+// Use the real blog API composable
+const { fetchAllBlogs } = useBlogApi()
 
-// Fetch blog content from mock data
+// Fetch blog content from real API
 const { data: blogData } = await useAsyncData('blog-all', async () => {
   try {
     return await fetchAllBlogs()
   } catch (error) {
-    console.error('Error fetching blogs:', error)
+    console.error('Error fetching blogs from API:', error)
     return []
   }
   })
@@ -307,14 +307,15 @@ const filteredBlogs = computed(() => {
 
 // Helper functions
 const getReadingTime = (post) => {
-  if (post.wordCount) {
+  if (post.wordCount && post.wordCount > 0) {
     return Math.ceil(post.wordCount / 200)
   }
   if (post.content) {
     const wordCount = post.content.split(/\s+/).length
     return Math.ceil(wordCount / 200)
   }
-  return 1
+  // Default reading time for API index data
+  return 3
 }
 
 const formatDate = (dateString) => {

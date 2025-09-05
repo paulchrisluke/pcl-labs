@@ -66,20 +66,28 @@ import { computed, watch } from 'vue'
 import { marked } from 'marked'
 
 const route = useRoute()
-const { fetchBlog } = useMockBlog()
+const { fetchBlog } = useBlogApi()
 
 // Parse the slug to get date
 const parseSlug = computed(() => {
   const slugParts = route.params.slug
-  if (Array.isArray(slugParts) && slugParts.length >= 1) {
-    return {
-      date: slugParts[0]
+  if (Array.isArray(slugParts) && slugParts.length >= 3) {
+    // Handle format: /blog/2025/08/25/slug-name
+    const year = slugParts[0]
+    const month = slugParts[1]
+    const day = slugParts[2]
+    
+    // Validate date format
+    if (year && month && day && year.length === 4 && month.length === 2 && day.length === 2) {
+      return {
+        date: `${year}-${month}-${day}`
+      }
     }
   }
   return null
 })
 
-// Fetch the blog content from mock API
+// Fetch the blog content from real API
 const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async () => {
   try {
     const slugInfo = parseSlug.value
@@ -87,11 +95,11 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
     if (!slugInfo) {
       throw createError({ 
         statusCode: 400, 
-        statusMessage: 'Invalid blog URL format' 
+        statusMessage: 'Invalid blog URL format. Expected format: /blog/YYYY/MM/DD/slug-name' 
       })
     }
     
-    // Fetch blog data from mock API
+    // Fetch blog data from real API
     const blogData = await fetchBlog(slugInfo.date)
     
     if (!blogData) {
@@ -101,7 +109,7 @@ const { data: blog, refresh } = await useAsyncData(`blog-${route.path}`, async (
       })
     }
     
-    // Return the mock data directly (already in the correct format)
+    // Return the transformed API data
     return blogData
   } catch (error) {
     // If it's already a Nuxt error, rethrow it
@@ -139,9 +147,11 @@ const publishedDate = computed(() => {
 
 // Calculate reading time
 const readingTime = computed(() => {
-  if (!blog.value?.content) return 0
+  if (!blog.value) return 0
+  
+  // Use API wordCount if available, otherwise calculate from content
+  const wordCount = blog.value.wordCount || (blog.value.content ? blog.value.content.split(/\s+/).length : 0)
   const wordsPerMinute = 200
-  const wordCount = blog.value.content.split(/\s+/).length
   return Math.ceil(wordCount / wordsPerMinute)
 })
 
@@ -210,38 +220,41 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
-      children: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: blog.value?.title,
-        description: blog.value?.description,
-        image: blog.value?.imageThumbnail,
-        author: {
-          '@type': 'Person',
-          name: blog.value?.author || 'Paul Chris Luke',
-          url: 'https://paulchrisluke.com'
-        },
-        publisher: {
-          '@type': 'Organization',
-          name: 'PCL Labs',
-          url: 'https://paulchrisluke.com',
-          logo: {
-            '@type': 'ImageObject',
-            url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
-            width: 200,
-            height: 50
-          }
-        },
-        datePublished: blog.value?.date,
-        dateModified: blog.value?.date,
-        mainEntityOfPage: {
-          '@type': 'WebPage',
-          '@id': `https://paulchrisluke.com${route.path}`
-        },
-        articleSection: 'Technology',
-        keywords: blog.value?.tags?.join(', '),
-        wordCount: blog.value?.content ? blog.value.content.length : 0
-      })
+      children: JSON.stringify(
+        // Use API schema if available, otherwise fallback to our own
+        blog.value?.schema || {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: blog.value?.title,
+          description: blog.value?.description,
+          image: blog.value?.imageThumbnail,
+          author: {
+            '@type': 'Person',
+            name: blog.value?.author || 'Paul Chris Luke',
+            url: 'https://paulchrisluke.com'
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'PCL Labs',
+            url: 'https://paulchrisluke.com',
+            logo: {
+              '@type': 'ImageObject',
+              url: 'https://paulchrisluke.com/pcl-labs-logo.svg',
+              width: 200,
+              height: 50
+            }
+          },
+          datePublished: blog.value?.date,
+          dateModified: blog.value?.dateModified || blog.value?.date,
+          mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': `https://paulchrisluke.com${route.path}`
+          },
+          articleSection: 'Technology',
+          keywords: blog.value?.tags?.join(', '),
+          wordCount: blog.value?.wordCount || (blog.value?.content ? blog.value.content.length : 0)
+        }
+      )
     }
   ]
 })
