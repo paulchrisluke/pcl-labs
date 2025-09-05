@@ -12,6 +12,7 @@
           width="100%"
           frameborder="0"
           allowfullscreen
+          allow="autoplay; fullscreen; picture-in-picture"
           class="h-full w-full object-cover"
         />
         <!-- Live indicator -->
@@ -71,6 +72,6 @@ watchEffect(() => {
 // Computed property for Twitch embed URL
 const twitchEmbedUrl = computed(() => {
   const currentDomain = process.client ? window.location.hostname : 'localhost'
-  return `https://player.twitch.tv/?channel=paulchrisluke&parent=${currentDomain}&autoplay=true&muted=true`
+  return `https://player.twitch.tv/?channel=paulchrisluke&parent=${currentDomain}&autoplay=true&muted=false&allowfullscreen=true`
 })
 </script>
