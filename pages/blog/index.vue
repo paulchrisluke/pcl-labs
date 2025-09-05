@@ -55,7 +55,7 @@
           class="group relative"
         >
           <!-- Card Container -->
-          <div class="relative aspect-[9/16] rounded-2xl overflow-hidden bg-gray-800 shadow-2xl group-hover:shadow-indigo-500/25 transition-shadow duration-300 group-hover:scale-105 transform-gpu will-change-transform">
+          <div class="relative aspect-[9/16] rounded-2xl overflow-hidden bg-gray-800 shadow-2xl group-hover:shadow-indigo-500/25 transition-shadow duration-300 group-hover:scale-105 transform-gpu">
             <!-- Image -->
             <div class="absolute inset-0">
               <img

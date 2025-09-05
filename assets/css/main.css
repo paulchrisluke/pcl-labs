@@ -13,11 +13,6 @@
         overflow: hidden;
     }
 
-    /* Fix for rounded corners during hover animations */
-    .transform-gpu {
-        transform: translateZ(0);
-        will-change: transform;
-    }
 
     /* Ensure smooth rounded corner preservation */
     .group:hover .rounded-2xl {
