@@ -3,9 +3,10 @@ import svgLoader from 'vite-svg-loader'
 export default defineNuxtConfig({
   compatibilityDate: '2025-08-24',
   runtimeConfig: {
+    // Private keys (only available on server-side)
+    twitchClientSecret: process.env.TWITCH_CLIENT_SECRET,
     public: {
       twitchClientId: process.env.TWITCH_CLIENT_ID,
-      twitchClientSecret: process.env.TWITCH_CLIENT_SECRET,
       twitchBroadcasterId: process.env.TWITCH_BROADCASTER_ID,
     }
   },

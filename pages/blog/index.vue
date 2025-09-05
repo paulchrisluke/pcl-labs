@@ -336,9 +336,8 @@ const handleImageError = (event) => {
   const target = event.target
   const currentSrc = target.src
   
-  // Prevent infinite loop: if current src is already a fallback, remove error listener
+  // Prevent infinite loop: if current src is already a fallback or data URI, remove error listener
   if (currentSrc.includes('blog-placeholder.jpg') || 
-      currentSrc.includes('PCL-about-header.webp') ||
       currentSrc.startsWith('data:image')) {
     target.removeEventListener('error', handleImageError)
     return
@@ -350,7 +349,7 @@ const handleImageError = (event) => {
     return
   }
   
-  // Ultimate fallback: simple data URI placeholder
+  // Ultimate fallback: simple data URI placeholder (when header image also fails)
   target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzZiNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
   target.removeEventListener('error', handleImageError)
 }
