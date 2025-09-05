@@ -65,7 +65,7 @@ export default defineNuxtConfig({
     defaultLocale: 'en',
   },
   seo: {
-    redirectToCanonicalSiteUrl: true
+    redirectToCanonicalSiteUrl: false
   },
   ssr: true,
   nitro: {
