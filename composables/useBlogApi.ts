@@ -106,6 +106,24 @@ export const useBlogApi = () => {
     timeout: 30000
   }
 
+  // Helper function to replace unreliable image URLs with more reliable alternatives
+  const replaceUnreliableImageUrl = (imageUrl: string): string => {
+    // Replace unreliable image services with a more reliable placeholder service
+    if (imageUrl.includes('source.unsplash.com') || imageUrl.includes('via.placeholder.com') || imageUrl.includes('picsum.photos')) {
+      // Extract dimensions from original URL if available
+      const match = imageUrl.match(/(\d+)x(\d+)/)
+      if (match) {
+        const [, width, height] = match
+        return `https://dummyimage.com/${width}x${height}/4F46E5/FFFFFF&text=PCL+Labs+Blog`
+      }
+      // Default to 1200x630 if no dimensions found
+      return 'https://dummyimage.com/1200x630/4F46E5/FFFFFF&text=PCL+Labs+Blog'
+    }
+    
+    // Return original URL if it's not an unreliable source
+    return imageUrl
+  }
+
   // Input validation for API data
   const validateApiData = (apiData: unknown): apiData is ApiBlogData => {
     if (!apiData || typeof apiData !== 'object') {
@@ -149,7 +167,7 @@ export const useBlogApi = () => {
       date: data.datePublished || '',
       dateModified: data.dateModified || '',
       tags: data.content?.tags || [],
-      imageThumbnail: data.media?.hero?.image || '',
+      imageThumbnail: data.media?.hero?.image ? replaceUnreliableImageUrl(data.media.hero.image) : '',
       imageAlt: data.content?.title || 'PCL Labs Blog Post',
       description: data.content?.summary || '',
       author: data.schema?.author?.name || 'Paul Chris Luke',
@@ -280,7 +298,7 @@ export const useBlogApi = () => {
     }
   }
 
-  // Fetch all available blogs from the blog index endpoint
+  // Fetch all available blogs with full data including images
   const fetchAllBlogs = async (): Promise<BlogData[]> => {
     try {
       const response = await fetch(`${API_BASE_URL}`)
@@ -298,12 +316,37 @@ export const useBlogApi = () => {
       
       const validatedData = apiData as ApiBlogIndexResponse
       
-      // Transform the blogPost array from the API response
-      if (validatedData.blogPost && Array.isArray(validatedData.blogPost)) {
-        return validatedData.blogPost.map(blog => transformBlogIndexItem(blog))
+      // Get the list of blog posts from index
+      if (!validatedData.blogPost || !Array.isArray(validatedData.blogPost)) {
+        return []
       }
       
-      return []
+      // Fetch full data for each blog post to get images
+      const blogPromises = validatedData.blogPost.map(async (blog) => {
+        try {
+          // Extract date from datePublished (format: 2025-08-25)
+          const date = blog.datePublished
+          if (!date) {
+            console.warn('No date found for blog post:', blog.headline)
+            return transformBlogIndexItem(blog)
+          }
+          
+          // Fetch full blog data to get images
+          const fullBlogData = await fetchBlog(date)
+          return fullBlogData
+        } catch (error) {
+          console.warn(`Failed to fetch full data for blog ${blog.datePublished}, using index data:`, error)
+          // Fallback to index data if individual fetch fails
+          return transformBlogIndexItem(blog)
+        }
+      })
+      
+      // Wait for all blog data to be fetched
+      const blogs = await Promise.all(blogPromises)
+      
+      // Sort by date (newest first)
+      return blogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      
     } catch (error) {
       console.error('Error fetching all blogs from API:', error)
       throw error
