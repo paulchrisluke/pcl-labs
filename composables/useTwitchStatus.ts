@@ -16,7 +16,8 @@ export const useTwitchStatus = () => {
       isLive.value = response.isLive
     } catch (err) {
       console.error('Error checking Twitch status:', err)
-      error.value = `Failed to check live status: ${err instanceof Error ? err.message : 'Unknown error'}`
+      // Don't show error to users, just log it and assume not live
+      error.value = null
       isLive.value = false
     } finally {
       isLoading.value = false

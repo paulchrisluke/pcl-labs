@@ -10,10 +10,11 @@ export default defineEventHandler(async (event) => {
   const TWITCH_USERNAME = 'paulchrisluke'
 
   if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Twitch credentials not configured'
-    })
+    console.warn('Twitch credentials not configured, returning default response')
+    return {
+      isLive: false,
+      data: []
+    }
   }
 
   try {
@@ -26,11 +27,15 @@ export default defineEventHandler(async (event) => {
       console.log('Getting new Twitch App Access Token...')
       const tokenResponse = await $fetch('https://id.twitch.tv/oauth2/token', {
         method: 'POST',
-        params: {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
           client_id: TWITCH_CLIENT_ID,
           client_secret: TWITCH_CLIENT_SECRET,
           grant_type: 'client_credentials'
-        }
+        }),
+        timeout: 10000 // 10 second timeout
       }) as { access_token: string; expires_in?: number }
 
       accessToken = tokenResponse.access_token
@@ -55,9 +60,10 @@ export default defineEventHandler(async (event) => {
     const response = await $fetch('https://api.twitch.tv/helix/streams', {
       params: queryParam,
       headers: {
-        'Client-ID': TWITCH_CLIENT_ID,
+        'Client-Id': TWITCH_CLIENT_ID,
         'Authorization': `Bearer ${accessToken}`
-      }
+      },
+      timeout: 5000 // 5 second timeout
     }) as { data: any[] }
 
     console.log('Twitch API response:', response)
@@ -69,9 +75,10 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error) {
     console.error('Error checking Twitch status:', error)
-    throw createError({
-      statusCode: 500,
-      statusMessage: `Failed to check live status: ${error instanceof Error ? error.message : 'Unknown error'}`
-    })
+    // Return default response instead of throwing error
+    return {
+      isLive: false,
+      data: []
+    }
   }
 })

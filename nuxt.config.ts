@@ -67,7 +67,7 @@ export default defineNuxtConfig({
   seo: {
     redirectToCanonicalSiteUrl: true
   },
-  ssr: false,
+  ssr: true,
   nitro: {
     prerender: {
       routes: [

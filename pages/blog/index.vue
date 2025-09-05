@@ -71,43 +71,49 @@
             <!-- Content Overlay -->
             <div class="absolute inset-0 flex flex-col justify-end p-6">
               <!-- Tags -->
-              <div class="relative mb-3 tag-expansion">
+              <div class="relative mb-3 tag-expansion z-20 pointer-events-auto">
                 <!-- Primary Tags (always visible) -->
                 <div class="flex flex-wrap gap-2">
-                  <span
+                  <button
                     v-for="tag in getPrioritizedTags(post).slice(0, 2)"
                     :key="tag.name"
+                    type="button"
+                    :aria-label="`Filter by ${tag.name}`"
                     class="tag-pill px-2 py-1 bg-indigo-500/80 backdrop-blur-sm rounded-full text-xs font-medium text-white cursor-pointer hover:bg-indigo-400/80 transition-all duration-200"
                     @click.stop="selectedTag = tag.name"
                   >
                     # {{ tag.name }}
-                  </span>
+                  </button>
                   
                   <!-- More Tags Indicator -->
-                  <span
+                  <button
                     v-if="getPrioritizedTags(post).length > 2"
+                    type="button"
+                    :aria-label="`Show ${getPrioritizedTags(post).length - 2} more tags`"
                     class="tag-pill px-2 py-1 bg-gray-600/80 backdrop-blur-sm rounded-full text-xs font-medium text-gray-300 cursor-pointer hover:bg-gray-500/80 transition-all duration-200"
                     @click.stop="toggleTagExpansion(post._id)"
                   >
                     +{{ getPrioritizedTags(post).length - 2 }}
-                  </span>
+                  </button>
                 </div>
 
                 <!-- Expanded Tags Overlay (on hover or click) -->
                 <div
                   v-if="expandedTags[post._id]"
-                  class="tag-expansion-overlay absolute bottom-full left-0 right-0 mb-2 p-3 bg-black/90 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl"
+                  class="tag-expansion-overlay absolute bottom-full left-0 right-0 mb-2 p-3 bg-black/90 backdrop-blur-sm rounded-lg border border-gray-600/50 shadow-2xl z-30 pointer-events-auto"
                 >
                   <div class="flex flex-wrap gap-2">
-                    <span
+                    <button
                       v-for="tag in getPrioritizedTags(post)"
                       :key="tag.name"
+                      type="button"
+                      :aria-label="`Filter by ${tag.name}`"
                       class="tag-pill px-2 py-1 bg-indigo-500/80 backdrop-blur-sm rounded-full text-xs font-medium text-white cursor-pointer hover:bg-indigo-400/80 transition-all duration-200"
                       @click.stop="selectedTag = tag.name"
                     >
                       # {{ tag.name }}
                       <span v-if="tag.frequency > 1" class="ml-1 text-xs opacity-75">({{ tag.frequency }})</span>
-                    </span>
+                    </button>
                   </div>
                   <!-- Close button -->
                   <button
@@ -321,11 +327,15 @@ const formatDate = (dateString) => {
       return dateString || 'Invalid date'
     }
     
-    return date.toLocaleDateString('en-US', { 
+    // Use timezone-safe formatter to prevent SSR/client hydration mismatches
+    const formatter = new Intl.DateTimeFormat('en-US', { 
       year: 'numeric', 
       month: 'short', 
-      day: 'numeric' 
+      day: 'numeric',
+      timeZone: 'UTC'
     })
+    
+    return formatter.format(date)
   } catch (error) {
     // Handle unexpected exceptions by returning the original dateString or fallback
     return dateString || 'Invalid date'

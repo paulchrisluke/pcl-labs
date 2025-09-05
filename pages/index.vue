@@ -23,8 +23,11 @@ const { data: portfolioData } = await useAsyncData('home-portfolio', async () =>
     return result;
   } catch (error) {
     console.error('Error fetching portfolio data for home:', error);
+    // Return empty array as fallback
     return [];
   }
+}, {
+  default: () => []
 });
 
 useHead({
