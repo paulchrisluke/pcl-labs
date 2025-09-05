@@ -1,4 +1,7 @@
 export const useMockBlog = () => {
+  // Shared delay helper
+  const delay = (ms: number) => new Promise<void>(res => setTimeout(res, ms))
+
   // Mock blog data
   const mockBlogs = [
     {
@@ -204,8 +207,8 @@ Headless CMS offers the flexibility and performance that modern websites need. W
   // Fetch all blogs
   const fetchAllBlogs = async () => {
     // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 100))
-    return mockBlogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    await delay(100)
+    return [...mockBlogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }
 
   // Fetch a specific blog by date

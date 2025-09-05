@@ -313,19 +313,46 @@ const getReadingTime = (post) => {
 
 const formatDate = (dateString) => {
   try {
-    return new Date(dateString).toLocaleDateString('en-US', { 
+    const date = new Date(dateString)
+    
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      // Return the original dateString as fallback, or a localized "Invalid date" if dateString is empty/falsy
+      return dateString || 'Invalid date'
+    }
+    
+    return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
     })
   } catch (error) {
-    return ''
+    // Handle unexpected exceptions by returning the original dateString or fallback
+    return dateString || 'Invalid date'
   }
 }
 
 const handleImageError = (event) => {
-  // Fallback to placeholder if image fails to load
-  event.target.src = '/img/blog-placeholder.jpg'
+  const target = event.target
+  const currentSrc = target.src
+  
+  // Prevent infinite loop: if current src is already a fallback, remove error listener
+  if (currentSrc.includes('blog-placeholder.jpg') || 
+      currentSrc.includes('PCL-about-header.webp') ||
+      currentSrc.startsWith('data:image')) {
+    target.removeEventListener('error', handleImageError)
+    return
+  }
+  
+  // Try primary fallback first (existing header image)
+  if (!currentSrc.includes('PCL-about-header.webp')) {
+    target.src = '/PCL-about-header.webp'
+    return
+  }
+  
+  // Ultimate fallback: simple data URI placeholder
+  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzZiNzI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIFVuYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg=='
+  target.removeEventListener('error', handleImageError)
 }
 
 // Toggle tag expansion for a specific post
@@ -344,15 +371,24 @@ watch(selectedTag, () => {
 })
 
 // Add click outside handler
+let clickOutsideHandler = null
+
 onMounted(() => {
-  document.addEventListener('click', (event) => {
+  clickOutsideHandler = (event) => {
     // Check if click is outside any tag expansion area
     const isTagExpansion = event.target.closest('.tag-expansion')
     if (!isTagExpansion) {
       closeAllExpandedTags()
     }
-  })
-  })
+  }
+  document.addEventListener('click', clickOutsideHandler)
+})
+
+onUnmounted(() => {
+  if (clickOutsideHandler) {
+    document.removeEventListener('click', clickOutsideHandler)
+  }
+})
  
 // Add Schema.org structured data for blog listing
 useHead({

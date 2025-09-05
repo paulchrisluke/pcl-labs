@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- <Hero /> -->
+    <!-- Hero is already shown in HeaderSection for homepage -->
     <!-- TODO: INSERT BY INDUSTRY COMPONENT HERE -->
     <ServiceGrid id="Services" />
     <ProductList :portfolioData="portfolioData" :limit="4" />

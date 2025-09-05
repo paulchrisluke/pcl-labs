@@ -45,4 +45,15 @@
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     }
+
+    /* Respect user's reduced motion preference */
+    @media (prefers-reduced-motion: reduce) {
+        .tag-expansion-overlay {
+            animation: none;
+        }
+
+        .tag-pill {
+            transition: none;
+        }
+    }
 }
