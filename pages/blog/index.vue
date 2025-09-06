@@ -15,7 +15,7 @@
     </div>
 
     <!-- Hashtag Filter Section -->
-    <div class="sticky top-0 z-10 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700">
+    <div class="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700">
       <div class="mx-auto max-w-7xl px-6 lg:px-8 py-4">
         <div class="flex flex-wrap gap-2 justify-center">
           <button
