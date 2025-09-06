@@ -77,6 +77,17 @@ export default defineNuxtConfig({
       routes: [
         // Add proposal slugs here as needed
       ]
+    },
+    // Add timeout configuration to prevent gateway timeouts
+    routeRules: {
+      '/blog': { 
+        isr: 300, // Cache for 5 minutes to reduce API calls
+        headers: { 'cache-control': 's-maxage=300' }
+      },
+      '/blog/**': { 
+        isr: 300, // Cache individual blog posts for 5 minutes
+        headers: { 'cache-control': 's-maxage=300' }
+      }
     }
   }
 })

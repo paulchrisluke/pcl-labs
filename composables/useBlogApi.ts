@@ -298,7 +298,7 @@ export const useBlogApi = () => {
     }
   }
 
-  // Fetch all available blogs with full data including images
+  // Fetch all available blogs with optimized timeout handling
   const fetchAllBlogs = async (): Promise<BlogData[]> => {
     try {
       const response = await fetch(`${API_BASE_URL}`)
@@ -321,7 +321,15 @@ export const useBlogApi = () => {
         return []
       }
       
-      // Fetch full data for each blog post to get images
+      // Use a more aggressive timeout for individual blog fetches to prevent gateway timeouts
+      const fastRetryConfig: Partial<RetryConfig> = {
+        maxRetries: 1, // Reduce retries
+        timeout: 10000, // Reduce timeout to 10 seconds
+        baseDelay: 500, // Faster retry delay
+        maxDelay: 2000 // Lower max delay
+      }
+      
+      // Fetch full data for each blog post with timeout protection
       const blogPromises = validatedData.blogPost.map(async (blog) => {
         try {
           // Extract date from datePublished (format: 2025-08-25)
@@ -331,8 +339,8 @@ export const useBlogApi = () => {
             return transformBlogIndexItem(blog)
           }
           
-          // Fetch full blog data to get images
-          const fullBlogData = await fetchBlog(date)
+          // Fetch full blog data with faster timeout
+          const fullBlogData = await fetchBlog(date, fastRetryConfig)
           return fullBlogData
         } catch (error) {
           console.warn(`Failed to fetch full data for blog ${blog.datePublished}, using index data:`, error)
@@ -341,8 +349,18 @@ export const useBlogApi = () => {
         }
       })
       
-      // Wait for all blog data to be fetched
-      const blogs = await Promise.all(blogPromises)
+      // Use Promise.allSettled to prevent one slow request from blocking all others
+      const blogResults = await Promise.allSettled(blogPromises)
+      
+      // Extract successful results and fallback to index data for failed ones
+      const blogs = blogResults.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value
+        } else {
+          console.warn(`Blog fetch failed for index ${index}, using index data:`, result.reason)
+          return transformBlogIndexItem(validatedData.blogPost[index])
+        }
+      })
       
       // Sort by date (newest first)
       return blogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
