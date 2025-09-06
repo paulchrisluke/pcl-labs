@@ -144,6 +144,9 @@ export const useBlogApi = () => {
     return Array.isArray(data.blogPost) || Array.isArray(data.blogs)
   }
 
+  // Site origin for URL resolution
+  const SITE_ORIGIN = 'https://paulchrisluke.com'
+
   // Helper function to sanitize image URLs
   const sanitizeImageUrl = (imageUrl: string | undefined | null): string => {
     if (!imageUrl || typeof imageUrl !== 'string') {
@@ -157,28 +160,16 @@ export const useBlogApi = () => {
     }
 
     try {
-      // If it's already an absolute URL, validate it
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        const url = new URL(trimmed)
-        // Only allow http and https protocols
-        if (url.protocol === 'http:' || url.protocol === 'https:') {
-          return url.toString()
-        }
+      // Use URL constructor to resolve and canonicalize all cases
+      // This handles absolute URLs, protocol-relative URLs (//), and relative paths
+      const url = new URL(trimmed, SITE_ORIGIN)
+      
+      // Enforce HTTPS-only URLs
+      if (url.protocol !== 'https:') {
         return ''
       }
-
-      // If it's a relative URL, resolve it against the site origin
-      if (trimmed.startsWith('/')) {
-        return `https://paulchrisluke.com${trimmed}`
-      }
-
-      // If it's a protocol-relative URL (starts with //), add https:
-      if (trimmed.startsWith('//')) {
-        return `https:${trimmed}`
-      }
-
-      // For other relative URLs, treat as path and resolve against origin
-      return `https://paulchrisluke.com/${trimmed}`
+      
+      return url.toString()
     } catch (error) {
       // If URL parsing fails, return empty string
       return ''
