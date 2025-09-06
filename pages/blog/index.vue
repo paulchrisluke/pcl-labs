@@ -55,13 +55,13 @@
           class="group relative"
         >
           <!-- Card Container -->
-          <div class="relative aspect-[9/16] rounded-2xl overflow-hidden bg-gray-800 shadow-2xl group-hover:shadow-indigo-500/25 transition-shadow duration-300 group-hover:scale-105 transform-gpu">
+          <div class="relative aspect-[9/16] rounded-2xl overflow-hidden bg-gray-800 shadow-2xl group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out">
             <!-- Image -->
             <div class="absolute inset-0">
                           <img
               :src="post.imageThumbnail || '/img/blog-placeholder.jpg'"
               :alt="post.title"
-              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 transform-gpu"
+              class="w-full h-full object-cover"
               @error="handleImageError"
             />
               <!-- Gradient Overlay -->
@@ -144,17 +144,6 @@
               </div>
             </div>
 
-            <!-- Hover Overlay -->
-            <div class="absolute inset-0 bg-indigo-500/0 group-hover:bg-indigo-500/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-              <div class="text-white text-center">
-                <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-2">
-                  <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <p class="text-sm font-medium">Read More</p>
-              </div>
-            </div>
 
             <!-- Link -->
             <nuxt-link

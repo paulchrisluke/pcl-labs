@@ -144,6 +144,47 @@ export const useBlogApi = () => {
     return Array.isArray(data.blogPost) || Array.isArray(data.blogs)
   }
 
+  // Helper function to sanitize image URLs
+  const sanitizeImageUrl = (imageUrl: string | undefined | null): string => {
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return ''
+    }
+
+    // Trim whitespace
+    const trimmed = imageUrl.trim()
+    if (!trimmed) {
+      return ''
+    }
+
+    try {
+      // If it's already an absolute URL, validate it
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        const url = new URL(trimmed)
+        // Only allow http and https protocols
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          return url.toString()
+        }
+        return ''
+      }
+
+      // If it's a relative URL, resolve it against the site origin
+      if (trimmed.startsWith('/')) {
+        return `https://paulchrisluke.com${trimmed}`
+      }
+
+      // If it's a protocol-relative URL (starts with //), add https:
+      if (trimmed.startsWith('//')) {
+        return `https:${trimmed}`
+      }
+
+      // For other relative URLs, treat as path and resolve against origin
+      return `https://paulchrisluke.com/${trimmed}`
+    } catch (error) {
+      // If URL parsing fails, return empty string
+      return ''
+    }
+  }
+
   // Helper function to normalize blog data from different API response formats
   const normalizeBlogItem = (item: any) => {
     // Handle the 'blogs' array format (more complete)
@@ -184,7 +225,7 @@ export const useBlogApi = () => {
       date: data.datePublished || '',
       dateModified: data.dateModified || '',
       tags: data.tags || [],
-      imageThumbnail: data.media?.hero?.image || '',
+      imageThumbnail: sanitizeImageUrl(data.media?.hero?.image),
       imageAlt: data.title || 'PCL Labs Blog Post',
       description: data.summary || '',
       author: data.schema?.author?.name || 'Paul Chris Luke',
