@@ -3,12 +3,10 @@ interface ApiBlogData {
   url?: string
   datePublished?: string
   dateModified?: string
-  content?: {
-    title?: string
-    body?: string
-    tags?: string[]
-    summary?: string
-  }
+  title?: string
+  summary?: string
+  content?: string
+  tags?: string[]
   media?: {
     hero?: {
       image?: string
@@ -64,6 +62,17 @@ interface ApiBlogIndexResponse {
     }
   }
   blogPost: ApiBlogIndexItem[]
+  blogs?: Array<{
+    datePublished: string
+    title: string
+    author: string
+    canonical_url: string
+    api_url: string
+    tags: string[]
+    description: string
+    story_count: number
+    has_video: boolean
+  }>
 }
 
 // Canonical blog DTO interface
@@ -135,7 +144,8 @@ export const useBlogApi = () => {
     // Check for required structure
     return (
       (typeof data.url === 'string' || typeof data.datePublished === 'string') &&
-      (data.content === undefined || typeof data.content === 'object') &&
+      (data.title === undefined || typeof data.title === 'string') &&
+      (data.content === undefined || typeof data.content === 'string') &&
       (data.media === undefined || typeof data.media === 'object') &&
       (data.schema === undefined || typeof data.schema === 'object' || data.schema === null)
     )
@@ -148,7 +158,31 @@ export const useBlogApi = () => {
     }
     
     const data = apiData as Record<string, any>
-    return Array.isArray(data.blogPost)
+    return Array.isArray(data.blogPost) || Array.isArray(data.blogs)
+  }
+
+  // Helper function to normalize blog data from different API response formats
+  const normalizeBlogItem = (item: any) => {
+    // Handle the 'blogs' array format (more complete)
+    if (item.canonical_url) {
+      return {
+        datePublished: item.datePublished,
+        headline: item.title,
+        description: item.description,
+        url: item.canonical_url,
+        author: { name: item.author },
+        tags: item.tags || []
+      }
+    }
+    // Handle the 'blogPost' array format (schema.org)
+    return {
+      datePublished: item.datePublished,
+      headline: item.headline,
+      description: item.description,
+      url: item.url,
+      author: item.author,
+      tags: []
+    }
   }
 
   // Transform API data to match our frontend structure with type safety
@@ -162,16 +196,16 @@ export const useBlogApi = () => {
     return {
       _id: data.url?.split('/').pop() || data.datePublished || '',
       _path: data.url?.replace('https://paulchrisluke.com', '') || `/blog/${data.datePublished || ''}`,
-      title: data.content?.title || '',
-      content: data.content?.body || '',
+      title: data.title || '',
+      content: data.content || '',
       date: data.datePublished || '',
       dateModified: data.dateModified || '',
-      tags: data.content?.tags || [],
+      tags: data.tags || [],
       imageThumbnail: data.media?.hero?.image ? replaceUnreliableImageUrl(data.media.hero.image) : '',
-      imageAlt: data.content?.title || 'PCL Labs Blog Post',
-      description: data.content?.summary || '',
+      imageAlt: data.title || 'PCL Labs Blog Post',
+      description: data.summary || '',
       author: data.schema?.author?.name || 'Paul Chris Luke',
-      lead: data.content?.summary || '',
+      lead: data.summary || '',
       wordCount: data.wordCount || 0,
       timeRequired: data.timeRequired || 'PT3M',
       url: data.url || '',
@@ -278,7 +312,7 @@ export const useBlogApi = () => {
   }
 
   // Transform blog index item to consistent DTO
-  const transformBlogIndexItem = (blog: ApiBlogIndexItem): BlogData => {
+  const transformBlogIndexItem = (blog: any): BlogData => {
     return {
       _id: blog.datePublished,
       _path: blog.url?.replace('https://paulchrisluke.com', '') || `/blog/${blog.datePublished}`,
@@ -286,7 +320,7 @@ export const useBlogApi = () => {
       content: '', // Content is not included in the index, only in individual blog endpoints
       date: blog.datePublished || '',
       dateModified: blog.datePublished || '', // Index doesn't have modified date
-      tags: [], // Tags not available in index
+      tags: blog.tags || [], // Use tags from normalized data
       imageThumbnail: '', // Index doesn't include images
       imageAlt: blog.headline || 'PCL Labs Blog Post',
       description: blog.description || '',
@@ -328,8 +362,14 @@ export const useBlogApi = () => {
       
       const validatedData = apiData as ApiBlogIndexResponse
       
-      // Get the list of blog posts from index
-      if (!validatedData.blogPost || !Array.isArray(validatedData.blogPost)) {
+      // Get the list of blog posts from index - prefer the 'blogs' array as it has more complete data
+      const blogList = validatedData.blogs && Array.isArray(validatedData.blogs) 
+        ? validatedData.blogs 
+        : validatedData.blogPost && Array.isArray(validatedData.blogPost) 
+          ? validatedData.blogPost 
+          : []
+      
+      if (blogList.length === 0) {
         return []
       }
       
@@ -358,22 +398,25 @@ export const useBlogApi = () => {
       }
       
       // Fetch full data for each blog post with timeout protection
-      const blogPromises = validatedData.blogPost.map(async (blog) => {
+      const blogPromises = blogList.map(async (blog) => {
         try {
+          // Normalize the blog item to handle different API response formats
+          const normalizedBlog = normalizeBlogItem(blog)
+          
           // Extract date from datePublished (format: 2025-08-25)
-          const date = blog.datePublished
+          const date = normalizedBlog.datePublished
           if (!date) {
-            console.warn('No date found for blog post:', blog.headline)
-            return transformBlogIndexItem(blog)
+            console.warn('No date found for blog post:', normalizedBlog.headline)
+            return transformBlogIndexItem(normalizedBlog)
           }
           
           // Fetch full blog data with faster timeout
           const fullBlogData = await fetchBlog(date, effectiveConfig)
           return fullBlogData
         } catch (error) {
-          console.warn(`Failed to fetch full data for blog ${blog.datePublished}, using index data:`, error)
+          console.warn(`Failed to fetch full data for blog ${normalizeBlogItem(blog).datePublished}, using index data:`, error)
           // Fallback to index data if individual fetch fails
-          return transformBlogIndexItem(blog)
+          return transformBlogIndexItem(normalizeBlogItem(blog))
         }
       })
       
@@ -386,7 +429,7 @@ export const useBlogApi = () => {
           return result.value
         } else {
           console.warn(`Blog fetch failed for index ${index}, using index data:`, result.reason)
-          return transformBlogIndexItem(validatedData.blogPost[index])
+          return transformBlogIndexItem(normalizeBlogItem(blogList[index]))
         }
       })
       
