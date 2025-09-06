@@ -239,21 +239,20 @@ useHead({
 const { fetchAllBlogs } = useBlogApi()
 
 // Fetch blog content from real API with fallback
-const { data: blogData } = await useAsyncData('blog-all', async () => {
-  try {
-    return await fetchAllBlogs()
-  } catch (error) {
-    console.error('Error fetching blogs from API:', error)
-    
-    // If the API is completely down, return empty array to show empty state
-    // This prevents the page from crashing and shows a user-friendly message
-    return []
-  }
+const { data: blogData, error: blogError } = await useAsyncData('blog-all', async () => {
+  return await fetchAllBlogs({
+    timeout: 45000, // 45 seconds total timeout
+    retry: false // Don't retry on the client side to avoid infinite loops
+  })
 }, {
-  // Add a reasonable timeout for the entire operation
-  timeout: 45000, // 45 seconds total timeout
-  // Don't retry on the client side to avoid infinite loops
-  retry: false
+  default: () => [] // Always return empty array on SSR/CSR and on errors
+})
+
+// Log fetch errors for visibility
+watch(blogError, (error) => {
+  if (error) {
+    console.error('Error fetching blogs from API:', error)
+  }
 })
 
 // Reactive state for filtering

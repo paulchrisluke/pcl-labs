@@ -181,9 +181,9 @@ export const useBlogApi = () => {
   }
 
   // Helper function to determine if an error should be retried
-  const shouldRetry = (error: any, attempt: number): boolean => {
+  const shouldRetry = (error: any, attempt: number, config: RetryConfig): boolean => {
     // Don't retry if we've exceeded max attempts
-    if (attempt >= defaultRetryConfig.maxRetries) {
+    if (attempt >= config.maxRetries) {
       return false
     }
     
@@ -197,10 +197,10 @@ export const useBlogApi = () => {
   }
 
   // Helper function to calculate delay with exponential backoff and jitter
-  const calculateDelay = (attempt: number): number => {
-    const exponentialDelay = defaultRetryConfig.baseDelay * Math.pow(2, attempt)
+  const calculateDelay = (attempt: number, config: RetryConfig): number => {
+    const exponentialDelay = config.baseDelay * Math.pow(2, attempt)
     const jitter = Math.random() * 0.1 * exponentialDelay // 10% jitter
-    return Math.min(exponentialDelay + jitter, defaultRetryConfig.maxDelay)
+    return Math.min(exponentialDelay + jitter, config.maxDelay)
   }
 
   // Fetch a specific blog by date with timeout and retry logic
@@ -228,12 +228,14 @@ export const useBlogApi = () => {
           ;(error as any).status = response.status
           
           if (response.status === 404) {
-            throw new Error(`Blog not found for date: ${date}`)
+            const notFoundError = new Error(`Blog not found for date: ${date}`)
+            ;(notFoundError as any).status = 404
+            throw notFoundError
           }
           
-          if (shouldRetry(error, attempt)) {
+          if (shouldRetry(error, attempt, config)) {
             lastError = error
-            const delay = calculateDelay(attempt)
+            const delay = calculateDelay(attempt, config)
             console.log(`Retrying in ${delay}ms due to error:`, error.message)
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
@@ -259,8 +261,8 @@ export const useBlogApi = () => {
           lastError = error
         }
         
-        if (shouldRetry(lastError, attempt)) {
-          const delay = calculateDelay(attempt)
+        if (shouldRetry(lastError, attempt, config)) {
+          const delay = calculateDelay(attempt, config)
           console.log(`Retrying in ${delay}ms due to error:`, lastError.message)
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
@@ -299,15 +301,12 @@ export const useBlogApi = () => {
   }
 
   // Fetch all available blogs with optimized timeout handling
-  const fetchAllBlogs = async (): Promise<BlogData[]> => {
+  const fetchAllBlogs = async (options: { timeout?: number; retry?: boolean } = {}): Promise<BlogData[]> => {
     try {
-      const response = await fetch(`${API_BASE_URL}`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const apiData = await response.json()
+      const apiData = await $fetch(`${API_BASE_URL}`, {
+        timeout: options.timeout || 45000,
+        retry: options.retry !== false ? 3 : 0
+      })
       
       // Validate the API response structure
       if (!validateBlogIndexData(apiData)) {
@@ -329,6 +328,9 @@ export const useBlogApi = () => {
         maxDelay: 2000 // Lower max delay
       }
       
+      // Merge with default config to ensure all properties are present
+      const effectiveConfig = { ...defaultRetryConfig, ...fastRetryConfig }
+      
       // Fetch full data for each blog post with timeout protection
       const blogPromises = validatedData.blogPost.map(async (blog) => {
         try {
@@ -340,7 +342,7 @@ export const useBlogApi = () => {
           }
           
           // Fetch full blog data with faster timeout
-          const fullBlogData = await fetchBlog(date, fastRetryConfig)
+          const fullBlogData = await fetchBlog(date, effectiveConfig)
           return fullBlogData
         } catch (error) {
           console.warn(`Failed to fetch full data for blog ${blog.datePublished}, using index data:`, error)
