@@ -75,8 +75,16 @@ export default defineNuxtConfig({
   nitro: {
     prerender: {
       routes: [
-        // Add proposal slugs here as needed
+        '/blog'  // make /blog a static page (no function)
       ]
+    },
+    // Add timeout configuration to prevent gateway timeouts
+    routeRules: {
+      // ISR only for individual posts under /blog/**
+      '/blog/**': { 
+        isr: 300, // Cache individual blog posts for 5 minutes
+        headers: { 'cache-control': 's-maxage=300' }
+      }
     }
   }
 })

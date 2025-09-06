@@ -181,9 +181,9 @@ export const useBlogApi = () => {
   }
 
   // Helper function to determine if an error should be retried
-  const shouldRetry = (error: any, attempt: number): boolean => {
+  const shouldRetry = (error: any, attempt: number, config: RetryConfig): boolean => {
     // Don't retry if we've exceeded max attempts
-    if (attempt >= defaultRetryConfig.maxRetries) {
+    if (attempt >= config.maxRetries) {
       return false
     }
     
@@ -197,10 +197,10 @@ export const useBlogApi = () => {
   }
 
   // Helper function to calculate delay with exponential backoff and jitter
-  const calculateDelay = (attempt: number): number => {
-    const exponentialDelay = defaultRetryConfig.baseDelay * Math.pow(2, attempt)
+  const calculateDelay = (attempt: number, config: RetryConfig): number => {
+    const exponentialDelay = config.baseDelay * Math.pow(2, attempt)
     const jitter = Math.random() * 0.1 * exponentialDelay // 10% jitter
-    return Math.min(exponentialDelay + jitter, defaultRetryConfig.maxDelay)
+    return Math.min(exponentialDelay + jitter, config.maxDelay)
   }
 
   // Fetch a specific blog by date with timeout and retry logic
@@ -228,12 +228,14 @@ export const useBlogApi = () => {
           ;(error as any).status = response.status
           
           if (response.status === 404) {
-            throw new Error(`Blog not found for date: ${date}`)
+            const notFoundError = new Error(`Blog not found for date: ${date}`)
+            ;(notFoundError as any).status = 404
+            throw notFoundError
           }
           
-          if (shouldRetry(error, attempt)) {
+          if (shouldRetry(error, attempt, config)) {
             lastError = error
-            const delay = calculateDelay(attempt)
+            const delay = calculateDelay(attempt, config)
             console.log(`Retrying in ${delay}ms due to error:`, error.message)
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
@@ -259,8 +261,8 @@ export const useBlogApi = () => {
           lastError = error
         }
         
-        if (shouldRetry(lastError, attempt)) {
-          const delay = calculateDelay(attempt)
+        if (shouldRetry(lastError, attempt, config)) {
+          const delay = calculateDelay(attempt, config)
           console.log(`Retrying in ${delay}ms due to error:`, lastError.message)
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
@@ -298,10 +300,20 @@ export const useBlogApi = () => {
     }
   }
 
-  // Fetch all available blogs with full data including images
-  const fetchAllBlogs = async (): Promise<BlogData[]> => {
+  // Fetch all available blogs with optimized timeout handling
+  const fetchAllBlogs = async (options: { timeout?: number; retry?: boolean } = {}): Promise<BlogData[]> => {
     try {
-      const response = await fetch(`${API_BASE_URL}`)
+      // Create abort controller for timeout
+      const abortController = new AbortController()
+      const timeoutId = setTimeout(() => {
+        abortController.abort()
+      }, options.timeout || 45000)
+
+      const response = await fetch(`${API_BASE_URL}`, {
+        signal: abortController.signal
+      })
+      
+      clearTimeout(timeoutId)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -321,7 +333,31 @@ export const useBlogApi = () => {
         return []
       }
       
-      // Fetch full data for each blog post to get images
+      // Use a more aggressive timeout for individual blog fetches to prevent gateway timeouts
+      const fastRetryConfig: Partial<RetryConfig> = {
+        maxRetries: 1, // Reduce retries
+        timeout: 10000, // Reduce timeout to 10 seconds
+        baseDelay: 500, // Faster retry delay
+        maxDelay: 2000 // Lower max delay
+      }
+      
+      // Convert caller options to RetryConfig format
+      const callerRetryConfig: Partial<RetryConfig> = {}
+      if (options.timeout) {
+        callerRetryConfig.timeout = options.timeout
+      }
+      if (options.retry === false) {
+        callerRetryConfig.maxRetries = 0
+      }
+      
+      // Merge configs with proper precedence: defaults < fast < caller
+      const effectiveConfig = { 
+        ...defaultRetryConfig, 
+        ...fastRetryConfig, 
+        ...callerRetryConfig 
+      }
+      
+      // Fetch full data for each blog post with timeout protection
       const blogPromises = validatedData.blogPost.map(async (blog) => {
         try {
           // Extract date from datePublished (format: 2025-08-25)
@@ -331,8 +367,8 @@ export const useBlogApi = () => {
             return transformBlogIndexItem(blog)
           }
           
-          // Fetch full blog data to get images
-          const fullBlogData = await fetchBlog(date)
+          // Fetch full blog data with faster timeout
+          const fullBlogData = await fetchBlog(date, effectiveConfig)
           return fullBlogData
         } catch (error) {
           console.warn(`Failed to fetch full data for blog ${blog.datePublished}, using index data:`, error)
@@ -341,13 +377,31 @@ export const useBlogApi = () => {
         }
       })
       
-      // Wait for all blog data to be fetched
-      const blogs = await Promise.all(blogPromises)
+      // Use Promise.allSettled to prevent one slow request from blocking all others
+      const blogResults = await Promise.allSettled(blogPromises)
+      
+      // Extract successful results and fallback to index data for failed ones
+      const blogs = blogResults.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value
+        } else {
+          console.warn(`Blog fetch failed for index ${index}, using index data:`, result.reason)
+          return transformBlogIndexItem(validatedData.blogPost[index])
+        }
+      })
       
       // Sort by date (newest first)
       return blogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       
-    } catch (error) {
+    } catch (error: any) {
+      // Clear timeout if it exists
+      if (error.name === 'AbortError') {
+        const timeoutError = new Error(`Request timeout after ${options.timeout || 45000}ms`)
+        ;(timeoutError as any).status = 408
+        console.error('Error fetching all blogs from API (timeout):', timeoutError)
+        throw timeoutError
+      }
+      
       console.error('Error fetching all blogs from API:', error)
       throw error
     }

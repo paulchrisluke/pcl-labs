@@ -238,15 +238,22 @@ useHead({
 // Use the real blog API composable
 const { fetchAllBlogs } = useBlogApi()
 
-// Fetch blog content from real API
-const { data: blogData } = await useAsyncData('blog-all', async () => {
-  try {
-    return await fetchAllBlogs()
-  } catch (error) {
-    console.error('Error fetching blogs from API:', error)
-    return []
-  }
+// Fetch blog content from real API with fallback
+const { data: blogData, error: blogError } = await useAsyncData('blog-all', async () => {
+  return await fetchAllBlogs({
+    timeout: 45000, // 45 seconds total timeout
+    retry: false // Don't retry on the client side to avoid infinite loops
   })
+}, {
+  default: () => [] // Always return empty array on SSR/CSR and on errors
+})
+
+// Log fetch errors for visibility
+watch(blogError, (error) => {
+  if (error) {
+    console.error('Error fetching blogs from API:', error)
+  }
+})
 
 // Reactive state for filtering
 const selectedTag = ref(null)
