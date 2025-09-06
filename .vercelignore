@@ -1,0 +1,8 @@
+# Ignore build artifacts that can cause symlink conflicts
+.nuxt
+.output
+dist
+.vercel
+node_modules/.cache
+*.log
+.DS_Store
