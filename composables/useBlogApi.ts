@@ -115,23 +115,6 @@ export const useBlogApi = () => {
     timeout: 30000
   }
 
-  // Helper function to replace unreliable image URLs with more reliable alternatives
-  const replaceUnreliableImageUrl = (imageUrl: string): string => {
-    // Replace unreliable image services with a more reliable placeholder service
-    if (imageUrl.includes('source.unsplash.com') || imageUrl.includes('via.placeholder.com') || imageUrl.includes('picsum.photos')) {
-      // Extract dimensions from original URL if available
-      const match = imageUrl.match(/(\d+)x(\d+)/)
-      if (match) {
-        const [, width, height] = match
-        return `https://dummyimage.com/${width}x${height}/4F46E5/FFFFFF&text=PCL+Labs+Blog`
-      }
-      // Default to 1200x630 if no dimensions found
-      return 'https://dummyimage.com/1200x630/4F46E5/FFFFFF&text=PCL+Labs+Blog'
-    }
-    
-    // Return original URL if it's not an unreliable source
-    return imageUrl
-  }
 
   // Input validation for API data
   const validateApiData = (apiData: unknown): apiData is ApiBlogData => {
@@ -201,7 +184,7 @@ export const useBlogApi = () => {
       date: data.datePublished || '',
       dateModified: data.dateModified || '',
       tags: data.tags || [],
-      imageThumbnail: data.media?.hero?.image ? replaceUnreliableImageUrl(data.media.hero.image) : '',
+      imageThumbnail: data.media?.hero?.image || '',
       imageAlt: data.title || 'PCL Labs Blog Post',
       description: data.summary || '',
       author: data.schema?.author?.name || 'Paul Chris Luke',
