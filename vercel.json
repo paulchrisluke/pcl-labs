@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install --ignore-scripts && npm run build",
+  "buildCommand": "yarn install --ignore-scripts && yarn build",
   "outputDirectory": ".output",
   "framework": "nuxtjs"
 }
