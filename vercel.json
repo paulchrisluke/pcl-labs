@@ -1,5 +1,5 @@
 {
-  "buildCommand": "yarn install --ignore-scripts && yarn build",
-  "outputDirectory": ".output",
+  "buildCommand": "yarn install --ignore-scripts && rm -rf .vercel && yarn build",
+  "outputDirectory": ".vercel/output",
   "framework": "nuxtjs"
 }
