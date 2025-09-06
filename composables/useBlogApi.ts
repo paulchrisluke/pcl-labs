@@ -303,10 +303,13 @@ export const useBlogApi = () => {
   // Fetch all available blogs with optimized timeout handling
   const fetchAllBlogs = async (options: { timeout?: number; retry?: boolean } = {}): Promise<BlogData[]> => {
     try {
-      const apiData = await $fetch(`${API_BASE_URL}`, {
-        timeout: options.timeout || 45000,
-        retry: options.retry !== false ? 3 : 0
-      })
+      const response = await fetch(`${API_BASE_URL}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const apiData = await response.json()
       
       // Validate the API response structure
       if (!validateBlogIndexData(apiData)) {
