@@ -2,22 +2,10 @@ import svgLoader from 'vite-svg-loader'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-08-24',
-  runtimeConfig: {
-    // Private keys (only available on server-side)
-    twitchClientSecret: process.env.TWITCH_CLIENT_SECRET,
-    public: {
-      twitchClientId: process.env.TWITCH_CLIENT_ID,
-      twitchBroadcasterId: process.env.TWITCH_BROADCASTER_ID,
-    }
-  },
   app: {
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
-      link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'shortcut icon', type: 'image/x-icon', href: '/favicon.ico' }
-      ],
       // Todo: cleanup this fallback option https://nuxtseo.com/nuxt-seo/guides/configuring-modules
       // title: 'Default Title', // Default title
       // meta: [
@@ -69,22 +57,14 @@ export default defineNuxtConfig({
     defaultLocale: 'en',
   },
   seo: {
-    redirectToCanonicalSiteUrl: false
+    redirectToCanonicalSiteUrl: true
   },
   ssr: true,
   nitro: {
     prerender: {
       routes: [
-        '/blog'  // make /blog a static page (no function)
+        // Add proposal slugs here as needed
       ]
-    },
-    // Add timeout configuration to prevent gateway timeouts
-    routeRules: {
-      // ISR only for individual posts under /blog/**
-      '/blog/**': { 
-        isr: 300, // Cache individual blog posts for 5 minutes
-        headers: { 'cache-control': 's-maxage=300' }
-      }
     }
   }
 })

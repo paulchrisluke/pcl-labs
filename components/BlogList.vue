@@ -13,30 +13,17 @@
         </nuxt-link>
       </div>
       <div class="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-4 md:gap-y-0 lg:gap-x-8">
-        <nuxt-link 
-          :to="post._path" 
-          v-for="post in displayedPosts" 
-          :key="post._id" 
-          class="group relative"
-          :aria-label="`Read post: ${post.title}`"
-        >
-          <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200">
-            <img 
-              :src="getImageUrl(post)" 
-              :alt="post.imageAlt || post.title" 
-              class="object-cover object-center h-full w-full group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out"
-              loading="lazy"
-              decoding="async"
-              @error="handleImageError"
-            />
+        <nuxt-link :to="post._path" v-for="post in blogData" :key="post._id" class="group relative">
+          <div class="mt-6 aspect-w-1 aspect-h-1 rounded-md overflow-hidden bg-gray-200 group-hover:scale-105 transform transition duration-1000 group-hover:shadow-md group-hover:rotate-2 group-hover:ease-out">
+            <img :src="post.imageThumbnail" :alt="post.imageAlt" class="object-cover object-center h-full w-full" />
           </div>
           <h3 class="mt-4 text-sm text-gray-700">
               <span class="absolute inset-0" />
               {{ post.title }}
           </h3>
-          <p class="mt-1 text-sm text-gray-500">{{ getFirstTag(post) }}</p>
+          <p class="mt-1 text-sm text-gray-500">{{ post.tags?.[0] || '' }}</p>
           <p v-if="post.date" class="mt-1 text-xs text-gray-400">
-            {{ formatDate(post.date) }}
+            {{ new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) }}
           </p>
         </nuxt-link>
       </div>
@@ -63,55 +50,5 @@ const props = defineProps({
   }
 });
 
-// Reactive computed props
-const displayedPosts = computed(() => {
-  if (!props.limit || props.limit >= props.blogData.length) {
-    return props.blogData;
-  }
-  return props.blogData.slice(0, props.limit);
-});
-
-const showSeeAllLink = computed(() => {
-  return props.blogData.length > (props.limit || Infinity);
-});
-
-// Helper functions for the mock data structure
-const getImageUrl = (post) => {
-  // Check for the imageThumbnail first (which now includes the improved logic)
-  if (post.imageThumbnail && post.imageThumbnail !== '/img/blog-placeholder.jpg') {
-    return post.imageThumbnail;
-  }
-  
-  // Check for assets if available
-  if (post.assets?.images?.[0]) {
-    return post.assets.images[0];
-  }
-  
-  // Return placeholder if no image available
-  return '/img/blog-placeholder.jpg';
-};
-
-const getFirstTag = (post) => {
-  if (post.tags && post.tags.length > 0) {
-    return post.tags[0];
-  }
-  return '';
-};
-
-const formatDate = (dateString) => {
-  try {
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  } catch (error) {
-    return '';
-  }
-};
-
-const handleImageError = (event) => {
-  // Fallback to placeholder if image fails to load
-  event.target.src = '/img/blog-placeholder.jpg';
-};
+const showSeeAllLink = props.limit <= 10; //will only show see all if you limit the prop to 10 or less
 </script>

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- Hero is already shown in HeaderSection for homepage -->
+    <!-- <Hero /> -->
     <!-- TODO: INSERT BY INDUSTRY COMPONENT HERE -->
     <ServiceGrid id="Services" />
     <ProductList :portfolioData="portfolioData" :limit="4" />
@@ -23,11 +23,8 @@ const { data: portfolioData } = await useAsyncData('home-portfolio', async () =>
     return result;
   } catch (error) {
     console.error('Error fetching portfolio data for home:', error);
-    // Return empty array as fallback
     return [];
   }
-}, {
-  default: () => []
 });
 
 useHead({

@@ -33,8 +33,6 @@ const { data: portfolioData } = await useAsyncData('portfolio-all', async () => 
     console.error('Content query error:', error);
     return [];
   }
-}, {
-  default: () => []
 });
 
 console.log('Final portfolio data:', portfolioData.value);
